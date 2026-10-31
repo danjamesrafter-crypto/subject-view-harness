@@ -294,7 +294,7 @@ td.mono{font-family:var(--font-data)}
 .shead{display:grid;grid-template-columns:minmax(0,1fr) minmax(440px,580px);align-items:stretch;gap:16px 24px}
 .hright{display:flex;flex-direction:column;gap:10px;min-width:0}
 .hactions{justify-content:flex-end;flex-wrap:nowrap}
-.hactions .btn{height:36px}
+.hactions .btn{height:36px;white-space:nowrap}
 @media (max-width:1180px){.shead{grid-template-columns:1fr}.hactions{justify-content:flex-start;flex-wrap:wrap}}
 /* series hover preview */
 .pop[hidden]{display:none}
@@ -388,6 +388,56 @@ pre.jerr span.e{color:var(--bad-t)}
 .jobpane .body{padding-bottom:72px}
 .lnkbtn{border:0;background:none;color:var(--accent-ink,#AEB8FF);padding:0;font:inherit;text-decoration:underline;cursor:pointer}
 
+
+/* v0.5: tags, thumbnails, queries, Fermi */
+.tags{display:inline-flex;flex-wrap:wrap;gap:5px;align-items:center;vertical-align:middle}
+.tag{display:inline-flex;align-items:center;gap:3px;height:22px;padding:0 4px 0 8px;border-radius:999px;background:var(--accent-wash);color:var(--accent-ink);font-size:12px;border:1px solid var(--accent-border)}
+.tags.sm .tag{height:19px;font-size:11px;padding:0 3px 0 7px}
+.tag .tx{border:0;background:transparent;color:inherit;opacity:.65;width:16px;height:16px;border-radius:50%;line-height:1;padding:0;font-size:13px}
+.tag .tx:hover{opacity:1;background:rgba(255,255,255,.12)}
+.tags.sm .tag:not(:has(.tx)){padding-right:8px}
+.tagplus{height:22px;border:1px dashed var(--line-strong);background:transparent;color:var(--ink-3);border-radius:999px;padding:0 9px;font-size:12px}
+.tags.sm .tagplus{height:19px;font-size:11px;padding:0 7px}
+.tagplus:hover{color:var(--ink);border-color:var(--accent)}
+.tagin{display:inline-flex;gap:4px}.tagin input{height:26px;width:140px;border:1px solid var(--accent);background:var(--page);color:var(--ink);border-radius:7px;padding:0 8px;font-size:12px}.tagin .ibtn{height:26px}
+.cell .tags{flex-wrap:nowrap;overflow:hidden}
+.thumb{display:block;border-radius:6px;background:#000;object-fit:contain;border:1px solid var(--line);flex:none}
+.thumb.ph{display:grid;place-items:center;background:var(--card-2);color:var(--ink-3);font-size:10px;text-align:center;padding:4px;box-sizing:border-box}
+.thumb.ph.ld{background:linear-gradient(90deg,var(--card-2),var(--card),var(--card-2));background-size:200% 100%;animation:shim 1.2s linear infinite}
+@keyframes shim{to{background-position:-200% 0}}
+.hov{position:fixed;z-index:40;width:360px;max-height:70vh;overflow:auto;background:var(--chrome);border:1px solid var(--line-strong);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.55);padding:10px;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.hov-h{display:flex;align-items:baseline;gap:8px;justify-content:space-between}
+.hov-r{display:flex;gap:10px;align-items:flex-start}.hov-m{display:flex;flex-direction:column;gap:3px;font-size:12px;min-width:0}.hov-m b{font-size:13px}
+.acq-x{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border-bottom:1px solid var(--line-soft)}
+.acq-m{display:flex;flex-direction:column;gap:6px;min-width:0}
+.frow .nm .tags{margin-left:6px}
+.qcard{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:var(--card)}
+.qcard.open{border-left:3px solid var(--info)}.qcard.answered{border-left:3px solid var(--warn)}.qcard.closed{opacity:.75}
+.q-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px}.q-t{font-size:13px;color:var(--ink)}
+.qst{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:5px}
+.qst.open{background:var(--info-wash);color:var(--info-t)}.qst.answered{background:var(--warn-wash);color:var(--warn-t)}.qst.closed{background:var(--card-2);color:var(--ink-3)}
+.q-thr{display:grid;gap:6px;border-left:2px solid var(--line);padding-left:10px;font-size:13px}
+.q-a{display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start}.q-a textarea,.qcomp textarea{width:100%;min-height:54px;background:var(--page);color:var(--ink);border:1px solid var(--line-strong);border-radius:8px;padding:8px;font:inherit;font-size:13px}
+.qsug{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;border:1px dashed var(--line-strong);border-radius:8px;padding:8px 10px}
+.fld{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--ink-3)}.fld select{height:32px;background:var(--page);color:var(--ink);border:1px solid var(--line-strong);border-radius:8px;padding:0 8px}
+.lnkbtn{border:0;background:transparent;color:var(--accent-ink);padding:0;font-size:12px;align-self:flex-start}
+.fermibtn{border-color:var(--info-border)!important;color:var(--info-t)!important}
+.fermi{position:fixed;top:0;right:0;bottom:0;width:min(460px,100%);z-index:22;background:var(--chrome);border-left:1px solid var(--line-strong);box-shadow:-8px 0 25px rgba(0,0,0,.5);display:flex;flex-direction:column}
+.embedded .fermi{top:56px}
+.fermi header{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line-soft)}
+.embedded .fermi header{padding-right:14px}
+.fbody{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:10px;font-size:13px}
+.fq{align-self:flex-end;background:var(--accent-wash);color:var(--ink);border-radius:12px 12px 2px 12px;padding:8px 12px;max-width:85%}
+.fa{background:var(--card);border:1px solid var(--line);border-radius:2px 12px 12px 12px;padding:10px 12px;line-height:1.5}
+.fa ul{margin:6px 0;padding-left:18px}.fa p{margin:6px 0}
+.evl{border:0;background:transparent;color:var(--accent-ink);padding:0;font:inherit;text-decoration:underline;text-decoration-color:var(--accent-border);text-underline-offset:2px;cursor:pointer}
+.callout{border-left:3px solid var(--warn);padding:6px 10px;background:var(--warn-wash);border-radius:4px}
+.fprops{display:grid;gap:8px;margin-top:8px}.fprop{border:1px solid var(--accent-border);border-radius:8px;padding:8px 10px;display:grid;gap:6px}.fprop.done{opacity:.7}
+.fpv{font-size:12px;color:var(--ink-2);background:var(--page);border-radius:6px;padding:6px 8px}
+.ftools{margin-top:8px;font-size:12px;color:var(--ink-3)}.ftools ul{margin:4px 0 4px 16px;padding:0}
+.fsug{display:flex;flex-wrap:wrap;gap:6px}
+.fin{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--line-soft)}.fin input{flex:1;height:38px;background:var(--page);color:var(--ink);border:1px solid var(--line-strong);border-radius:9px;padding:0 10px}
+.fermipill{position:fixed;right:18px;bottom:60px;z-index:21;height:34px;border-radius:999px;border:1px solid var(--info-border);background:var(--chrome);color:var(--info-t);padding:0 14px;box-shadow:0 6px 18px rgba(0,0,0,.45)}
 </style>
 
 </head>
@@ -400,7 +450,7 @@ pre.jerr span.e{color:var(--bad-t)}
         <button class="sbtn" id="toggleList2" aria-label="Collapse sidebar" title="Collapse sidebar"><svg class="i s"><use href="#i-panel"/></svg></button></div>
       <div class="list-h">
         <div class="row"><h2>Subjects</h2><span class="src" id="subCount"></span></div>
-        <label class="search"><svg class="i s"><use href="#i-search"/></svg><input id="q" type="search" placeholder="Subject label" autocomplete="off"></label>
+        <label class="search"><svg class="i s"><use href="#i-search"/></svg><input id="q" type="search" placeholder="Subject label or tag" autocomplete="off"></label>
         <div class="fchips" id="fchips"></div><div class="schedline" id="schedline"></div>
       </div>
       <div class="subs" id="subs"></div>
@@ -409,7 +459,7 @@ pre.jerr span.e{color:var(--bad-t)}
   </aside>
   <main id="main"><div class="wrap" id="view"><div class="loading"><span class="spin"></span>Connecting to Flywheel…</div></div></main>
 </div>
-<div id="paneHost"></div>
+<div id="paneHost"></div><div id="fermiHost"></div><div id="hoverHost"></div><datalist id="tagList"></datalist>
 <div id="toastHost"></div>
 <button class="ibtn fsbtn" id="fsBtn" title="Full screen">⤢ Full screen</button>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -423,19 +473,20 @@ pre.jerr span.e{color:var(--bad-t)}
 <path d="M26.040 7.373c0.387-0.387 0.387-1.027 0-1.413s-1.027-0.387-1.413 0l-2 2c-2.013-1.387-4.28-2.293-6.627-2.293-2.613 0-5.16 1.133-7.333 2.813-2.187 1.68-4.067 3.973-5.387 6.427-0.373 0.68-0.373 1.507 0 2.2 1.147 2.12 2.72 4.080 4.533 5.68l-1.853 1.853c-0.387 0.387-0.387 1.027 0 1.413s1.027 0.387 1.413 0l18.667-18.68zM13.733 13.733c1-1 2.493-1.187 3.693-0.587l-4.28 4.28c-0.6-1.2-0.413-2.693 0.587-3.693zM5.027 16.147c-0.053-0.093-0.053-0.2 0-0.293 1.2-2.227 2.907-4.293 4.853-5.787 1.947-1.507 4.067-2.4 6.107-2.4 1.72 0 3.493 0.64 5.173 1.733l-2.28 2.28c-2.027-1.36-4.787-1.147-6.573 0.64s-2 4.56-0.64 6.573l-2.467 2.467c-1.667-1.44-3.133-3.253-4.187-5.213h0.013z"></path></symbol>
 </svg>
 <script src="https://cdn.flywheel.io/sdk/extension/flywheel-extension-0.14.9.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dicom-parser@1.8.21/dist/dicomParser.min.js"></script>
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.4.2";
+const VERSION = "subject-view-harness/0.5.0";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {} };
+const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {} };
 const DIAG_MAX = 60;
 
 function toast(m) { const h = document.getElementById("toastHost"); h.innerHTML = `<div class="toast" role="status">${esc(m)}</div>`; clearTimeout(toast.t); toast.t = setTimeout(() => h.innerHTML = "", 3500); }
 function flywheelOrigin() { try { if (location.ancestorOrigins && location.ancestorOrigins.length) return location.ancestorOrigins[0]; } catch (e) {} try { return new URL(document.referrer).origin; } catch (e) { return ""; } }
 const listOf = r => Array.isArray(r) ? r : (r && Array.isArray(r.results) ? r.results : []);
 
-/* Every API call goes through here: logged for Diagnostics, GET only. */
+/* Every REST call goes through here (GET only); SDK reads/writes go through sdk() below. Both are logged for Diagnostics. */
 async function api(path, params, opts) {
   const t0 = performance.now(), rec = { path, params: params || null, status: "…", ms: 0, n: null, sample: null, err: null };
   S.calls.unshift(rec); if (S.calls.length > DIAG_MAX) S.calls.pop();
@@ -489,6 +540,7 @@ async function loadAll(quiet) {
     S.sessions = listOf(await api(`/api/projects/${S.projectId}/sessions`));
     if (!S.subj && S.subjects.length) S.subj = S.subjects[0]._id;
     S.loading = false; S.updated = new Date(); S.stale = false; render();
+    loadQueries();
     loadTasks(); if (S.subj) loadSubject(S.subj);
     api("/api/jobs", { filter: `parents.project=${S.projectId},state=failed`, limit: 50, sort: "created:desc" }, { soft: true }).then(r => { S.projFailed = r ? listOf(r) : null; if (S.tab === "tasks") render(); });
   } catch (e) {
@@ -593,7 +645,8 @@ function sessStatus(z, sid, vIn) {
   if (missing.length) why.push("Missing " + missing.map(c => c.label + (c.fileIssue ? " (files)" : c.min > 1 ? ` (${c.found}/${c.min})` : "")).join(", "));
   else if (z.satisfies_template === false) why.push("Template not satisfied");
   if (failed) why.push(plural(failed, "failed job"));
-  const tail = [].concat(open ? [plural(open, "open read")] : [], schedule().length && !v ? ["unscheduled visit"] : []);
+  const nq = qOf(sid).filter(q => q.status === "open" && q.target && q.target.id === z._id).length;
+  const tail = [].concat(open ? [plural(open, "open read")] : [], nq ? [plural(nq, "open query").replace("querys", "queries")] : [], schedule().length && !v ? ["unscheduled visit"] : []);
   if (why.length) return { k: "bad", t: why[0], all: why.concat(tail).join(" · "), missing };
   if (open) return { k: "warn", t: plural(open, "open read"), all: (v && (chk || z.satisfies_template === true) ? "imaging complete · " : "") + tail.join(" · ") };
   if (tt.length || z.satisfies_template === true || (chk && chk.length)) return { k: "ok", t: "Complete", all: ["complete", v ? "imaging complete" : null, tt.length ? "reads done" : null].filter(Boolean).join(" · ") + (tail.length ? " · " + tail.join(" · ") : "") };
@@ -762,14 +815,14 @@ function renderSide() {
   const F = { all: () => true, attn: r => r.bad > 0, miss: r => r.miss > 0, done: r => r.n && r.done === r.n };
   const cnt = k => S.subjects.filter(s => F[k](roll.get(s._id))).length;
   if (!F[S.filt]) S.filt = "all";
-  const rows = S.subjects.filter(s => (!q || String(s.label).toLowerCase().includes(q)) && F[S.filt](roll.get(s._id)));
+  const rows = S.subjects.filter(s => (!q || String(s.label).toLowerCase().includes(q) || (s.tags || []).some(t => String(t).toLowerCase().includes(q))) && F[S.filt](roll.get(s._id)));
   document.getElementById("subCount").textContent = rows.length + " of " + S.subjects.length;
   document.getElementById("fchips").innerHTML = sch.length ? [["all", "All"], ["attn", "Incomplete"], ["miss", "Outstanding"], ["done", "Complete"]].map(([k, l]) => `<button class="fchip ${S.filt === k ? "on" : ""}" data-filt="${k}" title="${{ all: "All subjects", attn: "Has a received visit missing required series, or a failed job", miss: "Has scheduled visits not received yet", done: "Every scheduled visit received and complete" }[k]}">${l}<b>${cnt(k)}</b></button>`).join("") : "";
   document.getElementById("schedline").textContent = sch.length ? `${sch.length} scheduled visits, from session templates` : "";
   document.getElementById("subs").innerHTML = rows.map(s => { const r = roll.get(s._id), n = subjSessions(s._id).length, t = tasksForSubject(s._id), open = t ? t.filter(OPEN).length : 0;
     const dots = r.cols.map((c, i) => `<i class="vd ${r.st[i].k}" title="${esc(c.v ? c.v.label : c.z.label)}${c.z ? " · " + dt(c.z.timestamp || c.z.created).slice(0, 10) : ""} · ${esc(r.st[i].all)}"></i>`).join("");
     const meta = r.n ? `${r.got}/${r.n} visits · ${r.done} complete` : plural(n, "session");
-    return `<button class="srow ${s._id === S.subj ? "on" : ""}" data-subj="${s._id}"><span class="lbl">${esc(s.label)}</span><span class="flagn">${r.bad ? `<span class="fl bad" title="Incomplete visits">${r.bad}</span>` : ""}${open ? `<span class="fl warn" title="Open reader tasks">${open}</span>` : ""}</span><span class="meta"><span class="vdots">${dots}</span><span>${meta}${s.cohort ? " · " + esc(s.cohort) : ""}</span></span></button>`; }).join("") || `<div class="empty-s">${S.loading ? "Loading…" : S.subjects.length ? "No subjects match this filter." : "No subjects in this project."}</div>`;
+    return `<button class="srow ${s._id === S.subj ? "on" : ""}" data-subj="${s._id}"><span class="lbl">${esc(s.label)}</span><span class="flagn">${r.bad ? `<span class="fl bad" title="Incomplete visits">${r.bad}</span>` : ""}${open ? `<span class="fl warn" title="Open reader tasks">${open}</span>` : ""}${(nq => nq ? `<span class="fl info" title="Open queries">${nq}</span>` : "")(qOf(s._id).filter(x => x.status === "open").length)}</span><span class="meta"><span class="vdots">${dots}</span><span>${meta}${s.cohort ? " · " + esc(s.cohort) : ""}</span></span></button>`; }).join("") || `<div class="empty-s">${S.loading ? "Loading…" : S.subjects.length ? "No subjects match this filter." : "No subjects in this project."}</div>`;
   const u = S.user || {};
   document.getElementById("me").innerHTML = `<span class="avatar">${esc(((u.firstname || "?")[0] || "") + ((u.lastname || "")[0] || ""))}</span><div><div style="font-weight:500;font-size:13px">${esc([u.firstname, u.lastname].filter(Boolean).join(" ") || u._id || "Signed in")}</div><div class="src" style="font-family:var(--font-ui);font-size:12px">${esc((S.origin || "").replace("https://", ""))}</div></div>`;
 }
@@ -784,24 +837,25 @@ function header(s, d) {
     ["Acquisitions", d && d.acqs ? acqs.length : "…", d && d.acqs ? `${files} files` : "loading", ""],
     ["Open reads", openT ? openT.length : "…", openT ? (openT.map(x => x.task_id).slice(0, 3).join(", ") || "none open") : "loading", openT && openT.length ? "warn" : ""],
     ["Gear jobs", d && d.jobsOk ? (failed.length ? failed.length + " failed" : d.jobs.length) : d && d.ok ? "n/a" : "…", d && d.jobsOk ? (failed.length ? failed[0].gear_info.name : `${d.jobs.length} jobs, none failed`) : d && d.ok ? "not available via extension" : "loading", failed && failed.length ? "bad" : ""],
-    ["Custom info", Object.keys(info).length, Object.keys(info).slice(0, 3).join(", ") || "no keys", ""]
+    ["Custom info", Object.keys(info).filter(k => k !== QKEY).length, Object.keys(info).filter(k => k !== QKEY).slice(0, 3).join(", ") || "no keys", ""]
   ];
   return `<section class="shead"><div class="idblock">
       <div class="eyebrow">${esc(S.project ? S.project.label : "")} · subject</div>
       <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><h1>${esc(s.label)}</h1>${s.cohort ? `<span class="pill status-on">${esc(s.cohort)}</span>` : ""}</div>
       <div class="facts"><span>${phi([s.firstname, s.lastname].filter(Boolean).join(" "))}</span>${s.sex ? `<span>${esc(s.sex)}</span>` : ""}${s.type ? `<span>${esc(s.type)}</span>` : ""}${s.species ? `<span>${esc(s.species)}</span>` : ""}<span class="mono">${esc(s._id)}</span></div>
-      ${(s.tags || []).length ? `<div class="conds">${s.tags.map(x => `<span class="cond">${esc(x)}</span>`).join("")}</div>` : ""}
+      <div class="conds">${tagRow("subject|" + s._id, (d && d.subject && d.subject.tags) || s.tags)}</div>
     </div>
     <div class="hright"><div class="hactions">
       <span class="badge-live ${S.stale ? "stale" : ""}"><i></i>${S.stale ? "Stale" : "Live"} · ${S.updated ? S.updated.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : ""}</span>
       <button class="btn ${S.phi ? "on" : ""}" data-act="phi"><svg class="i s"><use href="#i-${S.phi ? "eye" : "phi"}"/></svg>PHI</button>
+      <button class="btn fermibtn" data-act="fermi">✦ Ask Fermi</button>
       <button class="btn" data-act="refresh">Refresh</button>
       <a class="btn pri" href="${coreLink("subjects", s._id)}" target="_blank" rel="noopener"><svg class="i s"><use href="#i-ext"/></svg>Open in Flywheel</a>
     </div></div></section>
     <section class="kpis">${tiles.map(([l, v, sub, tone]) => `<div class="kpi ${tone}"><span class="kl">${esc(l)}</span><span class="kv2">${esc(String(v))}</span><span class="ks">${esc(sub)}</span></div>`).join("")}</section>`;
 }
-const TABS = [["overview", "Overview"], ["tasks", "Tasks & jobs"], ["clinical", "Custom info"], ["diagnostics", "Diagnostics"]];
-function tabs() { return `<div class="tabsbar"><nav class="tabs">${TABS.map(([k, l]) => `<button class="tab ${S.tab === k ? "on" : ""}" data-tab="${k}">${l}</button>`).join("")}</nav></div>`; }
+const TABS = [["overview", "Overview"], ["tasks", "Tasks & jobs"], ["queries", "Queries"], ["clinical", "Custom info"], ["diagnostics", "Diagnostics"]];
+function tabs() { return `<div class="tabsbar"><nav class="tabs">${TABS.map(([k, l]) => `<button class="tab ${S.tab === k ? "on" : ""}" data-tab="${k}">${l}${k === "queries" ? (n => n ? ` <span class="fl info">${n}</span>` : "")(qOf(S.subj).filter(x => x.status === "open").length) : ""}</button>`).join("")}</nav></div>`; }
 
 function matrix(s, d) {
   const cols = visitsFor(s._id), sch = schedule();
@@ -817,14 +871,16 @@ function matrix(s, d) {
       if (!z) return r ? `<span class="cell miss"><span class="g"></span>expected</span>` : "";
       if (!as) return r ? ((d && d.acqErr || {})[z._id] ? `<span class="cell"><span class="g">?</span>couldn't load</span>` : `<span class="src">…</span>`) : "";
       const L = r ? r.L : tplLabel(lbl), m = as.filter(a => L.test(a.label));
-      if (!r) return m.length ? `<button class="cell" data-pane="${c.key}|req"><span class="g" style="color:var(--ink-3)">·</span>${m.length} acq, not required</button>` : "";
+      if (!r) return m.length ? `<button class="cell" data-pane="${c.key}|req" data-prev="${c.z._id}|${esc(key)}"><span class="g" style="color:var(--ink-3)">·</span>${m.length} acq, not required</button>` : "";
       const k = checkVisit({ reqs: [r] }, as, z.satisfies_template === true)[0];
-      return k.ok ? `<button class="cell ok" data-pane="${c.key}|req"><span class="g">✓</span>${m.length} acq${r.min > 1 ? ` (min ${r.min})` : ""}</button>` : `<button class="cell bad" data-pane="${c.key}|req"><span class="g">✗</span>${k.fileIssue ? "files missing" : m.length ? `${m.length} of ${r.min}` : "missing"}</button>`;
+      return k.ok ? `<button class="cell ok" data-pane="${c.key}|req" data-prev="${c.z._id}|${esc(key)}"><span class="g">✓</span>${m.length} acq${r.min > 1 ? ` (min ${r.min})` : ""}</button>` : `<button class="cell bad" data-pane="${c.key}|req" data-prev="${c.z._id}|${esc(key)}"><span class="g">✗</span>${k.fileIssue ? "files missing" : m.length ? `${m.length} of ${r.min}` : "missing"}</button>`;
     }
     if (!z) return "";
-    if (key.startsWith("mod:")) { if (!as) return (d && d.acqErr || {})[z._id] ? `<span class="cell"><span class="g">?</span>couldn't load</span>` : `<span class="src">…</span>`; const m = as.filter(a => acqMod(a) === key.slice(4)); return m.length ? `<button class="cell ok" data-pane="${c.key}|${key}"><span class="g">✓</span>${m.length} acq · ${(n => n + (n === 1 ? " file" : " files"))(m.reduce((n, a) => n + (a.files || []).length, 0))}</button>` : ""; }
+    if (key.startsWith("mod:")) { if (!as) return (d && d.acqErr || {})[z._id] ? `<span class="cell"><span class="g">?</span>couldn't load</span>` : `<span class="src">…</span>`; const m = as.filter(a => acqMod(a) === key.slice(4)); return m.length ? `<button class="cell ok" data-pane="${c.key}|${key}" data-prev="${c.z._id}|${esc(key)}"><span class="g">✓</span>${m.length} acq · ${(n => n + (n === 1 ? " file" : " files"))(m.reduce((n, a) => n + (a.files || []).length, 0))}</button>` : ""; }
     if (key === "tasks") { const tt = t.filter(x => { const sz = sessionOfTask(x, s._id); return sz && sz._id === z._id; }); if (!tt.length) return ""; const open = tt.filter(OPEN).length, done = tt.filter(x => x.status === "completed").length; return `<button class="cell ${open ? "warn" : "ok"}" data-pane="${c.key}|tasks"><span class="g">${open ? open : "✓"}</span>${done} done${open ? " · " + open + " open" : ""}</button>`; }
     if (key === "jobs") { if (!d || !d.jobsOk) return d && d.ok ? `<span class="src">n/a</span>` : ""; const jj = d.jobs.filter(j => (j.parents && j.parents.session === z._id) || (j.destination && j.destination.id === z._id)); if (!jj.length) return ""; const f = openFail(jj).length; return `<button class="cell ${f ? "bad" : "ok"}" data-pane="${c.key}|jobs"><span class="g">${f ? "!" : "✓"}</span>${f ? f + " failed" : jj.length + " done"}</button>`; }
+    if (key === "tags") return (z.tags || []).length ? `<button class="cell" data-pane="${c.key}|" title="${esc(z.tags.join(", "))}">${tagRow("session|" + z._id, z.tags.slice(0, 2), { ro: true, sm: true })}${z.tags.length > 2 ? `<span class="muted">+${z.tags.length - 2}</span>` : ""}</button>` : "";
+    if (key === "queries") { const qs = qOf(s._id).filter(q => q.target && q.target.id === z._id), o = qs.filter(q => q.status === "open").length, an = qs.filter(q => q.status === "answered").length; return qs.length ? `<button class="cell ${o ? "info" : an ? "warn" : "ok"}" data-pane="${c.key}|queries"><span class="g">${o || an || "✓"}</span>${o ? o + " open" : ""}${an ? (o ? " · " : "") + an + " answered" : ""}${!o && !an ? "closed" : ""}</button>` : ""; }
     if (key === "info") { const k = Object.keys(z.info || {}); return k.length ? `<button class="cell info" data-pane="${c.key}|info"><span class="g">${k.length}</span>keys</button>` : ""; }
     if (key === "tpl") { if (z.satisfies_template === undefined) return ""; if (z.satisfies_template === null) return `<span class="cell"><span class="g">–</span>${c.v ? "not evaluated yet" : "no template for this label"}</span>`; return `<span class="cell ${z.satisfies_template ? "ok" : "bad"}"><span class="g">${z.satisfies_template ? "✓" : "✗"}</span>${z.satisfies_template ? "satisfied" : "not satisfied"}</span>`; }
     return "";
@@ -833,7 +889,8 @@ function matrix(s, d) {
     ...(reqLabels.length ? [{ group: "Required series (session templates)" }, ...reqLabels.map(r => ({ key: "req:" + r.L.text, label: r.L.text }))] : []),
     { group: reqLabels.length ? "All imaging received" : "Imaging received" }, ...(mods.length ? mods.map(m => ({ key: "mod:" + m, label: m })) : [{ key: "mod:?", label: d && d.acqs ? "No acquisitions" : "Loading…" }]),
     { group: "Reads & processing" }, { key: "tasks", label: "Reader tasks" }, { key: "jobs", label: "Gear jobs" },
-    { group: "Metadata" }, { key: "tpl", label: "Template check (Flywheel)" }, { key: "info", label: "Session custom info" }];
+    { group: "Data review" }, { key: "queries", label: "Queries" },
+    { group: "Metadata" }, { key: "tpl", label: "Template check (Flywheel)" }, { key: "tags", label: "Session tags" }, { key: "info", label: "Session custom info" }];
   const R = subjRollup(s._id);
   const legend = `<span class="vlegend"><span><i class="vd ok"></i>Complete</span><span><i class="vd warn"></i>Reads open</span><span><i class="vd bad"></i>Incomplete</span>${sch.length ? `<span><i class="vd miss"></i>Not received</span>` : ""}<span><i class="vd"></i>No checks</span></span>`;
   const sub = sch.length ? `<span class="src" style="font-family:var(--font-ui)">${R.got} of ${R.n} scheduled visits received · ${R.done} complete${R.bad ? ` · <b style="color:var(--bad-t)">${R.bad} incomplete</b>` : ""}${cols.length > R.n ? ` · ${cols.length - R.n} unscheduled` : ""}</span>` : "";
@@ -861,7 +918,7 @@ function rowsTable(arr, mask) {
 }
 function infoTab(s, d) {
   if (!d || !d.ok) return `<div class="loading"><span class="spin"></span>Loading…</div>`;
-  const info = (d.subject && d.subject.info) || {}, keys = Object.keys(info);
+  const info = (d.subject && d.subject.info) || {}, keys = Object.keys(info).filter(k => k !== QKEY);
   const forms = (S.project && S.project.info && S.project.info.forms) || null;
   if (!keys.length) return `<div class="card"><div class="empty-big">No custom info on this subject.<span class="src" style="font-family:var(--font-ui)">EDC forms imported from CSV would appear here as one card per form.</span></div></div>`;
   const phiKey = k => /first.?name|last.?name|date.?of.?birth|dob|email|phone/i.test(k);
@@ -874,10 +931,10 @@ function infoTab(s, d) {
 }
 function diagTab() {
   const ok = S.calls.filter(c => c.status === "ok").length, er = S.calls.filter(c => c.status === "error").length;
-  return `<div class="card diag"><div class="card-h"><h3>Diagnostics</h3><span class="src">${VERSION} · ${ok} ok · ${er} failed · newest first · GET only</span></div>
+  return `<div class="card diag"><div class="card-h"><h3>Diagnostics</h3><span class="src">${VERSION} · ${ok} ok · ${er} failed · newest first · GET + SDK tag/info writes</span></div>
     <div class="card-b" style="font-size:13px;color:var(--ink-2)">Origin <span class="mono">${esc(S.origin || "unknown")}</span> · user <span class="mono">${esc(S.user ? S.user._id : "?")}</span> · opened from <span class="mono">${esc(S.opener ? (S.opener.container_type || "?") + " " + (S.opener._id || "") : "?")}</span> · project <span class="mono">${esc(S.projectId || "?")}</span></div>
     ${schedule().length || (S.project && (S.project.templates || S.project.template)) ? `<div class="card-b"><div class="src" style="font-family:var(--font-ui);margin-bottom:6px">Session templates as read from project.templates (${schedule().length} parsed)</div><pre>${esc(JSON.stringify(S.project.templates || S.project.template, null, 2).slice(0, 4000))}</pre></div>` : `<div class="card-b src" style="font-family:var(--font-ui)">No session templates on this project (project.templates is empty).</div>`}
-    ${S.calls.map((c, i) => `<div class="call" data-diag="${i}" title="Show a sample row"><span class="${c.status === "ok" ? "ok" : c.status === "error" ? "er" : ""}">${c.status}</span><code>GET ${esc(c.path)}${c.params ? " " + esc(JSON.stringify(c.params)) : ""}</code><span class="mono muted">${c.n != null ? c.n + (c.total != null ? "/" + c.total : "") + " rows" : ""}</span><span class="mono muted">${c.ms} ms${c.err ? " · " + esc(c.err) : ""}</span></div>${i === S.diagOpen ? `<pre>${esc(JSON.stringify(c.sample, null, 2))}</pre>` : ""}`).join("")}
+    ${S.calls.map((c, i) => `<div class="call" data-diag="${i}" title="Show a sample row"><span class="${c.status === "ok" ? "ok" : c.status === "error" ? "er" : ""}">${c.status}</span><code>${c.sdk ? "" : "GET "}${esc(c.path)}${c.params ? " " + esc(JSON.stringify(c.params)) : ""}</code><span class="mono muted">${c.n != null ? c.n + (c.total != null ? "/" + c.total : "") + " rows" : ""}</span><span class="mono muted">${c.ms} ms${c.err ? " · " + esc(c.err) : ""}</span></div>${i === S.diagOpen ? `<pre>${esc(JSON.stringify(c.sample, null, 2))}</pre>` : ""}`).join("")}
     <div class="card-b"><span class="src" style="font-family:var(--font-ui)">Click a call to see one sample row (PHI fields redacted).</span> <button class="ibtn" data-act="copydiag">Copy diagnostics</button></div></div>`;
 }
 function pane() {
@@ -889,7 +946,7 @@ function pane() {
   const prevC = cols[i - 1], nextC = cols[i + 1];
   const nav = `<button class="ibtn" ${prevC ? `data-pane="${prevC.key}|"` : "disabled"}>‹</button><button class="ibtn" ${nextC ? `data-pane="${nextC.key}|"` : "disabled"}>›</button><button class="tbtn" data-act="closePane" aria-label="Close"><svg class="i s"><use href="#i-x"/></svg></button>`;
   const reqList = (v, as, srv, pend) => { const chk = as ? checkVisit(v, as, srv) : v.reqs.map(r => ({ label: r.L.text, min: r.min, found: 0, ok: false, pending: true }));
-    return chk.map(k => `<div class="req ${k.pending ? "miss" : k.ok ? "ok" : "bad"}"><span class="g">${k.pending ? "" : k.ok ? "✓" : "✗"}</span><b>${esc(k.label)}</b>${k.min > 1 ? `<span class="muted">min ${k.min}</span>` : ""}<span class="mono">${k.pending ? (pend || "expected") : k.ok ? k.found + " acq" : k.fileIssue ? "required files missing" : k.found ? k.found + " of " + k.min : "missing"}</span></div>`).join(""); };
+    return chk.map(k => `<div class="req ${k.pending ? "miss" : k.ok ? "ok" : "bad"}"><span class="g">${k.pending ? "" : k.ok ? "✓" : "✗"}</span><b>${esc(k.label)}</b>${k.min > 1 ? `<span class="muted">min ${k.min}</span>` : ""}${!k.pending && !k.ok && z ? `<button class="ibtn" style="margin-left:auto" data-raise="session|${z._id}|${esc(z.label)}|Missing series|${esc(z.label + ": the " + v.label + " template requires " + k.label + ", which is not in Flywheel. Please upload it or confirm it was not acquired.")}">Raise query</button>` : ""}<span class="mono">${k.pending ? (pend || "expected") : k.ok ? k.found + " acq" : k.fileIssue ? "required files missing" : k.found ? k.found + " of " + k.min : "missing"}</span></div>`).join(""); };
   if (!z) {
     host.innerHTML = `<aside class="pane" role="dialog" aria-label="${esc(col.v.label)}"><header><div style="display:flex;align-items:center;gap:8px"><nav class="bc"><button data-act="closePane">${esc(s.label)}</button><i>›</i><b>${esc(col.v.label)}</b></nav><span style="flex:1"></span>${nav}</div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="vst-pill" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-3)"><i class="vd miss"></i>Not received</span><span class="src">Scheduled visit ${col.v.i + 1} of ${schedule().length}</span></div></header>
@@ -901,17 +958,18 @@ function pane() {
   const shown = r && r.startsWith("mod:") ? as.filter(a => acqMod(a) === r.slice(4)) : as;
   const t = (tasksForSubject(S.subj) || []).filter(x => { const sz = sessionOfTask(x, S.subj); return sz && sz._id === z._id; });
   const jj = d && d.jobsOk ? d.jobs.filter(j => (j.parents && j.parents.session === z._id) || (j.destination && j.destination.id === z._id)) : [];
-  const files = a => (a.files || []).map(f => { const id = a._id + "/" + f.name, open = S.fileOpen[id]; return `<div class="frow"><span class="nm">${esc(f.name)} <span class="muted" style="font-family:var(--font-ui)">· ${esc(f.type || "")} · ${fmtSize(f.size)}</span></span><span class="acts"><a class="ibtn" href="${coreLink("sessions", z._id)}" target="_blank" rel="noopener"><svg class="i s"><use href="#i-ext"/></svg>Open in Flywheel</a><button class="ibtn" data-fmeta="${esc(id)}">${open ? "Hide" : "Details"}</button></span>${open ? `<div class="fmeta"><dl class="kv"><dt>Modality</dt><dd>${esc(f.modality || "—")}</dd><dt>Classification</dt><dd>${esc(Object.entries(f.classification || {}).map(([k, v]) => k + ": " + [].concat(v).join(", ")).join(" · ") || "—")}</dd><dt>Created</dt><dd class="mono">${dt(f.created)}</dd><dt>Info keys</dt><dd>${esc(Object.keys(f.info || {}).slice(0, 8).join(", ") || "—")}</dd><dt>Tags</dt><dd>${esc((f.tags || []).join(", ") || "—")}</dd></dl></div>` : ""}</div>`; }).join("");
+  const files = a => (a.files || []).map(f => { const id = a._id + "/" + f.name, open = S.fileOpen[id]; return `<div class="frow"><span class="nm">${esc(f.name)} <span class="muted" style="font-family:var(--font-ui)">· ${esc(f.type || "")} · ${fmtSize(f.size)}</span> ${tagRow("file|" + a._id + "|" + encodeURIComponent(f.name), f.tags, { sm: true })}</span><span class="acts"><a class="ibtn" href="${coreLink("sessions", z._id)}" target="_blank" rel="noopener"><svg class="i s"><use href="#i-ext"/></svg>Open in Flywheel</a><button class="ibtn" data-fmeta="${esc(id)}">${open ? "Hide" : "Details"}</button></span>${open ? `<div class="fmeta"><dl class="kv"><dt>Modality</dt><dd>${esc(f.modality || "—")}</dd><dt>Classification</dt><dd>${esc(Object.entries(f.classification || {}).map(([k, v]) => k + ": " + [].concat(v).join(", ")).join(" · ") || "—")}</dd><dt>Created</dt><dd class="mono">${dt(f.created)}</dd><dt>Info keys</dt><dd>${esc(Object.keys(f.info || {}).slice(0, 8).join(", ") || "—")}</dd></dl></div>` : ""}</div>`; }).join("");
   const sec = (h, b) => `<section class="psec"><h4>${h}</h4>${b}</section>`;
   let body = "";
   if (col.v && (!r || r === "req")) { const st = sessStatus(z, S.subj, col.v); body += sec(`Visit requirements <span class="src">${esc(col.v.label)} template · Flywheel says ${z.satisfies_template === true ? "satisfied" : z.satisfies_template === false ? "not satisfied" : "not evaluated"}</span>`, reqList(col.v, d && d.acqs && !(d.acqErr || {})[z._id] ? (d.acqs[z._id] || []) : null, z.satisfies_template === true, (d && d.acqErr || {})[z._id] ? "couldn't load acquisitions" : "loading…") + (z.satisfies_template === false && !(st.missing || []).length && d && d.acqs && !(d.acqErr || {})[z._id] ? `<span class="muted" style="font-size:12px">Flywheel marks this session not satisfied, but every acquisition rule checks out here. The failing rule is probably a file rule (type, classification) this app can't read exactly.</span>` : "")); }
   if (!col.v && schedule().length && !r) body += sec("Visit requirements", `<span class="muted">No session template matches the label <span class="mono">${esc(z.label)}</span>, so this is treated as an unscheduled visit.</span>`);
-  if (!r || r.startsWith("mod:")) body += sec(r ? r.slice(4) : "Acquisitions", (d && d.acqErr || {})[z._id] ? `<span class="muted">Flywheel returned an error for this session's acquisitions (retried once). Use Refresh to try again.</span>` : shown.length ? shown.map(a => `<div class="acq"><div class="acq-h"><span class="pill" style="background:var(--card-2);color:var(--ink-2)">${esc(acqMod(a))}</span><b>${esc(a.label)}</b><span class="mono muted" style="font-size:12px">${dt(a.timestamp || a.created)}</span></div>${files(a)}</div>`).join("") : `<span class="muted">${d && d.acqs ? "No acquisitions." : "Loading…"}</span>`);
+  if (!r || r.startsWith("mod:")) body += sec(r ? r.slice(4) : "Acquisitions", (d && d.acqErr || {})[z._id] ? `<span class="muted">Flywheel returned an error for this session's acquisitions (retried once). Use Refresh to try again.</span>` : shown.length ? shown.map(a => { loadThumb(a); return `<div class="acq"><div class="acq-x">${thumbHTML(a, true)}<div class="acq-m"><div class="acq-h" style="padding:0;border:0"><span class="pill" style="background:var(--card-2);color:var(--ink-2)">${esc(acqMod(a))}</span><b>${esc(a.label)}</b><span class="mono muted" style="font-size:12px">${dt(a.timestamp || a.created)}</span></div>${clsSummary(dicomFile(a) || (a.files || [])[0]) ? `<span class="muted" style="font-size:12px">${esc(clsSummary(dicomFile(a) || (a.files || [])[0]))}</span>` : ""}${tagRow("acquisition|" + a._id, a.tags, { sm: true })}</div></div>${files(a)}</div>`; }).join("") : `<span class="muted">${d && d.acqs ? "No acquisitions." : "Loading…"}</span>`);
   if (!r || r === "tasks") body += sec("Reader tasks", t.length ? t.map(x => `<div class="frow" style="border:1px solid var(--line-soft);border-radius:8px"><span><span class="mono">${esc(x.task_id)}</span> <span class="muted">· ${esc(x.protocol_label || "")} · ${esc(x.assignee ? x.assignee.id : "unassigned")}</span></span><span class="acts"><span class="st ${esc(x.status)}">${esc(String(x.status).replace("_", " "))}</span></span></div>`).join("") : `<span class="muted">No reader tasks.</span>`);
   if (!r || r === "jobs") body += sec("Gear jobs", d && d.jobsOk ? (jj.length ? jj.map(j => `<div class="frow" style="border:1px solid var(--line-soft);border-radius:8px"><span>${esc(j.gear_info ? j.gear_info.name : "")} <span class="muted mono">${esc(j.gear_info ? j.gear_info.version : "")}</span></span><span class="acts"><span class="st ${esc(j.state)}">${esc(j.state)}</span><button class="ibtn" data-job="${j._id || j.id}">${j.state === "failed" ? "Troubleshoot" : "Details"}</button></span></div>`).join("") : `<span class="muted">No jobs.</span>`) : `<span class="muted">Jobs not available through the extension proxy.</span>`);
+  if (!r || r === "queries") { const qs = qOf(S.subj).filter(q => q.target && q.target.id === z._id); body += sec(`Queries <button class="ibtn" style="margin-left:auto" data-raise="session|${z._id}|${esc(z.label)}|Other|">+ Raise query</button>`, qs.length ? qs.map(q => qCard(S.subj, q)).join("") : `<span class="muted">No queries on this visit.</span>`); }
   if (!r || r === "info") { const kv = flatKV(z.info || {}, "", []); body += sec("Session custom info", kv.length ? `<div class="kvgrid">${kv.filter(([, v]) => !isRows(v)).slice(0, 40).map(([k, v]) => `<div><div class="k">${esc(k)}</div><div class="v">${esc(cellVal(v))}</div></div>`).join("")}</div>${kv.filter(([, v]) => isRows(v)).map(([k, v]) => `<div class="k" style="font-size:12px;color:var(--ink-3);margin-top:8px">${esc(k)} · ${v.length}</div>${rowsTable(v)}`).join("")}` : `<span class="muted">No custom info.</span>`); }
   host.innerHTML = `<aside class="pane" role="dialog" aria-label="${esc(z.label)}"><header><div style="display:flex;align-items:center;gap:8px"><nav class="bc"><button data-act="closePane">${esc(s.label)}</button><i>›</i>${r ? `<button data-pane="${col.key}|">${esc(z.label)}</button><i>›</i><b>${esc(r === "req" ? "Visit requirements" : r.replace("mod:", ""))}</b>` : `<b>${esc(z.label)}</b>`}</nav><span style="flex:1"></span>${nav}</div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="src">${dt(z.timestamp || z.created)} · ${as.length} acquisitions</span>${(st => st.k ? `<span class="vst-pill" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--${st.k}-t)"><i class="vd ${st.k}"></i>${esc(st.all)}</span>` : "")(sessStatus(z, S.subj, col.v))}<a class="lnk" style="font-size:12px" href="${coreLink("sessions", z._id)}" target="_blank" rel="noopener">Open session in Flywheel ↗</a></div></header><div class="body">${body}</div></aside>`;
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="src">${dt(z.timestamp || z.created)} · ${as.length} acquisitions</span>${tagRow("session|" + z._id, z.tags, { sm: true })}${(st => st.k ? `<span class="vst-pill" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--${st.k}-t)"><i class="vd ${st.k}"></i>${esc(st.all)}</span>` : "")(sessStatus(z, S.subj, col.v))}<a class="lnk" style="font-size:12px" href="${coreLink("sessions", z._id)}" target="_blank" rel="noopener">Open session in Flywheel ↗</a></div></header><div class="body">${body}</div></aside>`;
 }
 function render() {
   renderSide();
@@ -921,10 +979,407 @@ function render() {
   const s = S.subjects.find(x => x._id === S.subj);
   if (!s) { v.innerHTML = `<div class="card"><div class="empty-big">${S.subjects.length ? "Pick a subject." : "This project has no subjects yet."}</div></div>${S.tab === "diagnostics" ? diagTab() : ""}`; pane(); return; }
   const d = S.detail[s._id];
-  const body = { overview: () => matrix(s, d), tasks: () => tasksTab(s, d), clinical: () => infoTab(s, d), diagnostics: diagTab }[S.tab]();
+  const body = { overview: () => matrix(s, d), tasks: () => tasksTab(s, d), queries: () => queriesTab(s, d), clinical: () => infoTab(s, d), diagnostics: diagTab }[S.tab]();
   v.innerHTML = header(s, d) + tabs() + body;
-  pane();
+  const dl = document.getElementById("tagList"); if (dl && S.tagEdit) dl.innerHTML = knownTags().map(t => `<option value="${esc(t)}">`).join("");
+  if (S.tagEdit) { const i = document.querySelector(`[data-tagin="${CSS.escape(S.tagEdit)}"]`); if (i && document.activeElement !== i) i.focus(); }
+  pane(); drawFermi();
 }
+
+/* =====================================================================
+   v0.5 — tags, series thumbnails on hover, queries (concept), Fermi (concept)
+   ===================================================================== */
+
+/* ---------- SDK write/read helpers, logged in Diagnostics like api() ---------- */
+async function sdk(label, fn) {
+  const t0 = performance.now(), rec = { path: label, params: null, status: "…", ms: 0, n: null, sample: null, err: null, sdk: true };
+  S.calls.unshift(rec); if (S.calls.length > DIAG_MAX) S.calls.pop();
+  try { const r = await fn(); rec.status = "ok"; rec.ms = Math.round(performance.now() - t0); return r; }
+  catch (e) { rec.status = "error"; rec.ms = Math.round(performance.now() - t0); rec.err = String(e && e.message || e); throw e; }
+  finally { if (S.tab === "diagnostics") render(); }
+}
+const me = () => (S.user && (S.user.email || S.user._id)) || "me";
+const ago = iso => { if (!iso) return ""; const d = (Date.now() - Date.parse(iso)) / 864e5; return d < 1 ? (d * 24 < 1 ? "just now" : Math.round(d * 24) + " h ago") : Math.round(d) + " d ago"; };
+
+/* ---------- TAGS ---------- */
+/* Keys: subject|id · session|id · acquisition|id · file|acqId|encodedName */
+function tagTarget(key) {
+  const [kind, id, fname] = key.split("|");
+  const d = S.detail[S.subj];
+  if (kind === "subject") { const o = (d && d.subject && d.subject._id === id) ? d.subject : S.subjects.find(x => x._id === id); const o2 = S.subjects.find(x => x._id === id); return { obj: o, also: o2 !== o ? o2 : null, ref: o && { ...o, container_type: "subject" } }; }
+  if (kind === "session") { const o = S.sessions.find(x => x._id === id); return { obj: o, ref: o && { ...o, container_type: "session" } }; }
+  const acq = d && d.acqs ? Object.values(d.acqs).flat().find(a => a._id === id) : null;
+  if (kind === "acquisition") return { obj: acq, ref: acq && { ...acq, container_type: "acquisition", files: undefined } };
+  if (kind === "file" && acq) { const f = (acq.files || []).find(x => x.name === decodeURIComponent(fname)); return { obj: f, ref: f && fileRef(f, acq) }; }
+  return {};
+}
+const fileRef = (f, acq) => ({ ...f, file_id: f.file_id || f._id, parent_ref: f.parent_ref || { type: "acquisition", id: acq._id }, parents: f.parents || { ...(acq.parents || {}), acquisition: acq._id } });
+function knownTags() {
+  const set = new Set();
+  S.subjects.forEach(x => (x.tags || []).forEach(t => set.add(t)));
+  S.sessions.forEach(x => (x.tags || []).forEach(t => set.add(t)));
+  Object.values(S.detail).forEach(d => d && d.acqs && Object.values(d.acqs).flat().forEach(a => { (a.tags || []).forEach(t => set.add(t)); (a.files || []).forEach(f => (f.tags || []).forEach(t => set.add(t))); }));
+  ["QC_pass", "QC_fail", "Needs_review", "Move_to_next_step", "Hold_for_review", "Exclude"].forEach(t => set.add(t));
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+function tagRow(key, tags, opts) {
+  opts = opts || {};
+  const chips = (tags || []).map(t => `<span class="tag">${esc(t)}${opts.ro ? "" : `<button class="tx" data-untag="${esc(key)}" data-tag="${esc(t)}" aria-label="Remove tag ${esc(t)}" title="Remove tag">×</button>`}</span>`).join("");
+  const editing = S.tagEdit === key;
+  const add = opts.ro ? "" : editing
+    ? `<span class="tagin"><input data-tagin="${esc(key)}" list="tagList" placeholder="Tag name" autocomplete="off" aria-label="New tag"><button class="ibtn" data-tagadd="${esc(key)}">Add</button></span>`
+    : `<button class="tagplus" data-tagedit="${esc(key)}" title="Add a tag">+ Tag</button>`;
+  return `<span class="tags ${opts.sm ? "sm" : ""}">${chips}${add}${!chips && opts.ro ? `<span class="muted" style="font-size:12px">—</span>` : ""}</span>`;
+}
+async function changeTag(key, tag, add) {
+  tag = String(tag || "").trim(); if (!tag) return;
+  const t = tagTarget(key); if (!t.obj || !t.ref) { toast("Can't find that item to tag."); return; }
+  const before = (t.obj.tags || []).slice();
+  if (add && before.includes(tag)) { S.tagEdit = null; render(); return; }
+  const after = add ? before.concat(tag) : before.filter(x => x !== tag);
+  t.obj.tags = after; if (t.also) t.also.tags = after.slice(); S.tagEdit = null; render();
+  try {
+    await sdk(`SDK ${add ? "addTag" : "removeTag"} ${key.split("|")[0]} "${tag}"`, () => add ? S.ext.addTag(t.ref, tag) : S.ext.removeTag(t.ref, tag));
+    toast(`${add ? "Added" : "Removed"} tag "${tag}"`);
+  } catch (e) {
+    t.obj.tags = before; if (t.also) t.also.tags = before.slice(); render();
+    toast(`Couldn't ${add ? "add" : "remove"} the tag: ${(e && e.message) || e}`);
+  }
+}
+
+/* ---------- SERIES THUMBNAILS (hover + pane) ---------- */
+/* One slice per series: the middle member of the DICOM zip, read through the host (SDK getFileBlob with member),
+   parsed with dicom-parser, windowed and drawn to a canvas. Cached per acquisition. */
+const TH = 132;
+const thumbState = id => (S.thumbs[id] = S.thumbs[id] || { state: "idle" });
+const dicomFile = a => (a.files || []).find(f => f.type === "dicom") || null;
+function thumbHTML(a, big) {
+  const st = S.thumbs[a._id] || { state: "idle" }, sz = big ? 120 : 96;
+  if (st.state === "ok") return `<img class="thumb" style="width:${sz}px;height:${sz}px" src="${st.url}" alt="${esc(a.label)} middle slice">`;
+  const msg = st.state === "none" || st.state === "err" ? esc(st.note || "No preview") : "";
+  return `<span class="thumb ph ${st.state === "loading" || st.state === "idle" ? "ld" : ""}" style="width:${sz}px;height:${sz}px" title="${msg}">${msg ? `<span>${msg}</span>` : ""}</span>`;
+}
+let thumbActive = 0; const thumbQ = [];
+const thumbSlot = () => new Promise(r => { if (thumbActive < 3) { thumbActive++; r(); } else thumbQ.push(r); });
+const thumbFree = () => { const n = thumbQ.shift(); if (n) n(); else thumbActive--; };
+async function loadThumb(a) {
+  const st = thumbState(a._id); if (st.state !== "idle") return st.p;
+  const f = dicomFile(a);
+  if (!f) { st.state = "none"; st.note = (a.files || []).some(x => /nifti/i.test(x.type)) ? "NIfTI only" : "No DICOM"; return; }
+  if (!window.dicomParser) { st.state = "err"; st.note = "Viewer lib not loaded"; return; }
+  st.state = "loading";
+  st.p = (async () => {
+    await thumbSlot();
+    try {
+      const ref = fileRef(f, a); let buf;
+      const isZip = /\.zip$/i.test(f.name) || f.zip_member_count;
+      if (isZip) {
+        const info = await sdk(`SDK getArchiveMembers ${f.name}`, () => S.ext.getArchiveMembers(ref));
+        const mem = (info && info.members || []).filter(m => m.size > 0 && !/\/$/.test(m.path) && !/(dicomdir|\.txt|\.json|\.xml)$/i.test(m.path)).sort((x, y) => x.path.localeCompare(y.path, undefined, { numeric: true }));
+        if (!mem.length) throw new Error("Empty archive");
+        const m = mem[Math.floor(mem.length / 2)];
+        if (m.size > 25e6) throw new Error("Slice too large");
+        buf = await (await sdk(`SDK getFileBlob ${f.name} member ${m.path.split("/").pop()} (${fmtSize(m.size)})`, () => S.ext.getFileBlob(ref, { member: m.path }))).arrayBuffer();
+        st.meta = { slice: mem.indexOf(m) + 1, slices: mem.length };
+      } else {
+        if (f.size > 25e6) throw new Error("File too large for a preview");
+        buf = await (await sdk(`SDK getFileBlob ${f.name}`, () => S.ext.getFileBlob(ref))).arrayBuffer();
+      }
+      st.url = await renderDicom(new Uint8Array(buf)); st.state = "ok";
+    } catch (e) { st.state = "err"; st.note = String(e && e.message || e).slice(0, 60); }
+    thumbFree();
+    if (S.hover) drawHover(); if (S.pane && !S.job && !S.tagEdit && !document.querySelector(".pane textarea:focus")) pane();
+  })();
+  return st.p;
+}
+async function renderDicom(bytes) {
+  let ds; try { ds = dicomParser.parseDicom(bytes); } catch (e) { ds = dicomParser.parseDicom(bytes, { TransferSyntaxUID: "1.2.840.10008.1.2" }); }
+  const ts = ds.string("x00020010") || "1.2.840.10008.1.2", rows = ds.uint16("x00280010"), cols = ds.uint16("x00280011");
+  const px = ds.elements.x7fe00010; if (!px || !rows || !cols) throw new Error("No pixel data");
+  const cv = document.createElement("canvas"), sc = Math.min(1, TH * 2 / Math.max(rows, cols)); cv.width = Math.max(1, Math.round(cols * sc)); cv.height = Math.max(1, Math.round(rows * sc));
+  const g = cv.getContext("2d"); g.fillStyle = "#000"; g.fillRect(0, 0, cv.width, cv.height);
+  if (/^1\.2\.840\.10008\.1\.2\.4\.(50|51)$/.test(ts)) { /* JPEG baseline/extended: let the browser decode */
+    const frag = px.encapsulatedPixelData ? dicomParser.readEncapsulatedPixelDataFromFragments(ds, px, 0) : bytes.subarray(px.dataOffset, px.dataOffset + px.length);
+    const img = await createImageBitmap(new Blob([frag], { type: "image/jpeg" })); g.drawImage(img, 0, 0, cv.width, cv.height); return cv.toDataURL("image/png");
+  }
+  if (!/^1\.2\.840\.10008\.1\.2(\.1)?$/.test(ts)) throw new Error("Compressed (" + ts.split(".").slice(-2).join(".") + ")");
+  const bits = ds.uint16("x00280100") || 16, signed = ds.uint16("x00280103") === 1, spp = ds.uint16("x00280002") || 1, photo = (ds.string("x00280004") || "MONOCHROME2").trim();
+  const n = rows * cols, off = px.dataOffset, ab = bytes.buffer.slice(bytes.byteOffset + off, bytes.byteOffset + off + Math.min(px.length, n * spp * bits / 8));
+  const full = new ImageData(cols, rows), D = full.data;
+  if (spp === 3 && bits === 8) { const v = new Uint8Array(ab), planar = ds.uint16("x00280006") === 1; for (let i = 0; i < n; i++) { D[i * 4] = planar ? v[i] : v[i * 3]; D[i * 4 + 1] = planar ? v[n + i] : v[i * 3 + 1]; D[i * 4 + 2] = planar ? v[2 * n + i] : v[i * 3 + 2]; D[i * 4 + 3] = 255; } }
+  else {
+    const v = bits === 8 ? (signed ? new Int8Array(ab) : new Uint8Array(ab)) : (signed ? new Int16Array(ab) : new Uint16Array(ab));
+    const slope = parseFloat(ds.string("x00281053") || "1") || 1, icpt = parseFloat(ds.string("x00281052") || "0") || 0;
+    let wc = parseFloat((ds.string("x00281050") || "").split("\\")[0]), ww = parseFloat((ds.string("x00281051") || "").split("\\")[0]);
+    if (!(ww > 1)) { /* 1st–99th percentile of a sample */ const smp = []; for (let i = 0; i < v.length; i += Math.max(1, v.length >> 12)) smp.push(v[i] * slope + icpt); smp.sort((x, y) => x - y); const lo = smp[Math.floor(smp.length * .01)], hi = smp[Math.floor(smp.length * .99)]; wc = (lo + hi) / 2; ww = Math.max(1, hi - lo); }
+    const lo = wc - ww / 2, inv = photo === "MONOCHROME1";
+    for (let i = 0; i < n; i++) { let y = ((v[i] * slope + icpt) - lo) / ww * 255; y = y < 0 ? 0 : y > 255 ? 255 : y; if (inv) y = 255 - y; D[i * 4] = D[i * 4 + 1] = D[i * 4 + 2] = y; D[i * 4 + 3] = 255; }
+  }
+  const tmp = document.createElement("canvas"); tmp.width = cols; tmp.height = rows; tmp.getContext("2d").putImageData(full, 0, 0);
+  g.imageSmoothingQuality = "high"; g.drawImage(tmp, 0, 0, cv.width, cv.height); return cv.toDataURL("image/png");
+}
+const clsSummary = f => f ? Object.entries(f.classification || {}).filter(([k]) => /intent|measurement|features/i.test(k)).map(([, v]) => [].concat(v).join("/")).filter(Boolean).join(" · ") : "";
+function seriesForCell(zid, key) {
+  const d = S.detail[S.subj]; const as = d && d.acqs ? d.acqs[zid] || [] : [];
+  if (key.startsWith("mod:")) return as.filter(a => acqMod(a) === key.slice(4));
+  if (key.startsWith("req:")) { const col = visitsFor(S.subj).find(c => c.z && c.z._id === zid); const r = col && col.v && col.v.reqs.find(x => x.L.text === key.slice(4)); const L = r ? r.L : tplLabel(key.slice(4)); return as.filter(a => L.test(a.label)); }
+  return as;
+}
+function drawHover() {
+  const host = document.getElementById("hoverHost"), h = S.hover; if (!h) { host.innerHTML = ""; return; }
+  const all = seriesForCell(h.z, h.key), list = all.slice(0, 6), z = S.sessions.find(x => x._id === h.z);
+  list.forEach(loadThumb);
+  host.innerHTML = `<div class="hov" role="tooltip" style="left:${h.x}px;top:${h.y}px">
+    <div class="hov-h"><b>${esc(z ? z.label : "")}</b><span class="src">${esc(h.key.replace(/^(mod|req):/, ""))} · ${all.length} series</span></div>
+    ${list.length ? list.map(a => { const f = dicomFile(a) || (a.files || [])[0], st = S.thumbs[a._id] || {}; return `<div class="hov-r">${thumbHTML(a)}<div class="hov-m"><b>${esc(a.label)}</b><span class="muted">${esc(acqMod(a))} · ${(a.files || []).length} file${(a.files || []).length === 1 ? "" : "s"}${st.meta ? ` · slice ${st.meta.slice}/${st.meta.slices}` : ""}</span>${clsSummary(f) ? `<span class="muted">${esc(clsSummary(f))}</span>` : ""}${(a.tags || []).length ? tagRow("acquisition|" + a._id, a.tags, { ro: true, sm: true }) : ""}</div></div>`; }).join("") : `<div class="muted" style="padding:6px 2px">No series here.</div>`}
+    ${all.length > list.length ? `<div class="src">+${all.length - list.length} more · click for all</div>` : `<div class="src">Middle slice of each series · click the cell for details</div>`}</div>`;
+  const el = host.firstElementChild, r = el.getBoundingClientRect();
+  if (r.right > innerWidth - 8) el.style.left = Math.max(8, innerWidth - r.width - 8) + "px";
+  if (r.bottom > innerHeight - 8) el.style.top = Math.max(8, h.top - r.height - 6) + "px";
+}
+let hovT = null;
+document.addEventListener("mouseover", e => {
+  const c = e.target.closest("[data-prev]");
+  if (e.target.closest("#hoverHost")) return;
+  if (!c) { if (S.hover) { clearTimeout(hovT); hovT = setTimeout(() => { S.hover = null; drawHover(); }, 120); } return; }
+  clearTimeout(hovT);
+  hovT = setTimeout(() => { const r = c.getBoundingClientRect(), [z, key] = c.dataset.prev.split("|"); S.hover = { z, key, x: r.left, y: r.bottom + 6, top: r.top }; drawHover(); }, 220);
+});
+document.addEventListener("focusin", e => { const c = e.target.closest && e.target.closest("[data-prev]"); if (!c) return; const r = c.getBoundingClientRect(), [z, key] = c.dataset.prev.split("|"); S.hover = { z, key, x: r.left, y: r.bottom + 6, top: r.top }; drawHover(); });
+document.addEventListener("focusout", e => { if (e.target.closest && e.target.closest("[data-prev]")) { S.hover = null; drawHover(); } });
+document.addEventListener("scroll", () => { if (S.hover) { S.hover = null; drawHover(); } }, true);
+
+/* ---------- QUERIES (concept) ---------- */
+/* Stored on the subject as info.fw_queries (array) via SDK updateContainerInfo. Re-read before every write to
+   narrow last-write-wins. Concept only: no audit trail, no site/DM roles, no lock handling. */
+const QKEY = "fw_queries";
+const qOf = sid => (S.queries[sid] || []);
+const openQ = q => q.status !== "closed";
+async function loadQueries() {
+  const subs = S.subjects.slice(0, 60);
+  await Promise.all(subs.map(async s => { const d = S.detail[s._id]; const o = d && d.subject && d.subject.info ? d.subject : await api(`/api/subjects/${s._id}`, null, { soft: true }); if (o) S.queries[s._id] = ((o.info || {})[QKEY] || []).filter(q => q && q.id); }));
+  render();
+}
+async function writeQueries(sid, mutate, label) {
+  const fresh = await api(`/api/subjects/${sid}`, null, { soft: true });
+  const cur = ((fresh && fresh.info) || {})[QKEY] || qOf(sid);
+  const next = mutate(JSON.parse(JSON.stringify(cur)));
+  await sdk(`SDK updateContainerInfo subject ${(S.subjects.find(x => x._id === sid) || {}).label || sid} · ${label}`, () => S.ext.updateContainerInfo({ _id: sid, container_type: "subject", info: (fresh && fresh.info) || {}, label: "" }, { set: { [QKEY]: next } }));
+  S.queries[sid] = next; const d = S.detail[sid]; if (d && d.subject) { d.subject.info = d.subject.info || {}; d.subject.info[QKEY] = next; }
+  render(); return next;
+}
+const newQid = () => "Q-" + Date.now().toString(36).toUpperCase().slice(-6);
+async function raiseQuery(sid, q) {
+  const item = { id: newQid(), status: "open", category: q.category || "Other", target: q.target, text: q.text, raised_by: me(), raised_at: new Date().toISOString(), drafted_by: q.drafted_by || null, thread: [{ at: new Date().toISOString(), by: me(), kind: "raise", text: q.text }] };
+  try { await writeQueries(sid, arr => arr.concat(item), "raise " + item.id); toast(`Raised ${item.id}`); return item; }
+  catch (e) { toast("Couldn't save the query: " + ((e && e.message) || e)); return null; }
+}
+async function actQuery(sid, id, kind, text) {
+  const st = { answer: "answered", close: "closed", reopen: "open", note: null }[kind];
+  try { await writeQueries(sid, arr => arr.map(q => q.id !== id ? q : { ...q, status: st || q.status, thread: (q.thread || []).concat({ at: new Date().toISOString(), by: me(), kind, text: text || "" }) }), kind + " " + id); toast(`${id} ${kind === "note" ? "updated" : st}`); }
+  catch (e) { toast("Couldn't update the query: " + ((e && e.message) || e)); }
+}
+/* Checks that suggest a query (not raised until someone clicks Raise) */
+function suggestedQueries(sid) {
+  const out = [], d = S.detail[sid], have = qOf(sid).filter(openQ);
+  const dup = (tid, cat) => have.some(q => q.target && q.target.id === tid && q.category === cat);
+  visitsFor(sid).forEach(c => {
+    if (!c.z || !c.v) return; const st = sessStatus(c.z, sid, c.v);
+    if (st.k === "bad" && (st.missing || []).length && !dup(c.z._id, "Missing series")) out.push({ category: "Missing series", target: { type: "session", id: c.z._id, label: c.z.label }, text: `${c.z.label}: the ${c.v.label} template requires ${st.missing.map(m => m.label).join(", ")}, which ${st.missing.length > 1 ? "are" : "is"} not in Flywheel. Please upload the missing series or confirm it was not acquired.`, why: st.t });
+    else if (c.z.satisfies_template === false && !(st.missing || []).length && d && d.acqs && !dup(c.z._id, "Template")) out.push({ category: "Template", target: { type: "session", id: c.z._id, label: c.z.label }, text: `${c.z.label} does not satisfy the ${c.v.label} session template. Please review the series received against the protocol.`, why: "Flywheel template check failed" });
+  });
+  if (d && d.jobsOk) openFail(d.jobs).forEach(j => { const zid = (j.parents && j.parents.session) || ""; if (dup(jid(j), "Failed job")) return; const z = S.sessions.find(x => x._id === zid); out.push({ category: "Failed job", target: { type: "job", id: jid(j), label: (j.gear_info || {}).name + (z ? " · " + z.label : "") }, text: `${(j.gear_info || {}).name} ${(j.gear_info || {}).version || ""} failed${z ? " on " + z.label : ""}. Please check the input series; the job can be re-run once it is corrected.`, why: "Gear job failed" }); });
+  return out;
+}
+const qTargetLabel = q => q.target ? (q.target.type === "subject" ? "Subject" : q.target.label || q.target.id) : "";
+function qCard(sid, q) {
+  const open = S.qOpen[q.id], last = (q.thread || [])[q.thread.length - 1];
+  return `<div class="qcard ${q.status}"><div class="q-h"><span class="mono">${esc(q.id)}</span><span class="qst ${q.status}">${esc(q.status)}</span><span class="pill" style="background:var(--card-2);color:var(--ink-2)">${esc(q.category)}</span><b>${esc(qTargetLabel(q))}</b><span style="flex:1"></span><span class="src">${esc(q.raised_by || "")} · ${ago(q.raised_at)}${q.drafted_by ? " · drafted by Fermi" : ""}</span></div>
+    <div class="q-t">${esc(q.text)}</div>
+    ${(q.thread || []).length > 1 ? `<button class="lnkbtn" data-qtoggle="${esc(q.id)}">${open ? "Hide" : "Show"} thread (${q.thread.length})</button>` : ""}
+    ${open ? `<div class="q-thr">${q.thread.map(m => `<div><span class="src">${esc(m.kind)} · ${esc(m.by)} · ${dt(m.at)}</span><div>${esc(m.text || "—")}</div></div>`).join("")}</div>` : ""}
+    <div class="q-a">${S.qReply === q.id ? `<textarea data-qtext="${esc(q.id)}" rows="2" placeholder="${q.status === "open" ? "Site response…" : "Note…"}"></textarea>` : ""}
+      ${q.status === "open" ? (S.qReply === q.id ? `<button class="ibtn" data-qact="answer" data-q="${esc(q.id)}" data-sid="${sid}">Send answer</button>` : `<button class="ibtn" data-qreply="${esc(q.id)}">Answer (as site)</button>`) : ""}
+      ${q.status === "answered" ? `<button class="ibtn" data-qact="close" data-q="${esc(q.id)}" data-sid="${sid}">Close</button><button class="ibtn" data-qact="reopen" data-q="${esc(q.id)}" data-sid="${sid}">Re-query</button>` : ""}
+      ${q.status === "closed" ? `<button class="ibtn" data-qact="reopen" data-q="${esc(q.id)}" data-sid="${sid}">Reopen</button>` : ""}
+      ${q.target && q.target.type === "session" ? `<button class="ibtn" data-pane="${esc(q.target.id)}|">Open visit</button>` : ""}${q.target && q.target.type === "job" ? `<button class="ibtn" data-job="${esc(q.target.id)}">Open job</button>` : ""}</div></div>`;
+}
+function composer(sid) {
+  const c = S.qDraft; if (!c || c.sid !== sid) return "";
+  const opts = [{ type: "subject", id: sid, label: "Subject" }].concat(visitsFor(sid).filter(x => x.z).map(x => ({ type: "session", id: x.z._id, label: x.z.label })));
+  return `<div class="card qcomp"><div class="card-h"><h3>Raise a query</h3><span class="src">${c.drafted_by ? "Drafted by Fermi · review before raising" : "Goes to the site for this subject"}</span></div><div class="card-b" style="display:grid;gap:10px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap"><label class="fld">About<select data-qf="target">${opts.map(o => `<option value="${o.type}|${o.id}|${esc(o.label)}" ${c.target && c.target.id === o.id ? "selected" : ""}>${esc(o.label)}</option>`).join("")}${c.target && !opts.some(o => o.id === c.target.id) ? `<option selected value="${c.target.type}|${c.target.id}|${esc(c.target.label)}">${esc(c.target.label)}</option>` : ""}</select></label>
+    <label class="fld">Category<select data-qf="category">${["Missing series", "Template", "Failed job", "Image quality", "Data", "Other"].map(k => `<option ${c.category === k ? "selected" : ""}>${k}</option>`).join("")}</select></label></div>
+    <textarea data-qf="text" rows="3">${esc(c.text || "")}</textarea>
+    <div style="display:flex;gap:8px"><button class="btn pri" data-act="qraise">Raise query</button><button class="btn" data-act="qcancel">Cancel</button></div></div></div>`;
+}
+function queriesTab(s, d) {
+  const all = qOf(s._id), f = S.qFilt || "open", shown = all.filter(q => f === "all" ? true : f === "open" ? q.status === "open" : q.status === f).sort((a, b) => String(b.raised_at).localeCompare(String(a.raised_at)));
+  const sug = suggestedQueries(s._id);
+  const cnt = k => all.filter(q => k === "all" ? true : q.status === k).length;
+  return `<div class="card-b src" style="font-family:var(--font-ui);padding:0 0 4px">Concept. Queries are saved on the subject in <span class="mono">info.${QKEY}</span> through the extension SDK: shared, but last-write-wins and not audited. A product version needs a Queries object with audit trail, site vs data-manager roles and lock behaviour.</div>
+    ${composer(s._id)}
+    ${sug.length ? `<div class="card"><div class="card-h"><h3>Suggested by checks</h3><span class="src">${sug.length} · not raised yet</span></div><div class="card-b" style="display:grid;gap:8px">${sug.map((q, i) => `<div class="qsug"><span class="pill" style="background:var(--warn-wash);color:var(--warn-t)">${esc(q.category)}</span><b>${esc(q.target.label)}</b><span class="muted">${esc(q.why)}</span><span style="flex:1"></span><button class="ibtn" data-qsug="${i}">Raise…</button></div>`).join("")}</div></div>` : ""}
+    <div class="card"><div class="card-h"><h3>Queries</h3><span class="fchips">${[["open", "Open"], ["answered", "Answered"], ["closed", "Closed"], ["all", "All"]].map(([k, l]) => `<button class="fchip ${f === k ? "on" : ""}" data-qfilt="${k}">${l}<b>${cnt(k)}</b></button>`).join("")}<button class="ibtn" data-act="qnew">+ New query</button></span></div>
+    <div class="card-b" style="display:grid;gap:10px">${shown.length ? shown.map(q => qCard(s._id, q)).join("") : `<span class="muted">No ${f === "all" ? "" : f + " "}queries on this subject.</span>`}</div></div>`;
+}
+
+/* ---------- FERMI (concept) ---------- */
+/* Deterministic answers over the same live data the page shows. In product this is the Loka agent running as the
+   user through the Application MCP (read-only tools; changes come back as proposals the user approves). */
+const FERMI_SUGGEST = [
+  ["subject", "What's outstanding for this subject?"],
+  ["why", "Why are this subject's visits incomplete?"],
+  ["trial", "What are we waiting on across the trial?"],
+  ["summary", "Summarize this subject for data review"],
+  ["queries", "Which queries need attention?"]
+];
+function fermiRoute(q) {
+  const t = q.toLowerCase();
+  if (/quer/.test(t)) return "queries";
+  if (/summar|data review|overview/.test(t)) return "summary";
+  if (/why|incomplete|missing|fail/.test(t)) return "why";
+  if (/trial|study|across|all subjects|waiting|project/.test(t)) return "trial";
+  if (/outstanding|subject|todo|to do|left/.test(t)) return "subject";
+  if (/tag/.test(t)) return "tags";
+  return null;
+}
+const ev = (label, subj, pane) => `<button class="evl" data-goto="${esc(subj)}|${esc(pane || "")}">${esc(label)}</button>`;
+async function fermiAsk(text, intent) {
+  intent = intent || fermiRoute(text);
+  const turn = { q: text, a: null }; S.fermi.thread.push(turn); S.fermi.busy = true; drawFermi();
+  try { turn.a = await FERMI[intent || "fallback"](); } catch (e) { turn.a = { html: `<p>Something went wrong building that answer: ${esc(e.message || e)}</p>`, tools: [] }; }
+  S.fermi.busy = false; drawFermi();
+}
+const FERMI = {
+  fallback: async () => ({ html: `<p>In this prototype I can answer:</p><ul>${FERMI_SUGGEST.map(([k, l]) => `<li><button class="evl" data-fermi="${k}">${esc(l)}</button></li>`).join("")}</ul><p class="muted">Free-text questions are matched to these. In product, the Loka agent handles open questions with the same read-only tools.</p>`, tools: [] }),
+  subject: async () => {
+    const s = S.subjects.find(x => x._id === S.subj), sid = S.subj; if (!S.detail[sid] || !S.detail[sid].ok) await loadSubject(sid);
+    const R = subjRollup(sid), t = (tasksForSubject(sid) || []).filter(OPEN), d = S.detail[sid], f = d && d.jobsOk ? openFail(d.jobs) : [], q = qOf(sid).filter(x => x.status === "open");
+    const rows = [];
+    R.cols.forEach((c, i) => { const st = R.st[i]; if (st.k === "miss") rows.push(`<li>${ev(c.v.label, sid, c.key + "|")} not received yet.</li>`); else if (st.k === "bad") rows.push(`<li>${ev(c.z.label, sid, c.key + "|req")} is incomplete: ${esc(st.t)}.</li>`); });
+    if (t.length) rows.push(`<li>${t.length} open read${t.length > 1 ? "s" : ""}: ${t.map(x => esc(x.task_id)).join(", ")} (${[...new Set(t.map(x => x.assignee ? x.assignee.id : "unassigned"))].map(esc).join(", ")}).</li>`);
+    if (f.length) rows.push(`<li>${f.length} failed gear job${f.length > 1 ? "s" : ""} with no retry: ${f.map(j => `<button class="evl" data-job="${jid(j)}">${esc(j.gear_info.name)}</button>`).join(", ")}.</li>`);
+    if (q.length) rows.push(`<li>${q.length} open quer${q.length > 1 ? "ies" : "y"} with the site: ${q.map(x => esc(x.id)).join(", ")}.</li>`);
+    const props = suggestedQueries(sid).slice(0, 3).map(x => ({ kind: "query", sid, q: { ...x, drafted_by: "Fermi" } }));
+    return { html: `<p><b>${esc(s.label)}</b>: ${R.got} of ${R.n || "?"} scheduled visits received, ${R.done} complete.</p>${rows.length ? `<ul>${rows.join("")}</ul>` : "<p>Nothing outstanding.</p>"}`, tools: ["get_visit_status(subject)", "list_reader_tasks(subject, open)", "list_jobs(subject, failed)", "list_queries(subject)"], props };
+  },
+  why: async () => {
+    const sid = S.subj; if (!S.detail[sid] || !S.detail[sid].ok) await loadSubject(sid);
+    const R = subjRollup(sid), bad = R.cols.filter((c, i) => R.st[i].k === "bad");
+    if (!bad.length) return { html: `<p>No received visit for this subject is incomplete. ${R.miss ? `${R.miss} scheduled visit${R.miss > 1 ? "s are" : " is"} not received yet; without visit windows I can't say whether ${R.miss > 1 ? "they are" : "it is"} overdue.` : ""}</p>`, tools: ["get_visit_status(subject)"] };
+    const d = S.detail[sid];
+    const items = bad.map(c => { const st = sessStatus(c.z, sid, c.v), as = d.acqs[c.z._id] || []; const m = (st.missing || []); return `<li>${ev(c.z.label, sid, c.key + "|req")}: ${m.length ? `the ${esc(c.v.label)} template requires <b>${m.map(x => esc(x.label)).join(", ")}</b>; none of the ${as.length} series received matches${m.some(x => x.found) ? " enough times" : ""}. Flywheel's template check agrees (${c.z.satisfies_template === false ? "not satisfied" : "not evaluated"}).` : esc(st.all)}${nearLabels(as, m).length ? ` <span class="muted">Similar labels received: ${esc(nearLabels(as, m).join(", "))}.</span>` : ""}</li>`; });
+    const props = suggestedQueries(sid).filter(x => x.category !== "Failed job").map(x => ({ kind: "query", sid, q: { ...x, drafted_by: "Fermi" } }));
+    return { html: `<ul>${items.join("")}</ul><p class="muted">Matching is by acquisition label against the template (${bad[0].v && bad[0].v.L && bad[0].v.L.rx ? "regex" : "exact"}). A series that was acquired but labelled differently would show here as missing.</p>`, tools: ["get_session_template(project)", "list_acquisitions(session) × " + bad.length, "get_session(satisfies_template)"], props };
+  },
+  trial: async () => {
+    const sch = schedule(), sessByS = {};
+    S.sessions.forEach(z => { const sid = (z.subject && z.subject._id) || (z.parents && z.parents.subject); (sessByS[sid] = sessByS[sid] || []).push(z); });
+    const inc = S.sessions.filter(z => z.satisfies_template === false);
+    /* fetch acquisitions only for incomplete sessions not yet loaded, to name what's missing */
+    const need = inc.filter(z => !Object.values(S.detail).some(d => d && d.acqs && d.acqs[z._id]));
+    const fetched = {}; await Promise.all(need.map(async z => { fetched[z._id] = listOf(await api(`/api/sessions/${z._id}/acquisitions`, null, { soft: true })); }));
+    const acqsOfZ = z => { for (const d of Object.values(S.detail)) if (d && d.acqs && d.acqs[z._id]) return d.acqs[z._id]; return fetched[z._id] || null; };
+    const byMissing = {};
+    const incRows = inc.map(z => { const sid = (z.subject && z.subject._id) || (z.parents && z.parents.subject), s = S.subjects.find(x => x._id === sid) || {}; const v = visitOf(z, sid); const chk = v ? checkVisit(v, acqsOfZ(z)) : null; const miss = chk ? chk.filter(k => !k.ok).map(k => k.label) : []; miss.forEach(m => (byMissing[m] = byMissing[m] || []).push(s.label + " " + z.label)); return `<li>${ev(s.label + " · " + z.label, sid, z._id + "|req")}: ${miss.length ? "missing " + miss.map(esc).join(", ") : "template not satisfied"}</li>`; });
+    const outstanding = S.subjects.map(s => ({ s, r: subjRollup(s._id) })).filter(x => x.r.miss);
+    const tasks = (S.tasks || []).filter(OPEN), byA = {}; tasks.forEach(t => { const a = t.assignee ? t.assignee.id : "unassigned"; byA[a] = (byA[a] || 0) + 1; });
+    const qOpen = Object.entries(S.queries).flatMap(([sid, arr]) => arr.filter(q => q.status === "open").map(q => ({ sid, q })));
+    const pattern = Object.entries(byMissing).sort((a, b) => b[1].length - a[1].length)[0];
+    return { html: `<p><b>Sites</b> (imaging):</p><ul>${incRows.join("") || "<li>No received visit is incomplete.</li>"}</ul>
+      ${pattern && pattern[1].length > 1 ? `<p class="callout"><b>Pattern:</b> ${esc(pattern[0])} is missing in ${pattern[1].length} visits (${esc(pattern[1].join(", "))}). That looks like a protocol or labelling issue rather than one site's miss; worth a single note to sites instead of ${pattern[1].length} queries.</p>` : ""}
+      <p><b>Not received yet:</b> ${outstanding.reduce((n, x) => n + x.r.miss, 0)} scheduled visits across ${outstanding.length} subjects. No visit windows are defined, so none can be called overdue.</p>
+      <p><b>Readers:</b> ${tasks.length} open reads${Object.keys(byA).length ? " · " + Object.entries(byA).sort((a, b) => b[1] - a[1]).map(([a, n]) => `${esc(a)} ${n}`).join(" · ") : ""}.</p>
+      <p><b>Data management:</b> ${qOpen.length} open quer${qOpen.length === 1 ? "y" : "ies"}${S.projFailed && S.projFailed.length ? `; ${S.projFailed.length} failed job record${S.projFailed.length > 1 ? "s" : ""} in the project (already retried where noted)` : ""}.</p>`,
+      tools: ["get_visit_status(project)", `list_acquisitions(session) × ${need.length} (only incomplete visits not already loaded)`, "list_reader_tasks(project, open)", "list_queries(project)", "list_jobs(project, failed)"],
+      props: pattern && pattern[1].length > 1 ? [{ kind: "note", text: `Draft a note to sites about missing ${pattern[0]} at ${sch.find(v => v.reqs.some(r => r.L.text === pattern[0])) ? sch.find(v => v.reqs.some(r => r.L.text === pattern[0])).label : "this visit"}`, body: `Several ${sch.length ? "Session 3" : ""} uploads are missing the ${pattern[0]} acquisition required by the protocol (${pattern[1].join(", ")}). Please check whether it was acquired and upload it, or confirm it was not done.` }] : [] };
+  },
+  summary: async () => {
+    const sid = S.subj, s = S.subjects.find(x => x._id === sid); if (!S.detail[sid] || !S.detail[sid].ok) await loadSubject(sid);
+    const d = S.detail[sid], R = subjRollup(sid), info = (d.subject && d.subject.info) || {}, t = tasksForSubject(sid) || [];
+    const facts = [];
+    facts.push(`Visits: ${R.got}/${R.n} received (${R.cols.filter(c => c.z).map(c => esc(c.z.label) + " " + dt(c.z.timestamp).slice(0, 10)).join(", ")}).`);
+    facts.push(`Imaging: ${Object.values(d.acqs).flat().length} series. ${R.bad ? R.bad + " visit(s) incomplete against the template." : "All received visits meet the template."}`);
+    facts.push(`Reads: ${t.filter(x => x.status === "completed").length} complete, ${t.filter(OPEN).length} open.`);
+    facts.push(`Gear jobs: ${d.jobs.length}, ${openFail(d.jobs).length} failed without a retry.`);
+    if (info.enrollment) facts.push(`Enrollment: ${esc([info.enrollment.site, info.enrollment.status, info.enrollment.diagnosis].filter(Boolean).join(" · "))}${info.enrollment.arm ? " · arm hidden (blinded summary)" : ""}.`);
+    const tags = [...(s.tags || []).map(x => "subject:" + x), ...S.sessions.filter(z => (z.subject && z.subject._id) === sid).flatMap(z => (z.tags || []).map(x => z.label + ":" + x))];
+    if (tags.length) facts.push(`Tags: ${tags.map(esc).join(", ")}.`);
+    const q = qOf(sid); if (q.length) facts.push(`Queries: ${q.filter(x => x.status === "open").length} open, ${q.filter(x => x.status === "answered").length} answered, ${q.filter(x => x.status === "closed").length} closed.`);
+    return { html: `<p><b>${esc(s.label)}</b>, data review summary. Facts only, no clinical interpretation; treatment arm omitted.</p><ul>${facts.map(f => `<li>${f}</li>`).join("")}</ul>`, tools: ["get_subject(info)", "get_visit_status(subject)", "list_reader_tasks(subject)", "list_jobs(subject)", "list_queries(subject)"] };
+  },
+  queries: async () => {
+    const all = Object.entries(S.queries).flatMap(([sid, arr]) => arr.map(q => ({ sid, q, s: S.subjects.find(x => x._id === sid) || {} })));
+    if (!all.length) return { html: `<p>No queries raised in this project yet. ${S.subj ? `This subject has ${suggestedQueries(S.subj).length} suggested by checks; ask "Why are this subject's visits incomplete?" and I'll draft them.` : ""}</p>`, tools: ["list_queries(project)"] };
+    const ans = all.filter(x => x.q.status === "answered"), open = all.filter(x => x.q.status === "open").sort((a, b) => String(a.q.raised_at).localeCompare(String(b.q.raised_at)));
+    return { html: `${ans.length ? `<p><b>Answered, waiting for you to close or re-query (${ans.length}):</b></p><ul>${ans.map(x => `<li>${ev(x.s.label + " · " + x.q.id, x.sid, "@queries")}: ${esc((x.q.thread || []).slice(-1)[0].text || "")}</li>`).join("")}</ul>` : ""}
+      <p><b>Open with sites (${open.length}), oldest first:</b></p><ul>${open.map(x => `<li>${ev(x.s.label + " · " + x.q.id, x.sid, "@queries")} ${esc(x.q.category)} · ${esc(qTargetLabel(x.q))} · ${ago(x.q.raised_at)}</li>`).join("") || "<li>None.</li>"}</ul>`, tools: ["list_queries(project)"] };
+  },
+  tags: async () => {
+    const cnt = {}; S.subjects.forEach(s => (s.tags || []).forEach(t => (cnt["subject · " + t] = (cnt["subject · " + t] || 0) + 1))); S.sessions.forEach(z => (z.tags || []).forEach(t => (cnt["session · " + t] = (cnt["session · " + t] || 0) + 1)));
+    const rows = Object.entries(cnt).sort((a, b) => b[1] - a[1]);
+    return { html: rows.length ? `<p>Tags in use on subjects and sessions:</p><ul>${rows.map(([k, n]) => `<li>${esc(k)}: ${n}</li>`).join("")}</ul><p class="muted">Acquisition and file tags are counted only for subjects you've opened.</p>` : `<p>No subject or session tags in this project yet.</p>`, tools: ["list_subjects(project)", "list_sessions(project)"] };
+  }
+};
+function nearLabels(as, miss) { const labs = as.map(a => a.label); return miss.flatMap(m => labs.filter(l => l.toLowerCase().includes(m.label.toLowerCase().slice(0, 3)))).slice(0, 4); }
+function drawFermi() {
+  const host = document.getElementById("fermiHost"), F = S.fermi;
+  if (!F.open) { host.innerHTML = F.thread.length ? `<button class="fermipill" data-act="fermi">✦ Fermi · ${F.thread.length}</button>` : ""; return; }
+  host.innerHTML = `<aside class="fermi" role="dialog" aria-label="Ask Fermi"><header><b>✦ Fermi</b><span class="pill" style="background:var(--info-wash);color:var(--info-t)">Concept</span><span style="flex:1"></span>${F.thread.length ? `<button class="ibtn" data-act="fermiclear">Clear</button>` : ""}<button class="tbtn" data-act="fermi" aria-label="Close"><svg class="i s"><use href="#i-x"/></svg></button></header>
+    <div class="fbody">${F.thread.length ? "" : `<p class="muted" style="margin:0">Answers come from the same records this page shows, with links to the evidence. I only read; anything that changes data comes back as a proposal you approve.</p>`}
+    ${F.thread.map((t, i) => `<div class="fq">${esc(t.q)}</div><div class="fa">${t.a ? t.a.html : `<span class="spin"></span> Reading…`}
+      ${t.a && (t.a.props || []).length ? `<div class="fprops">${t.a.props.map((p, j) => `<div class="fprop ${p.done ? "done" : ""}"><span class="pill" style="background:var(--accent-wash);color:var(--accent-ink)">Proposed</span> ${p.kind === "query" ? `Raise query · <b>${esc(p.q.target.label)}</b> · ${esc(p.q.category)}` : esc(p.text)}
+        ${p.done ? `<span class="src"> · ${esc(p.done)}</span>` : `<div class="fpv">${esc(p.kind === "query" ? p.q.text : p.body)}</div><div style="display:flex;gap:6px">${p.kind === "query" ? `<button class="ibtn" data-fprop="${i}|${j}|approve">Approve &amp; raise</button><button class="ibtn" data-fprop="${i}|${j}|edit">Edit first</button>` : `<button class="ibtn" data-fprop="${i}|${j}|copy">Copy draft</button>`}<button class="ibtn" data-fprop="${i}|${j}|dismiss">Dismiss</button></div>`}</div>`).join("")}</div>` : ""}
+      ${t.a && (t.a.tools || []).length ? `<details class="ftools"><summary>How Fermi got this</summary><ul>${t.a.tools.map(x => `<li class="mono">${esc(x)}</li>`).join("")}</ul><span class="muted">Read-only tool calls (proposed Application MCP names). Here they map to the GET calls in Diagnostics.</span></details>` : ""}</div>`).join("")}
+    ${F.busy ? "" : `<div class="fsug">${FERMI_SUGGEST.map(([k, l]) => `<button class="fchip" data-fermi="${k}">${esc(l)}</button>`).join("")}</div>`}</div>
+    <form class="fin" data-fermiform="1"><input id="fermiQ" placeholder="Ask about this subject or the trial…" autocomplete="off"><button class="btn pri" type="submit">Ask</button></form>
+    <div class="src" style="padding:6px 14px 10px">Prototype: answers are computed by rules over live data, not an LLM. In product this is the Loka agent via the Application MCP, running as you.</div></aside>`;
+  const b = host.querySelector(".fbody"); if (b) b.scrollTop = b.scrollHeight;
+}
+
+/* ---------- events for v0.5 ---------- */
+document.addEventListener("click", async e => {
+  const t = e.target.closest("[data-untag],[data-tagedit],[data-tagadd],[data-qsug],[data-qfilt],[data-qact],[data-qreply],[data-qtoggle],[data-fermi],[data-fprop],[data-goto],[data-raise]"); if (!t) return;
+  e.stopPropagation();
+  if (t.dataset.untag) return changeTag(t.dataset.untag, t.dataset.tag, false);
+  if (t.dataset.tagedit) { S.tagEdit = t.dataset.tagedit; render(); const i = document.querySelector(`[data-tagin="${CSS.escape(S.tagEdit)}"]`); if (i) i.focus(); return; }
+  if (t.dataset.tagadd) { const i = document.querySelector(`[data-tagin="${CSS.escape(t.dataset.tagadd)}"]`); return changeTag(t.dataset.tagadd, i && i.value, true); }
+  if (t.dataset.qsug != null) { const q = suggestedQueries(S.subj)[+t.dataset.qsug]; S.qDraft = { sid: S.subj, ...q }; S.tab = "queries"; render(); return; }
+  if (t.dataset.raise) { const [type, id, label, cat, txt] = t.dataset.raise.split("|"); S.qDraft = { sid: S.subj, target: { type, id, label }, category: cat || "Other", text: txt || "" }; S.pane = null; S.tab = "queries"; render(); return; }
+  if (t.dataset.qfilt) { S.qFilt = t.dataset.qfilt; render(); return; }
+  if (t.dataset.qreply) { S.qReply = t.dataset.qreply; render(); const x = document.querySelector(`[data-qtext="${CSS.escape(S.qReply)}"]`); if (x) x.focus(); return; }
+  if (t.dataset.qtoggle) { S.qOpen[t.dataset.qtoggle] = !S.qOpen[t.dataset.qtoggle]; render(); return; }
+  if (t.dataset.qact) { const x = document.querySelector(`[data-qtext="${CSS.escape(t.dataset.q)}"]`); const txt = x ? x.value.trim() : ""; if (t.dataset.qact === "answer" && !txt) { toast("Write the site's answer first."); return; } S.qReply = null; return actQuery(t.dataset.sid, t.dataset.q, t.dataset.qact, txt || { close: "Closed", reopen: "Re-queried" }[t.dataset.qact]); }
+  if (t.dataset.fermi) return fermiAsk(FERMI_SUGGEST.find(x => x[0] === t.dataset.fermi)[1], t.dataset.fermi);
+  if (t.dataset.fprop) {
+    const [i, j, act] = t.dataset.fprop.split("|"), p = S.fermi.thread[+i].a.props[+j];
+    if (act === "dismiss") p.done = "dismissed";
+    if (act === "edit") { S.qDraft = { sid: p.sid, ...p.q }; S.fermi.open = false; S.subj = p.sid; S.tab = "queries"; render(); drawFermi(); return; }
+    if (act === "approve") { p.done = "raising…"; drawFermi(); const r = await raiseQuery(p.sid, p.q); p.done = r ? `raised ${r.id} as you` : "failed"; }
+    if (act === "copy") { try { await navigator.clipboard.writeText(p.body); p.done = "copied"; } catch (er) { toast("Copy blocked by the frame"); } }
+    drawFermi(); return;
+  }
+  if (t.dataset.goto) { const [sid, ...rest] = t.dataset.goto.split("|"), tgt = rest.join("|"); S.fermi.open = false; drawFermi(); if (S.subj !== sid) { S.subj = sid; S.pane = null; await loadSubject(sid); } if (tgt === "@queries") { S.tab = "queries"; S.pane = null; } else if (tgt) { S.tab = "overview"; const [z, r] = tgt.split("|"); S.pane = { z, r: r || null }; } render(); return; }
+}, true);
+document.addEventListener("click", async e => {
+  const t = e.target.closest("[data-act]"); if (!t) return; const a = t.dataset.act;
+  if (a === "fermi") { S.fermi.open = !S.fermi.open; drawFermi(); if (S.fermi.open) { const i = document.getElementById("fermiQ"); if (i) i.focus(); } }
+  if (a === "fermiclear") { S.fermi.thread = []; drawFermi(); }
+  if (a === "qnew") { S.qDraft = { sid: S.subj, target: { type: "subject", id: S.subj, label: "Subject" }, category: "Other", text: "" }; render(); }
+  if (a === "qcancel") { S.qDraft = null; render(); }
+  if (a === "qraise") {
+    const c = S.qDraft, g = k => document.querySelector(`[data-qf="${k}"]`); const [type, id, ...lab] = g("target").value.split("|");
+    const q = { target: { type, id, label: lab.join("|") }, category: g("category").value, text: g("text").value.trim(), drafted_by: c.drafted_by || null };
+    if (!q.text) { toast("Write the query text first."); return; }
+    t.disabled = true; const r = await raiseQuery(c.sid, q); if (r) { S.qDraft = null; S.qFilt = "open"; render(); } else t.disabled = false;
+  }
+});
+document.addEventListener("submit", e => { if (!e.target.dataset.fermiform) return; e.preventDefault(); const i = document.getElementById("fermiQ"); const v = i.value.trim(); if (v) { i.value = ""; fermiAsk(v); } });
+document.addEventListener("keydown", e => {
+  if (e.target.dataset && e.target.dataset.tagin && e.key === "Enter") { e.preventDefault(); changeTag(e.target.dataset.tagin, e.target.value, true); }
+  if (e.target.dataset && e.target.dataset.tagin && e.key === "Escape") { S.tagEdit = null; render(); e.stopPropagation(); }
+});
 
 /* ---------- events ---------- */
 document.addEventListener("click", async e => {
