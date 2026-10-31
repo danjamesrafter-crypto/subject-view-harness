@@ -425,7 +425,7 @@ pre.jerr span.e{color:var(--bad-t)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.4.0";
+const VERSION = "subject-view-harness/0.4.1";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {} };
 const DIAG_MAX = 60;
@@ -514,7 +514,9 @@ async function loadSubject(id) {
   d.subject = await api(`/api/subjects/${id}`, null, { soft: true }) || S.subjects.find(x => x._id === id);
   const sess = S.sessions.filter(z => (z.subject && z.subject._id === id) || (z.parents && z.parents.subject === id));
   d.acqs = {};
-  await Promise.all(sess.map(async z => { d.acqs[z._id] = listOf(await api(`/api/sessions/${z._id}/acquisitions`, null, { soft: true })); }));
+  d.acqErr = {};
+  /* A failed call must never read as "no acquisitions": that would show required series as missing. Retry once, then mark unknown. */
+  await Promise.all(sess.map(async z => { const u = `/api/sessions/${z._id}/acquisitions`; let r = await api(u, null, { soft: true }); if (r == null) { await new Promise(ok => setTimeout(ok, 600)); r = await api(u, null, { soft: true }); } if (r == null) d.acqErr[z._id] = true; else d.acqs[z._id] = listOf(r); }));
   d.jobs = await api("/api/jobs", { filter: `parents.subject=${id}`, limit: 100, sort: "created:desc" }, { soft: true });
   d.jobsOk = d.jobs !== null; d.jobs = listOf(d.jobs);
   S.detail[id] = d; render();
@@ -584,7 +586,7 @@ function sessStatus(z, sid, vIn) {
   const tt = (tasksForSubject(sid) || []).filter(x => { const s = sessionOfTask(x, sid); return s && s._id === z._id; });
   const open = tt.filter(OPEN).length;
   const failed = d && d.jobsOk ? openFail(d.jobs).filter(j => (j.parents && j.parents.session === z._id) || (j.destination && j.destination.id === z._id)).length : 0;
-  const chk = v ? checkVisit(v, d && d.acqs ? d.acqs[z._id] : null, z.satisfies_template === true) : null;
+  const chk = v && !(d && d.acqErr || {})[z._id] ? checkVisit(v, d && d.acqs ? d.acqs[z._id] : null, z.satisfies_template === true) : null;
   const missing = chk ? chk.filter(c => !c.ok) : [];
   const why = [];
   if (missing.length) why.push("Missing " + missing.map(c => c.label + (c.fileIssue ? " (files)" : c.min > 1 ? ` (${c.found}/${c.min})` : "")).join(", "));
@@ -803,7 +805,7 @@ function tabs() { return `<div class="tabsbar"><nav class="tabs">${TABS.map(([k,
 function matrix(s, d) {
   const cols = visitsFor(s._id), sch = schedule();
   if (!cols.length) return `<div class="card"><div class="empty-big">No sessions for this subject yet.</div></div>`;
-  const acqsOf = z => z && d && d.acqs ? (d.acqs[z._id] || []) : null;
+  const acqsOf = z => z && d && d.acqs && !(d.acqErr || {})[z._id] ? (d.acqs[z._id] || []) : null;
   const mods = d && d.acqs ? [...new Set(Object.values(d.acqs).flat().map(acqMod))].sort() : [];
   const t = tasksForSubject(s._id) || [];
   const reqLabels = [...new Map(sch.flatMap(v => v.reqs.map(r => [r.L.text, r]))).values()];
@@ -812,14 +814,14 @@ function matrix(s, d) {
     if (key.startsWith("req:")) {
       const lbl = key.slice(4), r = c.v && c.v.reqs.find(x => x.L.text === lbl);
       if (!z) return r ? `<span class="cell miss"><span class="g"></span>expected</span>` : "";
-      if (!as) return r ? `<span class="src">…</span>` : "";
+      if (!as) return r ? ((d && d.acqErr || {})[z._id] ? `<span class="cell"><span class="g">?</span>couldn't load</span>` : `<span class="src">…</span>`) : "";
       const L = r ? r.L : tplLabel(lbl), m = as.filter(a => L.test(a.label));
       if (!r) return m.length ? `<button class="cell" data-pane="${c.key}|req"><span class="g" style="color:var(--ink-3)">·</span>${m.length} acq, not required</button>` : "";
       const k = checkVisit({ reqs: [r] }, as, z.satisfies_template === true)[0];
       return k.ok ? `<button class="cell ok" data-pane="${c.key}|req"><span class="g">✓</span>${m.length} acq${r.min > 1 ? ` (min ${r.min})` : ""}</button>` : `<button class="cell bad" data-pane="${c.key}|req"><span class="g">✗</span>${k.fileIssue ? "files missing" : m.length ? `${m.length} of ${r.min}` : "missing"}</button>`;
     }
     if (!z) return "";
-    if (key.startsWith("mod:")) { if (!as) return `<span class="src">…</span>`; const m = as.filter(a => acqMod(a) === key.slice(4)); return m.length ? `<button class="cell ok" data-pane="${c.key}|${key}"><span class="g">✓</span>${m.length} acq · ${(n => n + (n === 1 ? " file" : " files"))(m.reduce((n, a) => n + (a.files || []).length, 0))}</button>` : ""; }
+    if (key.startsWith("mod:")) { if (!as) return (d && d.acqErr || {})[z._id] ? `<span class="cell"><span class="g">?</span>couldn't load</span>` : `<span class="src">…</span>`; const m = as.filter(a => acqMod(a) === key.slice(4)); return m.length ? `<button class="cell ok" data-pane="${c.key}|${key}"><span class="g">✓</span>${m.length} acq · ${(n => n + (n === 1 ? " file" : " files"))(m.reduce((n, a) => n + (a.files || []).length, 0))}</button>` : ""; }
     if (key === "tasks") { const tt = t.filter(x => { const sz = sessionOfTask(x, s._id); return sz && sz._id === z._id; }); if (!tt.length) return ""; const open = tt.filter(OPEN).length, done = tt.filter(x => x.status === "completed").length; return `<button class="cell ${open ? "warn" : "ok"}" data-pane="${c.key}|tasks"><span class="g">${open ? open : "✓"}</span>${done} done${open ? " · " + open + " open" : ""}</button>`; }
     if (key === "jobs") { if (!d || !d.jobsOk) return d && d.ok ? `<span class="src">n/a</span>` : ""; const jj = d.jobs.filter(j => (j.parents && j.parents.session === z._id) || (j.destination && j.destination.id === z._id)); if (!jj.length) return ""; const f = openFail(jj).length; return `<button class="cell ${f ? "bad" : "ok"}" data-pane="${c.key}|jobs"><span class="g">${f ? "!" : "✓"}</span>${f ? f + " failed" : jj.length + " done"}</button>`; }
     if (key === "info") { const k = Object.keys(z.info || {}); return k.length ? `<button class="cell info" data-pane="${c.key}|info"><span class="g">${k.length}</span>keys</button>` : ""; }
@@ -874,8 +876,8 @@ function pane() {
   if (!col) { host.innerHTML = ""; return; }
   const prevC = cols[i - 1], nextC = cols[i + 1];
   const nav = `<button class="ibtn" ${prevC ? `data-pane="${prevC.key}|"` : "disabled"}>‹</button><button class="ibtn" ${nextC ? `data-pane="${nextC.key}|"` : "disabled"}>›</button><button class="tbtn" data-act="closePane" aria-label="Close"><svg class="i s"><use href="#i-x"/></svg></button>`;
-  const reqList = (v, as, srv) => { const chk = as ? checkVisit(v, as, srv) : v.reqs.map(r => ({ label: r.L.text, min: r.min, found: 0, ok: false, pending: true }));
-    return chk.map(k => `<div class="req ${k.pending ? "miss" : k.ok ? "ok" : "bad"}"><span class="g">${k.pending ? "" : k.ok ? "✓" : "✗"}</span><b>${esc(k.label)}</b>${k.min > 1 ? `<span class="muted">min ${k.min}</span>` : ""}<span class="mono">${k.pending ? "expected" : k.ok ? k.found + " acq" : k.fileIssue ? "required files missing" : k.found ? k.found + " of " + k.min : "missing"}</span></div>`).join(""); };
+  const reqList = (v, as, srv, pend) => { const chk = as ? checkVisit(v, as, srv) : v.reqs.map(r => ({ label: r.L.text, min: r.min, found: 0, ok: false, pending: true }));
+    return chk.map(k => `<div class="req ${k.pending ? "miss" : k.ok ? "ok" : "bad"}"><span class="g">${k.pending ? "" : k.ok ? "✓" : "✗"}</span><b>${esc(k.label)}</b>${k.min > 1 ? `<span class="muted">min ${k.min}</span>` : ""}<span class="mono">${k.pending ? (pend || "expected") : k.ok ? k.found + " acq" : k.fileIssue ? "required files missing" : k.found ? k.found + " of " + k.min : "missing"}</span></div>`).join(""); };
   if (!z) {
     host.innerHTML = `<aside class="pane" role="dialog" aria-label="${esc(col.v.label)}"><header><div style="display:flex;align-items:center;gap:8px"><nav class="bc"><button data-act="closePane">${esc(s.label)}</button><i>›</i><b>${esc(col.v.label)}</b></nav><span style="flex:1"></span>${nav}</div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="vst-pill" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-3)"><i class="vd miss"></i>Not received</span><span class="src">Scheduled visit ${col.v.i + 1} of ${schedule().length}</span></div></header>
@@ -890,9 +892,9 @@ function pane() {
   const files = a => (a.files || []).map(f => { const id = a._id + "/" + f.name, open = S.fileOpen[id]; return `<div class="frow"><span class="nm">${esc(f.name)} <span class="muted" style="font-family:var(--font-ui)">· ${esc(f.type || "")} · ${fmtSize(f.size)}</span></span><span class="acts"><a class="ibtn" href="${coreLink("sessions", z._id)}" target="_blank" rel="noopener"><svg class="i s"><use href="#i-ext"/></svg>Open in Flywheel</a><button class="ibtn" data-fmeta="${esc(id)}">${open ? "Hide" : "Details"}</button></span>${open ? `<div class="fmeta"><dl class="kv"><dt>Modality</dt><dd>${esc(f.modality || "—")}</dd><dt>Classification</dt><dd>${esc(Object.entries(f.classification || {}).map(([k, v]) => k + ": " + [].concat(v).join(", ")).join(" · ") || "—")}</dd><dt>Created</dt><dd class="mono">${dt(f.created)}</dd><dt>Info keys</dt><dd>${esc(Object.keys(f.info || {}).slice(0, 8).join(", ") || "—")}</dd><dt>Tags</dt><dd>${esc((f.tags || []).join(", ") || "—")}</dd></dl></div>` : ""}</div>`; }).join("");
   const sec = (h, b) => `<section class="psec"><h4>${h}</h4>${b}</section>`;
   let body = "";
-  if (col.v && (!r || r === "req")) { const st = sessStatus(z, S.subj, col.v); body += sec(`Visit requirements <span class="src">${esc(col.v.label)} template · Flywheel says ${z.satisfies_template === true ? "satisfied" : z.satisfies_template === false ? "not satisfied" : "not evaluated"}</span>`, reqList(col.v, d && d.acqs ? (d.acqs[z._id] || []) : null, z.satisfies_template === true) + (z.satisfies_template === false && !(st.missing || []).length && d && d.acqs ? `<span class="muted" style="font-size:12px">Flywheel marks this session not satisfied, but every acquisition rule checks out here. The failing rule is probably a file rule (type, classification) this app can't read exactly.</span>` : "")); }
+  if (col.v && (!r || r === "req")) { const st = sessStatus(z, S.subj, col.v); body += sec(`Visit requirements <span class="src">${esc(col.v.label)} template · Flywheel says ${z.satisfies_template === true ? "satisfied" : z.satisfies_template === false ? "not satisfied" : "not evaluated"}</span>`, reqList(col.v, d && d.acqs && !(d.acqErr || {})[z._id] ? (d.acqs[z._id] || []) : null, z.satisfies_template === true, (d && d.acqErr || {})[z._id] ? "couldn't load acquisitions" : "loading…") + (z.satisfies_template === false && !(st.missing || []).length && d && d.acqs && !(d.acqErr || {})[z._id] ? `<span class="muted" style="font-size:12px">Flywheel marks this session not satisfied, but every acquisition rule checks out here. The failing rule is probably a file rule (type, classification) this app can't read exactly.</span>` : "")); }
   if (!col.v && schedule().length && !r) body += sec("Visit requirements", `<span class="muted">No session template matches the label <span class="mono">${esc(z.label)}</span>, so this is treated as an unscheduled visit.</span>`);
-  if (!r || r.startsWith("mod:")) body += sec(r ? r.slice(4) : "Acquisitions", shown.length ? shown.map(a => `<div class="acq"><div class="acq-h"><span class="pill" style="background:var(--card-2);color:var(--ink-2)">${esc(acqMod(a))}</span><b>${esc(a.label)}</b><span class="mono muted" style="font-size:12px">${dt(a.timestamp || a.created)}</span></div>${files(a)}</div>`).join("") : `<span class="muted">${d && d.acqs ? "No acquisitions." : "Loading…"}</span>`);
+  if (!r || r.startsWith("mod:")) body += sec(r ? r.slice(4) : "Acquisitions", (d && d.acqErr || {})[z._id] ? `<span class="muted">Flywheel returned an error for this session's acquisitions (retried once). Use Refresh to try again.</span>` : shown.length ? shown.map(a => `<div class="acq"><div class="acq-h"><span class="pill" style="background:var(--card-2);color:var(--ink-2)">${esc(acqMod(a))}</span><b>${esc(a.label)}</b><span class="mono muted" style="font-size:12px">${dt(a.timestamp || a.created)}</span></div>${files(a)}</div>`).join("") : `<span class="muted">${d && d.acqs ? "No acquisitions." : "Loading…"}</span>`);
   if (!r || r === "tasks") body += sec("Reader tasks", t.length ? t.map(x => `<div class="frow" style="border:1px solid var(--line-soft);border-radius:8px"><span><span class="mono">${esc(x.task_id)}</span> <span class="muted">· ${esc(x.protocol_label || "")} · ${esc(x.assignee ? x.assignee.id : "unassigned")}</span></span><span class="acts"><span class="st ${esc(x.status)}">${esc(String(x.status).replace("_", " "))}</span></span></div>`).join("") : `<span class="muted">No reader tasks.</span>`);
   if (!r || r === "jobs") body += sec("Gear jobs", d && d.jobsOk ? (jj.length ? jj.map(j => `<div class="frow" style="border:1px solid var(--line-soft);border-radius:8px"><span>${esc(j.gear_info ? j.gear_info.name : "")} <span class="muted mono">${esc(j.gear_info ? j.gear_info.version : "")}</span></span><span class="acts"><span class="st ${esc(j.state)}">${esc(j.state)}</span><button class="ibtn" data-job="${j._id || j.id}">${j.state === "failed" ? "Troubleshoot" : "Details"}</button></span></div>`).join("") : `<span class="muted">No jobs.</span>`) : `<span class="muted">Jobs not available through the extension proxy.</span>`);
   if (!r || r === "info") { const kv = flatKV(z.info || {}, "", []); body += sec("Session custom info", kv.length ? `<div class="kvgrid">${kv.slice(0, 40).map(([k, v]) => `<div><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`).join("")}</div>` : `<span class="muted">No custom info.</span>`); }
