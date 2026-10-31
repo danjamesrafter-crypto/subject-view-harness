@@ -326,6 +326,7 @@ html,body{height:100%}
 .diag .call code{font-family:var(--font-data);color:var(--accent-ink);overflow-wrap:anywhere}
 .diag .ok{color:var(--ok-t)} .diag .er{color:var(--bad-t)}
 .diag pre{margin:0;padding:12px;font:11.5px/1.5 var(--font-data);color:var(--ink-2);background:#04080F;max-height:320px;overflow:auto;border-top:1px solid var(--line-soft)}
+.itab{width:100%;border-collapse:collapse;font-size:13px}.itab th{text-align:left;font-weight:500;font-size:12px;color:var(--ink-3);padding:8px 14px;border-bottom:1px solid var(--line-soft);white-space:nowrap}.itab td{padding:8px 14px;border-bottom:1px solid var(--line-soft);color:var(--ink);vertical-align:top}.itab tr:last-child td{border-bottom:0}.itab td.mono{font-family:var(--font-data);font-size:12px}
 .kvgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px 20px}
 .kvgrid .k{font-size:12px;color:var(--ink-3)} .kvgrid .v{font-size:14px;overflow-wrap:anywhere}
 .infocard{margin-bottom:12px}
@@ -425,7 +426,7 @@ pre.jerr span.e{color:var(--bad-t)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.4.1";
+const VERSION = "subject-view-harness/0.4.2";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {} };
 const DIAG_MAX = 60;
@@ -849,7 +850,15 @@ function tasksTab(s, d) {
   return `<div class="card"><div class="card-h"><h3>Reader tasks</h3><span class="src">GET /api/tasks/reader · this project, matched to this subject</span></div>${tt}</div>
     <div class="card"><div class="card-h"><h3>Gear jobs</h3><span class="src">GET /api/jobs?filter=parents.subject</span></div>${jj}</div>${failedProjectCard()}`;
 }
-function flatKV(o, prefix, out) { Object.entries(o || {}).forEach(([k, v]) => { const key = prefix ? prefix + "." + k : k; if (v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).length < 40 && prefix.split(".").length < 2) flatKV(v, key, out); else out.push([key, Array.isArray(v) ? v.join(", ") : typeof v === "object" ? JSON.stringify(v) : v]); }); return out; }
+function flatKV(o, prefix, out) { Object.entries(o || {}).forEach(([k, v]) => { const key = prefix ? prefix + "." + k : k; if (v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).length < 40 && prefix.split(".").length < 2) flatKV(v, key, out); else out.push([key, Array.isArray(v) ? (v.some(x => x && typeof x === "object") ? v : v.join(", ")) : v && typeof v === "object" ? JSON.stringify(v) : v]); }); return out; }
+const isRows = v => Array.isArray(v) && v.length > 0 && v.every(x => x && typeof x === "object" && !Array.isArray(x));
+const cellVal = v => v == null || v === "" ? "—" : v === true ? "Yes" : v === false ? "No" : Array.isArray(v) ? v.map(x => x && typeof x === "object" ? JSON.stringify(x) : x).join(", ") : typeof v === "object" ? Object.entries(v).map(([a, b]) => a + ": " + (b && typeof b === "object" ? JSON.stringify(b) : b)).join(" · ") : String(v);
+/* Array of records (e.g. medical_history, concomitant_medications) -> table; columns = union of keys in first-seen order. */
+function rowsTable(arr, mask) {
+  const cols = [...new Set(arr.flatMap(o => Object.keys(o)))];
+  const lab = c => c.replace(/_/g, " ").replace(/\b\w/g, m => m.toUpperCase());
+  return `<div class="tw"><table class="itab"><thead><tr>${cols.map(c => `<th>${esc(lab(c))}</th>`).join("")}</tr></thead><tbody>${arr.map(o => `<tr>${cols.map(c => `<td class="${typeof o[c] === "number" || /date|_dt$|^start|^end|^stop|dose/i.test(c) ? "mono" : ""}">${mask && mask(c) && !S.phi ? `<span class="phi">••••••</span>` : esc(cellVal(o[c]))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
 function infoTab(s, d) {
   if (!d || !d.ok) return `<div class="loading"><span class="spin"></span>Loading…</div>`;
   const info = (d.subject && d.subject.info) || {}, keys = Object.keys(info);
@@ -858,7 +867,10 @@ function infoTab(s, d) {
   const phiKey = k => /first.?name|last.?name|date.?of.?birth|dob|email|phone/i.test(k);
   return `<div class="card-b src" style="font-family:var(--font-ui);padding:0">Read-only. ${forms ? "Project form definitions found in project.info.forms." : "No form definitions in project.info.forms, so keys are shown as-is."} PHI-looking keys are masked.</div>` +
     keys.map(k => { const v = info[k]; const kv = v && typeof v === "object" && !Array.isArray(v) ? flatKV(v, "", []) : [[k, v]];
-      return `<div class="card infocard"><div class="card-h"><h3>${esc(k)}</h3><span class="src">subject.info.${esc(k)} · ${kv.length} field${kv.length === 1 ? "" : "s"}</span></div><div class="card-b"><div class="kvgrid">${kv.slice(0, 60).map(([kk, vv]) => `<div><div class="k">${esc(kk)}</div><div class="v ${typeof vv === "number" ? "mono" : ""}">${phiKey(kk) && !S.phi ? `<span class="phi">••••••</span>` : esc(vv === "" || vv == null ? "—" : vv)}</div></div>`).join("")}</div>${kv.length > 60 ? `<div class="src">${kv.length - 60} more fields</div>` : ""}</div></div>`; }).join("");
+      if (isRows(v)) return `<div class="card infocard"><div class="card-h"><h3>${esc(k)}</h3><span class="src">subject.info.${esc(k)} · ${v.length} entr${v.length === 1 ? "y" : "ies"}</span></div>${rowsTable(v, phiKey)}</div>`;
+      if (Array.isArray(v)) return `<div class="card infocard"><div class="card-h"><h3>${esc(k)}</h3><span class="src">subject.info.${esc(k)} · ${v.length} item${v.length === 1 ? "" : "s"}</span></div><div class="card-b">${v.length ? `<div class="conds">${v.map(x => `<span class="cond">${esc(cellVal(x))}</span>`).join("")}</div>` : `<span class="muted">None recorded.</span>`}</div></div>`;
+      const nested = kv.filter(([, vv]) => isRows(vv)), flat = kv.filter(([, vv]) => !isRows(vv));
+      return `<div class="card infocard"><div class="card-h"><h3>${esc(k)}</h3><span class="src">subject.info.${esc(k)} · ${kv.length} field${kv.length === 1 ? "" : "s"}</span></div>${nested.map(([kk, vv]) => `<div class="card-b" style="padding-bottom:0"><div class="k" style="font-size:12px;color:var(--ink-3)">${esc(kk)} · ${vv.length}</div></div>${rowsTable(vv, phiKey)}`).join("")}${flat.length ? `<div class="card-b"><div class="kvgrid">` : ""}${flat.slice(0, 60).map(([kk, vv]) => `<div><div class="k">${esc(kk)}</div><div class="v ${typeof vv === "number" ? "mono" : ""}">${phiKey(kk) && !S.phi ? `<span class="phi">••••••</span>` : esc(cellVal(vv))}</div></div>`).join("")}${flat.length ? `</div>${flat.length > 60 ? `<div class="src">${flat.length - 60} more fields</div>` : ""}</div>` : ""}</div>`; }).join("");
 }
 function diagTab() {
   const ok = S.calls.filter(c => c.status === "ok").length, er = S.calls.filter(c => c.status === "error").length;
@@ -897,7 +909,7 @@ function pane() {
   if (!r || r.startsWith("mod:")) body += sec(r ? r.slice(4) : "Acquisitions", (d && d.acqErr || {})[z._id] ? `<span class="muted">Flywheel returned an error for this session's acquisitions (retried once). Use Refresh to try again.</span>` : shown.length ? shown.map(a => `<div class="acq"><div class="acq-h"><span class="pill" style="background:var(--card-2);color:var(--ink-2)">${esc(acqMod(a))}</span><b>${esc(a.label)}</b><span class="mono muted" style="font-size:12px">${dt(a.timestamp || a.created)}</span></div>${files(a)}</div>`).join("") : `<span class="muted">${d && d.acqs ? "No acquisitions." : "Loading…"}</span>`);
   if (!r || r === "tasks") body += sec("Reader tasks", t.length ? t.map(x => `<div class="frow" style="border:1px solid var(--line-soft);border-radius:8px"><span><span class="mono">${esc(x.task_id)}</span> <span class="muted">· ${esc(x.protocol_label || "")} · ${esc(x.assignee ? x.assignee.id : "unassigned")}</span></span><span class="acts"><span class="st ${esc(x.status)}">${esc(String(x.status).replace("_", " "))}</span></span></div>`).join("") : `<span class="muted">No reader tasks.</span>`);
   if (!r || r === "jobs") body += sec("Gear jobs", d && d.jobsOk ? (jj.length ? jj.map(j => `<div class="frow" style="border:1px solid var(--line-soft);border-radius:8px"><span>${esc(j.gear_info ? j.gear_info.name : "")} <span class="muted mono">${esc(j.gear_info ? j.gear_info.version : "")}</span></span><span class="acts"><span class="st ${esc(j.state)}">${esc(j.state)}</span><button class="ibtn" data-job="${j._id || j.id}">${j.state === "failed" ? "Troubleshoot" : "Details"}</button></span></div>`).join("") : `<span class="muted">No jobs.</span>`) : `<span class="muted">Jobs not available through the extension proxy.</span>`);
-  if (!r || r === "info") { const kv = flatKV(z.info || {}, "", []); body += sec("Session custom info", kv.length ? `<div class="kvgrid">${kv.slice(0, 40).map(([k, v]) => `<div><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`).join("")}</div>` : `<span class="muted">No custom info.</span>`); }
+  if (!r || r === "info") { const kv = flatKV(z.info || {}, "", []); body += sec("Session custom info", kv.length ? `<div class="kvgrid">${kv.filter(([, v]) => !isRows(v)).slice(0, 40).map(([k, v]) => `<div><div class="k">${esc(k)}</div><div class="v">${esc(cellVal(v))}</div></div>`).join("")}</div>${kv.filter(([, v]) => isRows(v)).map(([k, v]) => `<div class="k" style="font-size:12px;color:var(--ink-3);margin-top:8px">${esc(k)} · ${v.length}</div>${rowsTable(v)}`).join("")}` : `<span class="muted">No custom info.</span>`); }
   host.innerHTML = `<aside class="pane" role="dialog" aria-label="${esc(z.label)}"><header><div style="display:flex;align-items:center;gap:8px"><nav class="bc"><button data-act="closePane">${esc(s.label)}</button><i>›</i>${r ? `<button data-pane="${col.key}|">${esc(z.label)}</button><i>›</i><b>${esc(r === "req" ? "Visit requirements" : r.replace("mod:", ""))}</b>` : `<b>${esc(z.label)}</b>`}</nav><span style="flex:1"></span>${nav}</div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="src">${dt(z.timestamp || z.created)} · ${as.length} acquisitions</span>${(st => st.k ? `<span class="vst-pill" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--${st.k}-t)"><i class="vd ${st.k}"></i>${esc(st.all)}</span>` : "")(sessStatus(z, S.subj, col.v))}<a class="lnk" style="font-size:12px" href="${coreLink("sessions", z._id)}" target="_blank" rel="noopener">Open session in Flywheel ↗</a></div></header><div class="body">${body}</div></aside>`;
 }
