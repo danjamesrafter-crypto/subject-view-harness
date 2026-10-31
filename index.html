@@ -344,6 +344,21 @@ a.btn,a.ibtn{text-decoration:none}
 .vdots{display:inline-flex;gap:4px;flex-wrap:wrap;align-items:center}
 .vd{width:9px;height:9px;border-radius:50%;background:#33415a;flex:none}
 .vd.ok{background:var(--ok)}.vd.warn{background:var(--warn)}.vd.bad{background:var(--bad)}
+.vd.miss{background:transparent;border:1.5px dashed var(--ink-3);width:9px;height:9px;box-sizing:border-box}
+.vh .vst.miss{color:var(--ink-3)}
+.vh.miss{opacity:.85}.vh.miss b{color:var(--ink-2)}
+.vh .bar.miss{background:repeating-linear-gradient(90deg,var(--ink-3) 0 4px,transparent 4px 8px)!important;opacity:.6}
+.cell.miss{color:var(--ink-3)}.cell.miss .g{border:1.5px dashed var(--ink-3);color:var(--ink-3)}
+.vprog{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-3)}
+.fchips{display:flex;gap:6px;flex-wrap:wrap}
+.fchip{border:1px solid var(--line);background:transparent;color:var(--ink-2);border-radius:999px;padding:3px 10px;font-size:12px}
+.fchip.on{background:var(--card-2);color:var(--ink);border-color:var(--line-strong)}
+.fchip b{font-weight:600;margin-left:4px;color:var(--ink-3)}
+.req{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line-soft);border-radius:8px;font-size:13px}
+.req .g{width:18px;height:18px;border-radius:5px;display:inline-grid;place-items:center;font-size:11px;font-weight:700;flex:none}
+.req.ok .g{background:var(--ok-wash);color:var(--ok)}.req.bad .g{background:var(--bad-wash);color:var(--bad)}.req.miss .g{border:1.5px dashed var(--ink-3);color:var(--ink-3)}
+.req .mono{margin-left:auto;color:var(--ink-3);font-size:12px}
+.schedline{font-size:12px;color:var(--ink-3);padding:0 2px}
 .vh .vst{font-style:normal;font-size:11px;display:inline-flex;align-items:center;gap:5px;color:var(--ink-3)}
 .vh .vst.ok{color:var(--ok-t)}.vh .vst.warn{color:var(--warn-t)}.vh .vst.bad{color:var(--bad-t)}
 .vlegend{display:inline-flex;gap:12px;align-items:center;font-size:12px;color:var(--ink-3)}
@@ -385,6 +400,7 @@ pre.jerr span.e{color:var(--bad-t)}
       <div class="list-h">
         <div class="row"><h2>Subjects</h2><span class="src" id="subCount"></span></div>
         <label class="search"><svg class="i s"><use href="#i-search"/></svg><input id="q" type="search" placeholder="Subject label" autocomplete="off"></label>
+        <div class="fchips" id="fchips"></div><div class="schedline" id="schedline"></div>
       </div>
       <div class="subs" id="subs"></div>
       <div class="me" id="me"></div>
@@ -409,9 +425,9 @@ pre.jerr span.e{color:var(--bad-t)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.3.2";
+const VERSION = "subject-view-harness/0.4.0";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {} };
+const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {} };
 const DIAG_MAX = 60;
 
 function toast(m) { const h = document.getElementById("toastHost"); h.innerHTML = `<div class="toast" role="status">${esc(m)}</div>`; clearTimeout(toast.t); toast.t = setTimeout(() => h.innerHTML = "", 3500); }
@@ -516,17 +532,75 @@ function tasksForSubject(id) {
 }
 const OPEN = x => x.status === "todo" || x.status === "in_progress";
 const openFail = (jobs) => jobs.filter(j => j.state === "failed" && !jobs.some(x => x.previous_job_id === (j._id || j.id)));
-function sessStatus(z, sid) {
+/* ---------- visit schedule from project session templates (v0.4) ---------- */
+/* Flywheel stores session templates on project.templates (list; legacy project.template). Each one names a session label
+   (exact or regex) and the acquisitions it needs: label, minimum count, optional file rules. Core evaluates them into
+   session.satisfies_template; we re-check client-side only to say WHICH requirement is missing. */
+function tplLabel(x) {
+  if (x == null) return null;
+  let v = x, rx = false;
+  if (typeof x === "object") { v = x.label != null ? x.label : x.value != null ? x.value : x.name; rx = !!(x.regex || x.is_regex || x.label_regex || x.match === "regex" || x.match_type === "regex" || x.matching === "regex"); }
+  if (v && typeof v === "object") { if (v.$regex != null) { rx = true; v = v.$regex; } else if (v.regex != null) { rx = true; v = v.regex; } else v = v.label != null ? v.label : JSON.stringify(v); }
+  if (v == null || v === "") return null;
+  v = String(v); if (!rx && /^\^.*\$$/.test(v)) rx = true;
+  let re = null; if (rx) { try { re = new RegExp(v); } catch (e) { re = null; } }
+  return { text: rx ? v.replace(/^\^|\$$/g, "") : v, rx, test: l => re ? re.test(String(l == null ? "" : l)) : String(l == null ? "" : l) === v };
+}
+let _schedKey = null, _sched = [];
+function schedule() {
+  const p = S.project || {}, ts = Array.isArray(p.templates) && p.templates.length ? p.templates : (p.template && typeof p.template === "object" ? [p.template] : []);
+  const key = JSON.stringify(ts); if (key === _schedKey) return _sched;
+  _schedKey = key;
+  _sched = ts.map((t, i) => {
+    const L = tplLabel(t.session || t.session_label || (t.label != null ? { label: t.label } : null));
+    const reqs = (t.acquisitions || []).map(a => ({ L: tplLabel(a), min: Math.max(1, +(a.minimum != null ? a.minimum : a.count != null ? a.count : 1) || 1), files: (a.files || []).map(f => ({ min: Math.max(1, +(f.minimum != null ? f.minimum : 1) || 1), type: f.type, mimetype: f.mimetype, classification: f.classification })) })).filter(r => r.L);
+    return { i, label: L ? L.text : `Visit ${i + 1}`, L, reqs };
+  });
+  return _sched;
+}
+function fileOk(f, fr) {
+  if (fr.type && String(f.type || "").toLowerCase() !== String(fr.type).toLowerCase()) return false;
+  if (fr.mimetype && f.mimetype) { const re = new RegExp("^" + String(fr.mimetype).replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$", "i"); if (!re.test(f.mimetype)) return false; }
+  if (fr.classification && typeof fr.classification === "object") for (const [k, v] of Object.entries(fr.classification)) { const need = [].concat(v || []), have = [].concat((f.classification || {})[k] || []); if (need.length && !need.every(n => have.includes(n))) return false; }
+  return true;
+}
+/* -> [{label, min, found, ok, files:false|true}] or null if acquisitions not loaded yet */
+function checkVisit(v, acqs, serverOk) {
+  if (!v || !acqs) return null;
+  return v.reqs.map(r => { const m = acqs.filter(a => r.L.test(a.label)); const good = m.filter(a => r.files.every(fr => (a.files || []).filter(f => fileOk(f, fr)).length >= fr.min)); const ok = good.length >= r.min || (serverOk && m.length >= r.min); return { label: r.L.text, min: r.min, found: m.length, ok, fileIssue: !ok && m.length >= r.min }; });
+}
+/* Columns for a subject: one per scheduled visit (matched session or a "not received" placeholder), then unscheduled sessions. */
+function visitsFor(sid) {
+  const sess = subjSessions(sid), sch = schedule(), used = new Set();
+  const cols = sch.map(v => { const z = sess.find(x => !used.has(x._id) && v.L && v.L.test(x.label)); if (z) used.add(z._id); return { v, z, key: z ? z._id : "miss:" + v.i }; });
+  sess.filter(x => !used.has(x._id)).forEach(z => cols.push({ v: null, z, key: z._id }));
+  return cols;
+}
+const visitOf = (z, sid) => (visitsFor(sid).find(c => c.z && c.z._id === z._id) || {}).v || null;
+const plural = (n, w) => n + " " + w + (n === 1 ? "" : "s");
+function sessStatus(z, sid, vIn) {
+  if (!z) { const v = vIn; return { k: "miss", t: "Not received", all: "not received" + (v && v.reqs.length ? " · expects " + v.reqs.map(r => r.label).join(", ") : "") }; }
+  const v = vIn !== undefined ? vIn : visitOf(z, sid), d = S.detail[sid];
   const tt = (tasksForSubject(sid) || []).filter(x => { const s = sessionOfTask(x, sid); return s && s._id === z._id; });
-  const open = tt.filter(OPEN).length, d = S.detail[sid];
+  const open = tt.filter(OPEN).length;
   const failed = d && d.jobsOk ? openFail(d.jobs).filter(j => (j.parents && j.parents.session === z._id) || (j.destination && j.destination.id === z._id)).length : 0;
+  const chk = v ? checkVisit(v, d && d.acqs ? d.acqs[z._id] : null, z.satisfies_template === true) : null;
+  const missing = chk ? chk.filter(c => !c.ok) : [];
   const why = [];
-  if (z.satisfies_template === false) why.push("template not satisfied");
-  if (failed) why.push(failed + " failed job" + (failed > 1 ? "s" : ""));
-  if (why.length) return { k: "bad", t: why[0][0].toUpperCase() + why[0].slice(1), all: why.concat(open ? [open + " open read" + (open > 1 ? "s" : "")] : []).join(" · ") };
-  if (open) return { k: "warn", t: open + " open read" + (open > 1 ? "s" : ""), all: open + " open read" + (open > 1 ? "s" : "") };
-  if (tt.length || z.satisfies_template === true) return { k: "ok", t: tt.length ? "Reads complete" : "Template satisfied", all: tt.length ? "reads complete" : "template satisfied" };
-  return { k: "", t: "No checks yet", all: "no template or reads" };
+  if (missing.length) why.push("Missing " + missing.map(c => c.label + (c.fileIssue ? " (files)" : c.min > 1 ? ` (${c.found}/${c.min})` : "")).join(", "));
+  else if (z.satisfies_template === false) why.push("Template not satisfied");
+  if (failed) why.push(plural(failed, "failed job"));
+  const tail = [].concat(open ? [plural(open, "open read")] : [], schedule().length && !v ? ["unscheduled visit"] : []);
+  if (why.length) return { k: "bad", t: why[0], all: why.concat(tail).join(" · "), missing };
+  if (open) return { k: "warn", t: plural(open, "open read"), all: (v && (chk || z.satisfies_template === true) ? "imaging complete · " : "") + tail.join(" · ") };
+  if (tt.length || z.satisfies_template === true || (chk && chk.length)) return { k: "ok", t: "Complete", all: ["complete", v ? "imaging complete" : null, tt.length ? "reads done" : null].filter(Boolean).join(" · ") + (tail.length ? " · " + tail.join(" · ") : "") };
+  return { k: "", t: "No checks yet", all: "no template or reads" + (tail.length ? " · " + tail.join(" · ") : "") };
+}
+/* Subject roll-up across the schedule (uses server satisfies_template for subjects whose acquisitions aren't loaded). */
+function subjRollup(sid) {
+  const cols = visitsFor(sid), sched = cols.filter(c => c.v);
+  const st = cols.map(c => sessStatus(c.z, sid, c.v));
+  return { cols, st, n: sched.length, got: sched.filter(c => c.z).length, done: st.filter((x, i) => cols[i].v && x.k === "ok").length, bad: st.filter(x => x.k === "bad").length, miss: st.filter(x => x.k === "miss").length, warn: st.filter(x => x.k === "warn").length };
 }
 function sessionOfTask(t, id) { const ss = subjSessions(id); if (t.parents && t.parents.session) return ss.find(z => z._id === t.parents.session); if (t.parent_ref && t.parent_ref.type === "session") return ss.find(z => z._id === t.parent_ref.id); const d = S.detail[id]; if (d && d.acqs) for (const [sid, as] of Object.entries(d.acqs)) if (as.some(a => a._id === (t.parent_ref || {}).id)) return ss.find(z => z._id === sid); return null; }
 const fmtSize = b => b == null ? "" : b > 1e9 ? (b / 1e9).toFixed(1) + " GB" : b > 1e6 ? (b / 1e6).toFixed(0) + " MB" : (b / 1e3).toFixed(0) + " KB";
@@ -680,10 +754,19 @@ function failedProjectCard() {
 
 /* ---------- render ---------- */
 function renderSide() {
-  const q = S.q.trim().toLowerCase(), rows = S.subjects.filter(s => !q || String(s.label).toLowerCase().includes(q));
+  const q = S.q.trim().toLowerCase(), sch = schedule();
+  const roll = new Map(S.subjects.map(s => [s._id, subjRollup(s._id)]));
+  const F = { all: () => true, attn: r => r.bad > 0, miss: r => r.miss > 0, done: r => r.n && r.done === r.n };
+  const cnt = k => S.subjects.filter(s => F[k](roll.get(s._id))).length;
+  if (!F[S.filt]) S.filt = "all";
+  const rows = S.subjects.filter(s => (!q || String(s.label).toLowerCase().includes(q)) && F[S.filt](roll.get(s._id)));
   document.getElementById("subCount").textContent = rows.length + " of " + S.subjects.length;
-  document.getElementById("subs").innerHTML = rows.map(s => { const n = subjSessions(s._id).length, t = tasksForSubject(s._id), open = t ? t.filter(x => x.status === "todo" || x.status === "in_progress").length : 0;
-    return `<button class="srow ${s._id === S.subj ? "on" : ""}" data-subj="${s._id}"><span class="lbl">${esc(s.label)}</span><span class="flagn">${open ? `<span class="fl warn" title="Open reader tasks">${open}</span>` : ""}</span><span class="meta"><span class="vdots">${subjSessions(s._id).map(z => { const st = sessStatus(z, s._id); return `<i class="vd ${st.k}" title="${esc(z.label)} · ${dt(z.timestamp || z.created).slice(0, 10)} · ${esc(st.all)}"></i>`; }).join("")}</span><span>${n} session${n === 1 ? "" : "s"}${s.cohort ? " · " + esc(s.cohort) : ""}</span></span></button>`; }).join("") || `<div class="empty-s">${S.loading ? "Loading…" : "No subjects in this project."}</div>`;
+  document.getElementById("fchips").innerHTML = sch.length ? [["all", "All"], ["attn", "Incomplete"], ["miss", "Outstanding"], ["done", "Complete"]].map(([k, l]) => `<button class="fchip ${S.filt === k ? "on" : ""}" data-filt="${k}" title="${{ all: "All subjects", attn: "Has a received visit missing required series, or a failed job", miss: "Has scheduled visits not received yet", done: "Every scheduled visit received and complete" }[k]}">${l}<b>${cnt(k)}</b></button>`).join("") : "";
+  document.getElementById("schedline").textContent = sch.length ? `${sch.length} scheduled visits, from session templates` : "";
+  document.getElementById("subs").innerHTML = rows.map(s => { const r = roll.get(s._id), n = subjSessions(s._id).length, t = tasksForSubject(s._id), open = t ? t.filter(OPEN).length : 0;
+    const dots = r.cols.map((c, i) => `<i class="vd ${r.st[i].k}" title="${esc(c.v ? c.v.label : c.z.label)}${c.z ? " · " + dt(c.z.timestamp || c.z.created).slice(0, 10) : ""} · ${esc(r.st[i].all)}"></i>`).join("");
+    const meta = r.n ? `${r.got}/${r.n} visits · ${r.done} complete` : plural(n, "session");
+    return `<button class="srow ${s._id === S.subj ? "on" : ""}" data-subj="${s._id}"><span class="lbl">${esc(s.label)}</span><span class="flagn">${r.bad ? `<span class="fl bad" title="Incomplete visits">${r.bad}</span>` : ""}${open ? `<span class="fl warn" title="Open reader tasks">${open}</span>` : ""}</span><span class="meta"><span class="vdots">${dots}</span><span>${meta}${s.cohort ? " · " + esc(s.cohort) : ""}</span></span></button>`; }).join("") || `<div class="empty-s">${S.loading ? "Loading…" : S.subjects.length ? "No subjects match this filter." : "No subjects in this project."}</div>`;
   const u = S.user || {};
   document.getElementById("me").innerHTML = `<span class="avatar">${esc(((u.firstname || "?")[0] || "") + ((u.lastname || "")[0] || ""))}</span><div><div style="font-weight:500;font-size:13px">${esc([u.firstname, u.lastname].filter(Boolean).join(" ") || u._id || "Signed in")}</div><div class="src" style="font-family:var(--font-ui);font-size:12px">${esc((S.origin || "").replace("https://", ""))}</div></div>`;
 }
@@ -691,9 +774,10 @@ function phi(v) { return S.phi ? `<span class="phi shown">${esc(v || "—")}</sp
 function header(s, d) {
   const sess = subjSessions(s._id), acqs = d && d.acqs ? Object.values(d.acqs).flat() : [], files = acqs.reduce((m, a) => m + (a.files || []).length, 0);
   const t = tasksForSubject(s._id), openT = t ? t.filter(x => x.status === "todo" || x.status === "in_progress") : null;
-  const failed = d && d.jobs ? openFail(d.jobs) : null, info = (d && d.subject && d.subject.info) || {};
+  const failed = d && d.jobs ? openFail(d.jobs) : null, info = (d && d.subject && d.subject.info) || {}, R = subjRollup(s._id);
   const tiles = [
-    ["Sessions", sess.length, sess.length ? `${dt(sess[0].timestamp).slice(0, 10)} → ${dt(sess[sess.length - 1].timestamp).slice(0, 10)}` : "none yet", ""],
+    ...(R.n ? [["Visits", `${R.got} / ${R.n}`, [R.miss ? R.miss + " not received" : "all received", R.bad ? R.bad + " incomplete" : null, R.done + " complete"].filter(Boolean).join(" · "), R.bad ? "bad" : R.miss ? "" : "ok"]] :
+      [["Sessions", sess.length, sess.length ? `${dt(sess[0].timestamp).slice(0, 10)} → ${dt(sess[sess.length - 1].timestamp).slice(0, 10)}` : "none yet", ""]]),
     ["Acquisitions", d && d.acqs ? acqs.length : "…", d && d.acqs ? `${files} files` : "loading", ""],
     ["Open reads", openT ? openT.length : "…", openT ? (openT.map(x => x.task_id).slice(0, 3).join(", ") || "none open") : "loading", openT && openT.length ? "warn" : ""],
     ["Gear jobs", d && d.jobsOk ? (failed.length ? failed.length + " failed" : d.jobs.length) : d && d.ok ? "n/a" : "…", d && d.jobsOk ? (failed.length ? failed[0].gear_info.name : `${d.jobs.length} jobs, none failed`) : d && d.ok ? "not available via extension" : "loading", failed && failed.length ? "bad" : ""],
@@ -717,25 +801,43 @@ const TABS = [["overview", "Overview"], ["tasks", "Tasks & jobs"], ["clinical", 
 function tabs() { return `<div class="tabsbar"><nav class="tabs">${TABS.map(([k, l]) => `<button class="tab ${S.tab === k ? "on" : ""}" data-tab="${k}">${l}</button>`).join("")}</nav></div>`; }
 
 function matrix(s, d) {
-  const sess = subjSessions(s._id);
-  if (!sess.length) return `<div class="card"><div class="empty-big">No sessions for this subject yet.</div></div>`;
-  const acqsOf = z => d && d.acqs ? (d.acqs[z._id] || []) : null;
+  const cols = visitsFor(s._id), sch = schedule();
+  if (!cols.length) return `<div class="card"><div class="empty-big">No sessions for this subject yet.</div></div>`;
+  const acqsOf = z => z && d && d.acqs ? (d.acqs[z._id] || []) : null;
   const mods = d && d.acqs ? [...new Set(Object.values(d.acqs).flat().map(acqMod))].sort() : [];
   const t = tasksForSubject(s._id) || [];
-  const cell = (z, key) => {
-    const as = acqsOf(z);
-    if (key.startsWith("mod:")) { if (!as) return `<span class="src">…</span>`; const m = as.filter(a => acqMod(a) === key.slice(4)); return m.length ? `<button class="cell ok" data-pane="${z._id}|${key}"><span class="g">✓</span>${m.length} acq · ${(n => n + (n === 1 ? " file" : " files"))(m.reduce((n, a) => n + (a.files || []).length, 0))}</button>` : ""; }
-    if (key === "tasks") { const tt = t.filter(x => { const sz = sessionOfTask(x, s._id); return sz && sz._id === z._id; }); if (!tt.length) return ""; const open = tt.filter(x => x.status === "todo" || x.status === "in_progress").length, done = tt.filter(x => x.status === "completed").length; return `<button class="cell ${open ? "warn" : "ok"}" data-pane="${z._id}|tasks"><span class="g">${open ? open : "✓"}</span>${done} done${open ? " · " + open + " open" : ""}</button>`; }
-    if (key === "jobs") { if (!d || !d.jobsOk) return d && d.ok ? `<span class="src">n/a</span>` : ""; const jj = d.jobs.filter(j => (j.parents && j.parents.session === z._id) || (j.destination && j.destination.id === z._id)); if (!jj.length) return ""; const f = openFail(jj).length; return `<button class="cell ${f ? "bad" : "ok"}" data-pane="${z._id}|jobs"><span class="g">${f ? "!" : "✓"}</span>${f ? f + " failed" : jj.length + " done"}</button>`; }
-    if (key === "info") { const k = Object.keys(z.info || {}); return k.length ? `<button class="cell info" data-pane="${z._id}|info"><span class="g">${k.length}</span>keys</button>` : ""; }
-    if (key === "tpl") { if (z.satisfies_template === undefined) return ""; if (z.satisfies_template === null) return `<span class="cell"><span class="g">–</span>not checked</span>`; return `<span class="cell ${z.satisfies_template ? "ok" : "bad"}"><span class="g">${z.satisfies_template ? "✓" : "✗"}</span>${z.satisfies_template ? "satisfied" : "not satisfied"}</span>`; }
+  const reqLabels = [...new Map(sch.flatMap(v => v.reqs.map(r => [r.L.text, r]))).values()];
+  const cell = (c, key) => {
+    const z = c.z, as = acqsOf(z);
+    if (key.startsWith("req:")) {
+      const lbl = key.slice(4), r = c.v && c.v.reqs.find(x => x.L.text === lbl);
+      if (!z) return r ? `<span class="cell miss"><span class="g"></span>expected</span>` : "";
+      if (!as) return r ? `<span class="src">…</span>` : "";
+      const L = r ? r.L : tplLabel(lbl), m = as.filter(a => L.test(a.label));
+      if (!r) return m.length ? `<button class="cell" data-pane="${c.key}|req"><span class="g" style="color:var(--ink-3)">·</span>${m.length} acq, not required</button>` : "";
+      const k = checkVisit({ reqs: [r] }, as, z.satisfies_template === true)[0];
+      return k.ok ? `<button class="cell ok" data-pane="${c.key}|req"><span class="g">✓</span>${m.length} acq${r.min > 1 ? ` (min ${r.min})` : ""}</button>` : `<button class="cell bad" data-pane="${c.key}|req"><span class="g">✗</span>${k.fileIssue ? "files missing" : m.length ? `${m.length} of ${r.min}` : "missing"}</button>`;
+    }
+    if (!z) return "";
+    if (key.startsWith("mod:")) { if (!as) return `<span class="src">…</span>`; const m = as.filter(a => acqMod(a) === key.slice(4)); return m.length ? `<button class="cell ok" data-pane="${c.key}|${key}"><span class="g">✓</span>${m.length} acq · ${(n => n + (n === 1 ? " file" : " files"))(m.reduce((n, a) => n + (a.files || []).length, 0))}</button>` : ""; }
+    if (key === "tasks") { const tt = t.filter(x => { const sz = sessionOfTask(x, s._id); return sz && sz._id === z._id; }); if (!tt.length) return ""; const open = tt.filter(OPEN).length, done = tt.filter(x => x.status === "completed").length; return `<button class="cell ${open ? "warn" : "ok"}" data-pane="${c.key}|tasks"><span class="g">${open ? open : "✓"}</span>${done} done${open ? " · " + open + " open" : ""}</button>`; }
+    if (key === "jobs") { if (!d || !d.jobsOk) return d && d.ok ? `<span class="src">n/a</span>` : ""; const jj = d.jobs.filter(j => (j.parents && j.parents.session === z._id) || (j.destination && j.destination.id === z._id)); if (!jj.length) return ""; const f = openFail(jj).length; return `<button class="cell ${f ? "bad" : "ok"}" data-pane="${c.key}|jobs"><span class="g">${f ? "!" : "✓"}</span>${f ? f + " failed" : jj.length + " done"}</button>`; }
+    if (key === "info") { const k = Object.keys(z.info || {}); return k.length ? `<button class="cell info" data-pane="${c.key}|info"><span class="g">${k.length}</span>keys</button>` : ""; }
+    if (key === "tpl") { if (z.satisfies_template === undefined) return ""; if (z.satisfies_template === null) return `<span class="cell"><span class="g">–</span>${c.v ? "not evaluated yet" : "no template for this label"}</span>`; return `<span class="cell ${z.satisfies_template ? "ok" : "bad"}"><span class="g">${z.satisfies_template ? "✓" : "✗"}</span>${z.satisfies_template ? "satisfied" : "not satisfied"}</span>`; }
     return "";
   };
-  const rows = [{ group: "Imaging received" }, ...(mods.length ? mods.map(m => ({ key: "mod:" + m, label: m })) : [{ key: "mod:?", label: d && d.acqs ? "No acquisitions" : "Loading…" }]), { group: "Reads & processing" }, { key: "tasks", label: "Reader tasks" }, { key: "jobs", label: "Gear jobs" }, { group: "Metadata" }, { key: "tpl", label: "Session template" }, { key: "info", label: "Session custom info" }];
-  return `<div class="card"><div class="card-h"><h3>Subject at a glance</h3><span class="vlegend"><span><i class="vd ok"></i>Complete</span><span><i class="vd warn"></i>Reads open</span><span><i class="vd bad"></i>Blocked</span><span><i class="vd"></i>No checks</span></span></div>
-    <div class="mx"><table><thead><tr><th class="rl" style="vertical-align:bottom"><span class="muted" style="font-size:12px;font-weight:400">Session →</span></th>
-    ${sess.map(z => `<th><button class="vh ${S.pane && S.pane.z === z._id && !S.pane.r ? "sel" : ""}" data-pane="${z._id}|">${(st => `<span class="bar" style="background:${st.k ? `var(--${st.k})` : "#33415a"}"></span><b>${esc(z.label)}</b><small>${dt(z.timestamp || z.created).slice(0, 10)}</small><em class="vst ${st.k}" title="${esc(st.all)}"><i class="vd ${st.k}"></i>${esc(st.t)}</em>`)(sessStatus(z, S.subj))}</button></th>`).join("")}</tr></thead><tbody>
-    ${rows.map(r => r.group ? `<tr class="grp"><td class="rl">${r.group}</td>${sess.map(() => "<td></td>").join("")}</tr>` : `<tr><th class="rl" scope="row">${esc(r.label)}</th>${sess.map(z => `<td>${cell(z, r.key)}</td>`).join("")}</tr>`).join("")}
+  const rows = [
+    ...(reqLabels.length ? [{ group: "Required series (session templates)" }, ...reqLabels.map(r => ({ key: "req:" + r.L.text, label: r.L.text }))] : []),
+    { group: reqLabels.length ? "All imaging received" : "Imaging received" }, ...(mods.length ? mods.map(m => ({ key: "mod:" + m, label: m })) : [{ key: "mod:?", label: d && d.acqs ? "No acquisitions" : "Loading…" }]),
+    { group: "Reads & processing" }, { key: "tasks", label: "Reader tasks" }, { key: "jobs", label: "Gear jobs" },
+    { group: "Metadata" }, { key: "tpl", label: "Template check (Flywheel)" }, { key: "info", label: "Session custom info" }];
+  const R = subjRollup(s._id);
+  const legend = `<span class="vlegend"><span><i class="vd ok"></i>Complete</span><span><i class="vd warn"></i>Reads open</span><span><i class="vd bad"></i>Incomplete</span>${sch.length ? `<span><i class="vd miss"></i>Not received</span>` : ""}<span><i class="vd"></i>No checks</span></span>`;
+  const sub = sch.length ? `<span class="src" style="font-family:var(--font-ui)">${R.got} of ${R.n} scheduled visits received · ${R.done} complete${R.bad ? ` · <b style="color:var(--bad-t)">${R.bad} incomplete</b>` : ""}${cols.length > R.n ? ` · ${cols.length - R.n} unscheduled` : ""}</span>` : "";
+  return `<div class="card"><div class="card-h"><div style="display:flex;flex-direction:column;gap:2px"><h3>Subject at a glance</h3>${sub}</div>${legend}</div>
+    <div class="mx"><table><thead><tr><th class="rl" style="vertical-align:bottom"><span class="muted" style="font-size:12px;font-weight:400">${sch.length ? "Visit →" : "Session →"}</span></th>
+    ${cols.map((c, i) => { const st = R.st[i]; return `<th><button class="vh ${st.k === "miss" ? "miss" : ""} ${S.pane && S.pane.z === c.key && !S.pane.r ? "sel" : ""}" data-pane="${c.key}|"><span class="bar ${st.k === "miss" ? "miss" : ""}" style="background:${st.k && st.k !== "miss" ? `var(--${st.k})` : "#33415a"}"></span><b>${esc(c.z ? c.z.label : c.v.label)}</b><small>${c.z ? dt(c.z.timestamp || c.z.created).slice(0, 10) : "—"}${sch.length && !c.v ? " · unscheduled" : ""}</small><em class="vst ${st.k}" title="${esc(st.all)}"><i class="vd ${st.k}"></i>${esc(st.t)}</em></button></th>`; }).join("")}</tr></thead><tbody>
+    ${rows.map(r => r.group ? `<tr class="grp"><td class="rl">${r.group}</td>${cols.map(() => "<td></td>").join("")}</tr>` : `<tr><th class="rl" scope="row">${esc(r.label)}</th>${cols.map(c => `<td>${cell(c, r.key)}</td>`).join("")}</tr>`).join("")}
     </tbody></table></div></div>`;
 }
 function tasksTab(s, d) {
@@ -760,6 +862,7 @@ function diagTab() {
   const ok = S.calls.filter(c => c.status === "ok").length, er = S.calls.filter(c => c.status === "error").length;
   return `<div class="card diag"><div class="card-h"><h3>Diagnostics</h3><span class="src">${VERSION} · ${ok} ok · ${er} failed · newest first · GET only</span></div>
     <div class="card-b" style="font-size:13px;color:var(--ink-2)">Origin <span class="mono">${esc(S.origin || "unknown")}</span> · user <span class="mono">${esc(S.user ? S.user._id : "?")}</span> · opened from <span class="mono">${esc(S.opener ? (S.opener.container_type || "?") + " " + (S.opener._id || "") : "?")}</span> · project <span class="mono">${esc(S.projectId || "?")}</span></div>
+    ${schedule().length || (S.project && (S.project.templates || S.project.template)) ? `<div class="card-b"><div class="src" style="font-family:var(--font-ui);margin-bottom:6px">Session templates as read from project.templates (${schedule().length} parsed)</div><pre>${esc(JSON.stringify(S.project.templates || S.project.template, null, 2).slice(0, 4000))}</pre></div>` : `<div class="card-b src" style="font-family:var(--font-ui)">No session templates on this project (project.templates is empty).</div>`}
     ${S.calls.map((c, i) => `<div class="call" data-diag="${i}" title="Show a sample row"><span class="${c.status === "ok" ? "ok" : c.status === "error" ? "er" : ""}">${c.status}</span><code>GET ${esc(c.path)}${c.params ? " " + esc(JSON.stringify(c.params)) : ""}</code><span class="mono muted">${c.n != null ? c.n + (c.total != null ? "/" + c.total : "") + " rows" : ""}</span><span class="mono muted">${c.ms} ms${c.err ? " · " + esc(c.err) : ""}</span></div>${i === S.diagOpen ? `<pre>${esc(JSON.stringify(c.sample, null, 2))}</pre>` : ""}`).join("")}
     <div class="card-b"><span class="src" style="font-family:var(--font-ui)">Click a call to see one sample row (PHI fields redacted).</span> <button class="ibtn" data-act="copydiag">Copy diagnostics</button></div></div>`;
 }
@@ -767,8 +870,19 @@ function pane() {
   const host = document.getElementById("paneHost");
   if (S.job) { jobPane(); return; }
   if (!S.pane) { host.innerHTML = ""; return; }
-  const s = S.subjects.find(x => x._id === S.subj), d = S.detail[S.subj], sess = subjSessions(S.subj), i = sess.findIndex(z => z._id === S.pane.z), z = sess[i], r = S.pane.r;
-  if (!z) { host.innerHTML = ""; return; }
+  const s = S.subjects.find(x => x._id === S.subj), d = S.detail[S.subj], cols = visitsFor(S.subj), i = cols.findIndex(c => c.key === S.pane.z), col = cols[i], z = col && col.z, r = S.pane.r;
+  if (!col) { host.innerHTML = ""; return; }
+  const prevC = cols[i - 1], nextC = cols[i + 1];
+  const nav = `<button class="ibtn" ${prevC ? `data-pane="${prevC.key}|"` : "disabled"}>‹</button><button class="ibtn" ${nextC ? `data-pane="${nextC.key}|"` : "disabled"}>›</button><button class="tbtn" data-act="closePane" aria-label="Close"><svg class="i s"><use href="#i-x"/></svg></button>`;
+  const reqList = (v, as, srv) => { const chk = as ? checkVisit(v, as, srv) : v.reqs.map(r => ({ label: r.L.text, min: r.min, found: 0, ok: false, pending: true }));
+    return chk.map(k => `<div class="req ${k.pending ? "miss" : k.ok ? "ok" : "bad"}"><span class="g">${k.pending ? "" : k.ok ? "✓" : "✗"}</span><b>${esc(k.label)}</b>${k.min > 1 ? `<span class="muted">min ${k.min}</span>` : ""}<span class="mono">${k.pending ? "expected" : k.ok ? k.found + " acq" : k.fileIssue ? "required files missing" : k.found ? k.found + " of " + k.min : "missing"}</span></div>`).join(""); };
+  if (!z) {
+    host.innerHTML = `<aside class="pane" role="dialog" aria-label="${esc(col.v.label)}"><header><div style="display:flex;align-items:center;gap:8px"><nav class="bc"><button data-act="closePane">${esc(s.label)}</button><i>›</i><b>${esc(col.v.label)}</b></nav><span style="flex:1"></span>${nav}</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="vst-pill" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-3)"><i class="vd miss"></i>Not received</span><span class="src">Scheduled visit ${col.v.i + 1} of ${schedule().length}</span></div></header>
+      <div class="body"><section class="psec"><h4>Expected when this visit arrives</h4>${reqList(col.v, null)}</section>
+      <section class="psec"><h4>How this is matched</h4><span class="muted" style="font-size:13px">A session whose label ${col.v.L && col.v.L.rx ? "matches the pattern" : "is exactly"} <span class="mono">${esc(col.v.L ? col.v.L.text : col.v.label)}</span> fills this visit. None found for ${esc(s.label)}. No visit window is defined in the template, so the app can't say whether it's overdue.</span></section></div></aside>`;
+    return;
+  }
   const as = d && d.acqs ? (d.acqs[z._id] || []) : [];
   const shown = r && r.startsWith("mod:") ? as.filter(a => acqMod(a) === r.slice(4)) : as;
   const t = (tasksForSubject(S.subj) || []).filter(x => { const sz = sessionOfTask(x, S.subj); return sz && sz._id === z._id; });
@@ -776,13 +890,14 @@ function pane() {
   const files = a => (a.files || []).map(f => { const id = a._id + "/" + f.name, open = S.fileOpen[id]; return `<div class="frow"><span class="nm">${esc(f.name)} <span class="muted" style="font-family:var(--font-ui)">· ${esc(f.type || "")} · ${fmtSize(f.size)}</span></span><span class="acts"><a class="ibtn" href="${coreLink("sessions", z._id)}" target="_blank" rel="noopener"><svg class="i s"><use href="#i-ext"/></svg>Open in Flywheel</a><button class="ibtn" data-fmeta="${esc(id)}">${open ? "Hide" : "Details"}</button></span>${open ? `<div class="fmeta"><dl class="kv"><dt>Modality</dt><dd>${esc(f.modality || "—")}</dd><dt>Classification</dt><dd>${esc(Object.entries(f.classification || {}).map(([k, v]) => k + ": " + [].concat(v).join(", ")).join(" · ") || "—")}</dd><dt>Created</dt><dd class="mono">${dt(f.created)}</dd><dt>Info keys</dt><dd>${esc(Object.keys(f.info || {}).slice(0, 8).join(", ") || "—")}</dd><dt>Tags</dt><dd>${esc((f.tags || []).join(", ") || "—")}</dd></dl></div>` : ""}</div>`; }).join("");
   const sec = (h, b) => `<section class="psec"><h4>${h}</h4>${b}</section>`;
   let body = "";
+  if (col.v && (!r || r === "req")) { const st = sessStatus(z, S.subj, col.v); body += sec(`Visit requirements <span class="src">${esc(col.v.label)} template · Flywheel says ${z.satisfies_template === true ? "satisfied" : z.satisfies_template === false ? "not satisfied" : "not evaluated"}</span>`, reqList(col.v, d && d.acqs ? (d.acqs[z._id] || []) : null, z.satisfies_template === true) + (z.satisfies_template === false && !(st.missing || []).length && d && d.acqs ? `<span class="muted" style="font-size:12px">Flywheel marks this session not satisfied, but every acquisition rule checks out here. The failing rule is probably a file rule (type, classification) this app can't read exactly.</span>` : "")); }
+  if (!col.v && schedule().length && !r) body += sec("Visit requirements", `<span class="muted">No session template matches the label <span class="mono">${esc(z.label)}</span>, so this is treated as an unscheduled visit.</span>`);
   if (!r || r.startsWith("mod:")) body += sec(r ? r.slice(4) : "Acquisitions", shown.length ? shown.map(a => `<div class="acq"><div class="acq-h"><span class="pill" style="background:var(--card-2);color:var(--ink-2)">${esc(acqMod(a))}</span><b>${esc(a.label)}</b><span class="mono muted" style="font-size:12px">${dt(a.timestamp || a.created)}</span></div>${files(a)}</div>`).join("") : `<span class="muted">${d && d.acqs ? "No acquisitions." : "Loading…"}</span>`);
   if (!r || r === "tasks") body += sec("Reader tasks", t.length ? t.map(x => `<div class="frow" style="border:1px solid var(--line-soft);border-radius:8px"><span><span class="mono">${esc(x.task_id)}</span> <span class="muted">· ${esc(x.protocol_label || "")} · ${esc(x.assignee ? x.assignee.id : "unassigned")}</span></span><span class="acts"><span class="st ${esc(x.status)}">${esc(String(x.status).replace("_", " "))}</span></span></div>`).join("") : `<span class="muted">No reader tasks.</span>`);
   if (!r || r === "jobs") body += sec("Gear jobs", d && d.jobsOk ? (jj.length ? jj.map(j => `<div class="frow" style="border:1px solid var(--line-soft);border-radius:8px"><span>${esc(j.gear_info ? j.gear_info.name : "")} <span class="muted mono">${esc(j.gear_info ? j.gear_info.version : "")}</span></span><span class="acts"><span class="st ${esc(j.state)}">${esc(j.state)}</span><button class="ibtn" data-job="${j._id || j.id}">${j.state === "failed" ? "Troubleshoot" : "Details"}</button></span></div>`).join("") : `<span class="muted">No jobs.</span>`) : `<span class="muted">Jobs not available through the extension proxy.</span>`);
   if (!r || r === "info") { const kv = flatKV(z.info || {}, "", []); body += sec("Session custom info", kv.length ? `<div class="kvgrid">${kv.slice(0, 40).map(([k, v]) => `<div><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`).join("")}</div>` : `<span class="muted">No custom info.</span>`); }
-  const prev = sess[i - 1], next = sess[i + 1];
-  host.innerHTML = `<aside class="pane" role="dialog" aria-label="${esc(z.label)}"><header><div style="display:flex;align-items:center;gap:8px"><nav class="bc"><button data-act="closePane">${esc(s.label)}</button><i>›</i>${r ? `<button data-pane="${z._id}|">${esc(z.label)}</button><i>›</i><b>${esc(r.replace("mod:", ""))}</b>` : `<b>${esc(z.label)}</b>`}</nav><span style="flex:1"></span><button class="ibtn" ${prev ? `data-pane="${prev._id}|${r || ""}"` : "disabled"}>‹</button><button class="ibtn" ${next ? `data-pane="${next._id}|${r || ""}"` : "disabled"}>›</button><button class="tbtn" data-act="closePane" aria-label="Close"><svg class="i s"><use href="#i-x"/></svg></button></div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="src">${dt(z.timestamp || z.created)} · ${as.length} acquisitions</span>${(st => st.k ? `<span class="vst-pill" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--${st.k}-t)"><i class="vd ${st.k}"></i>${esc(st.all)}</span>` : "")(sessStatus(z, S.subj))}<a class="lnk" style="font-size:12px" href="${coreLink("sessions", z._id)}" target="_blank" rel="noopener">Open session in Flywheel ↗</a></div></header><div class="body">${body}</div></aside>`;
+  host.innerHTML = `<aside class="pane" role="dialog" aria-label="${esc(z.label)}"><header><div style="display:flex;align-items:center;gap:8px"><nav class="bc"><button data-act="closePane">${esc(s.label)}</button><i>›</i>${r ? `<button data-pane="${col.key}|">${esc(z.label)}</button><i>›</i><b>${esc(r === "req" ? "Visit requirements" : r.replace("mod:", ""))}</b>` : `<b>${esc(z.label)}</b>`}</nav><span style="flex:1"></span>${nav}</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="src">${dt(z.timestamp || z.created)} · ${as.length} acquisitions</span>${(st => st.k ? `<span class="vst-pill" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--${st.k}-t)"><i class="vd ${st.k}"></i>${esc(st.all)}</span>` : "")(sessStatus(z, S.subj, col.v))}<a class="lnk" style="font-size:12px" href="${coreLink("sessions", z._id)}" target="_blank" rel="noopener">Open session in Flywheel ↗</a></div></header><div class="body">${body}</div></aside>`;
 }
 function render() {
   renderSide();
@@ -799,10 +914,11 @@ function render() {
 
 /* ---------- events ---------- */
 document.addEventListener("click", async e => {
-  const t = e.target.closest("[data-subj],[data-tab],[data-pane],[data-act],[data-fmeta],[data-log],[data-diag],[data-job],#toggleList,#toggleList2,#fsBtn"); if (!t) return;
+  const t = e.target.closest("[data-filt],[data-subj],[data-tab],[data-pane],[data-act],[data-fmeta],[data-log],[data-diag],[data-job],#toggleList,#toggleList2,#fsBtn"); if (!t) return;
   if (t.dataset.job) { S.job = t.dataset.job; S.fullLog = false; if (!S.jobData[S.job] || S.jobData[S.job].err) { delete S.jobData[S.job]; loadJob(S.job); } else render(); return; }
   if (t.id === "toggleList" || t.id === "toggleList2") { document.getElementById("list").classList.toggle("collapsed"); return; }
   if (t.id === "fsBtn") { try { const p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); if (p && p.catch) p.catch(() => toast("Full screen isn't allowed in this frame")); } catch (er) {} return; }
+  if (t.dataset.filt) { S.filt = t.dataset.filt; renderSide(); return; }
   if (t.dataset.subj) { S.subj = t.dataset.subj; S.pane = null; loadSubject(S.subj); return; }
   if (t.dataset.tab) { S.tab = t.dataset.tab; render(); return; }
   if (t.dataset.pane != null) { if (t.disabled) return; const [z, r] = t.dataset.pane.split("|"); S.pane = { z, r: r || null }; render(); return; }
