@@ -386,7 +386,7 @@ a.btn,a.ibtn{text-decoration:none}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.2.0";
+const VERSION = "subject-view-harness/0.2.1";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {} };
 const DIAG_MAX = 60;
@@ -500,7 +500,7 @@ function sessStatus(z, sid) {
   if (failed) why.push(failed + " failed job" + (failed > 1 ? "s" : ""));
   if (why.length) return { k: "bad", t: why[0][0].toUpperCase() + why[0].slice(1), all: why.concat(open ? [open + " open read" + (open > 1 ? "s" : "")] : []).join(" · ") };
   if (open) return { k: "warn", t: open + " open read" + (open > 1 ? "s" : ""), all: open + " open read" + (open > 1 ? "s" : "") };
-  if (tt.length || z.satisfies_template) return { k: "ok", t: tt.length ? "Reads complete" : "Template satisfied", all: tt.length ? "reads complete" : "template satisfied" };
+  if (tt.length || z.satisfies_template === true) return { k: "ok", t: tt.length ? "Reads complete" : "Template satisfied", all: tt.length ? "reads complete" : "template satisfied" };
   return { k: "", t: "No checks yet", all: "no template or reads" };
 }
 function sessionOfTask(t, id) { const ss = subjSessions(id); if (t.parents && t.parents.session) return ss.find(z => z._id === t.parents.session); if (t.parent_ref && t.parent_ref.type === "session") return ss.find(z => z._id === t.parent_ref.id); const d = S.detail[id]; if (d && d.acqs) for (const [sid, as] of Object.entries(d.acqs)) if (as.some(a => a._id === (t.parent_ref || {}).id)) return ss.find(z => z._id === sid); return null; }
@@ -558,7 +558,7 @@ function matrix(s, d) {
     if (key === "tasks") { const tt = t.filter(x => { const sz = sessionOfTask(x, s._id); return sz && sz._id === z._id; }); if (!tt.length) return ""; const open = tt.filter(x => x.status === "todo" || x.status === "in_progress").length, done = tt.filter(x => x.status === "completed").length; return `<button class="cell ${open ? "warn" : "ok"}" data-pane="${z._id}|tasks"><span class="g">${open ? open : "✓"}</span>${done} done${open ? " · " + open + " open" : ""}</button>`; }
     if (key === "jobs") { if (!d || !d.jobsOk) return d && d.ok ? `<span class="src">n/a</span>` : ""; const jj = d.jobs.filter(j => (j.parents && j.parents.session === z._id) || (j.destination && j.destination.id === z._id)); if (!jj.length) return ""; const f = jj.filter(j => j.state === "failed").length; return `<button class="cell ${f ? "bad" : "ok"}" data-pane="${z._id}|jobs"><span class="g">${f ? "!" : "✓"}</span>${f ? f + " failed" : jj.length + " done"}</button>`; }
     if (key === "info") { const k = Object.keys(z.info || {}); return k.length ? `<button class="cell info" data-pane="${z._id}|info"><span class="g">${k.length}</span>keys</button>` : ""; }
-    if (key === "tpl") { if (z.satisfies_template === undefined) return ""; return `<span class="cell ${z.satisfies_template ? "ok" : "bad"}"><span class="g">${z.satisfies_template ? "✓" : "✗"}</span>${z.satisfies_template ? "satisfied" : "not satisfied"}</span>`; }
+    if (key === "tpl") { if (z.satisfies_template === undefined) return ""; if (z.satisfies_template === null) return `<span class="cell"><span class="g">–</span>not checked</span>`; return `<span class="cell ${z.satisfies_template ? "ok" : "bad"}"><span class="g">${z.satisfies_template ? "✓" : "✗"}</span>${z.satisfies_template ? "satisfied" : "not satisfied"}</span>`; }
     return "";
   };
   const rows = [{ group: "Imaging received" }, ...(mods.length ? mods.map(m => ({ key: "mod:" + m, label: m })) : [{ key: "mod:?", label: d && d.acqs ? "No acquisitions" : "Loading…" }]), { group: "Reads & processing" }, { key: "tasks", label: "Reader tasks" }, { key: "jobs", label: "Gear jobs" }, { group: "Metadata" }, { key: "tpl", label: "Session template" }, { key: "info", label: "Session custom info" }];
