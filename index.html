@@ -335,6 +335,19 @@ html,body{height:100%}
 a.btn,a.ibtn{text-decoration:none}
 .diag .call{cursor:pointer}
 .fsbtn{position:fixed;right:12px;bottom:12px;z-index:40}
+/* v0.2: keep clear of the host modal's close button when embedded */
+.embedded .pane{top:56px;border-top:1px solid var(--line);border-top-left-radius:12px}
+.embedded .hactions{padding-right:44px}
+/* v0.2: tab strip scrolls sideways if it must, never shows a scrollbar */
+.tabs{overflow-y:hidden;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
+/* v0.2: timepoint status */
+.vdots{display:inline-flex;gap:4px;flex-wrap:wrap;align-items:center}
+.vd{width:9px;height:9px;border-radius:50%;background:#33415a;flex:none}
+.vd.ok{background:var(--ok)}.vd.warn{background:var(--warn)}.vd.bad{background:var(--bad)}
+.vh .vst{font-style:normal;font-size:11px;display:inline-flex;align-items:center;gap:5px;color:var(--ink-3)}
+.vh .vst.ok{color:var(--ok-t)}.vh .vst.warn{color:var(--warn-t)}.vh .vst.bad{color:var(--bad-t)}
+.vlegend{display:inline-flex;gap:12px;align-items:center;font-size:12px;color:var(--ink-3)}
+.vlegend span{display:inline-flex;gap:5px;align-items:center}
 
 </style>
 
@@ -373,7 +386,7 @@ a.btn,a.ibtn{text-decoration:none}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.1.0";
+const VERSION = "subject-view-harness/0.2.0";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {} };
 const DIAG_MAX = 60;
@@ -409,6 +422,7 @@ function redact(o) {
 
 /* ---------- connect ---------- */
 function connect() {
+  try { if (window.top !== window) document.body.classList.add("embedded"); } catch (e) { document.body.classList.add("embedded"); }
   if (!window.Flywheel || !Flywheel.initExtension) return fail("The Flywheel Extension SDK did not load from cdn.flywheel.io.");
   const timer = setTimeout(() => { if (!S.ext) fail("No connection from Flywheel. Open this app from a file's ⋮ menu inside Flywheel (Launch in Subject View)."); }, 8000);
   Flywheel.initExtension({ scope: "ReadWrite", validateOrigin: o => /^https:\/\/[a-z0-9.-]+\.flywheel\.io$/.test(o) }).then(ext => {
@@ -476,6 +490,19 @@ function tasksForSubject(id) {
   if (d && d.acqs) Object.values(d.acqs).flat().forEach(a => aids.add(a._id));
   return S.tasks.filter(t => (t.parents && t.parents.subject === id) || (t.parent_ref && (sids.has(t.parent_ref.id) || aids.has(t.parent_ref.id))));
 }
+const OPEN = x => x.status === "todo" || x.status === "in_progress";
+function sessStatus(z, sid) {
+  const tt = (tasksForSubject(sid) || []).filter(x => { const s = sessionOfTask(x, sid); return s && s._id === z._id; });
+  const open = tt.filter(OPEN).length, d = S.detail[sid];
+  const failed = d && d.jobsOk ? d.jobs.filter(j => j.state === "failed" && ((j.parents && j.parents.session === z._id) || (j.destination && j.destination.id === z._id))).length : 0;
+  const why = [];
+  if (z.satisfies_template === false) why.push("template not satisfied");
+  if (failed) why.push(failed + " failed job" + (failed > 1 ? "s" : ""));
+  if (why.length) return { k: "bad", t: why[0][0].toUpperCase() + why[0].slice(1), all: why.concat(open ? [open + " open read" + (open > 1 ? "s" : "")] : []).join(" · ") };
+  if (open) return { k: "warn", t: open + " open read" + (open > 1 ? "s" : ""), all: open + " open read" + (open > 1 ? "s" : "") };
+  if (tt.length || z.satisfies_template) return { k: "ok", t: tt.length ? "Reads complete" : "Template satisfied", all: tt.length ? "reads complete" : "template satisfied" };
+  return { k: "", t: "No checks yet", all: "no template or reads" };
+}
 function sessionOfTask(t, id) { const ss = subjSessions(id); if (t.parents && t.parents.session) return ss.find(z => z._id === t.parents.session); if (t.parent_ref && t.parent_ref.type === "session") return ss.find(z => z._id === t.parent_ref.id); const d = S.detail[id]; if (d && d.acqs) for (const [sid, as] of Object.entries(d.acqs)) if (as.some(a => a._id === (t.parent_ref || {}).id)) return ss.find(z => z._id === sid); return null; }
 const fmtSize = b => b == null ? "" : b > 1e9 ? (b / 1e9).toFixed(1) + " GB" : b > 1e6 ? (b / 1e6).toFixed(0) + " MB" : (b / 1e3).toFixed(0) + " KB";
 const dt = s => s ? String(s).replace("T", " ").slice(0, 16) : "—";
@@ -486,7 +513,7 @@ function renderSide() {
   const q = S.q.trim().toLowerCase(), rows = S.subjects.filter(s => !q || String(s.label).toLowerCase().includes(q));
   document.getElementById("subCount").textContent = rows.length + " of " + S.subjects.length;
   document.getElementById("subs").innerHTML = rows.map(s => { const n = subjSessions(s._id).length, t = tasksForSubject(s._id), open = t ? t.filter(x => x.status === "todo" || x.status === "in_progress").length : 0;
-    return `<button class="srow ${s._id === S.subj ? "on" : ""}" data-subj="${s._id}"><span class="lbl">${esc(s.label)}</span><span class="flagn">${open ? `<span class="fl warn" title="Open reader tasks">${open}</span>` : ""}</span><span class="meta"><span>${n} session${n === 1 ? "" : "s"}</span><span>${esc(s.cohort || "")}</span></span></button>`; }).join("") || `<div class="empty-s">${S.loading ? "Loading…" : "No subjects in this project."}</div>`;
+    return `<button class="srow ${s._id === S.subj ? "on" : ""}" data-subj="${s._id}"><span class="lbl">${esc(s.label)}</span><span class="flagn">${open ? `<span class="fl warn" title="Open reader tasks">${open}</span>` : ""}</span><span class="meta"><span class="vdots">${subjSessions(s._id).map(z => { const st = sessStatus(z, s._id); return `<i class="vd ${st.k}" title="${esc(z.label)} · ${dt(z.timestamp || z.created).slice(0, 10)} · ${esc(st.all)}"></i>`; }).join("")}</span><span>${n} session${n === 1 ? "" : "s"}${s.cohort ? " · " + esc(s.cohort) : ""}</span></span></button>`; }).join("") || `<div class="empty-s">${S.loading ? "Loading…" : "No subjects in this project."}</div>`;
   const u = S.user || {};
   document.getElementById("me").innerHTML = `<span class="avatar">${esc(((u.firstname || "?")[0] || "") + ((u.lastname || "")[0] || ""))}</span><div><div style="font-weight:500;font-size:13px">${esc([u.firstname, u.lastname].filter(Boolean).join(" ") || u._id || "Signed in")}</div><div class="src" style="font-family:var(--font-ui);font-size:12px">${esc((S.origin || "").replace("https://", ""))}</div></div>`;
 }
@@ -535,9 +562,9 @@ function matrix(s, d) {
     return "";
   };
   const rows = [{ group: "Imaging received" }, ...(mods.length ? mods.map(m => ({ key: "mod:" + m, label: m })) : [{ key: "mod:?", label: d && d.acqs ? "No acquisitions" : "Loading…" }]), { group: "Reads & processing" }, { key: "tasks", label: "Reader tasks" }, { key: "jobs", label: "Gear jobs" }, { group: "Metadata" }, { key: "tpl", label: "Session template" }, { key: "info", label: "Session custom info" }];
-  return `<div class="card"><div class="card-h"><h3>Subject at a glance</h3><span class="src">Columns are this subject's sessions in date order. Click a cell for detail.</span></div>
+  return `<div class="card"><div class="card-h"><h3>Subject at a glance</h3><span class="vlegend"><span><i class="vd ok"></i>Complete</span><span><i class="vd warn"></i>Reads open</span><span><i class="vd bad"></i>Blocked</span><span><i class="vd"></i>No checks</span></span></div>
     <div class="mx"><table><thead><tr><th class="rl" style="vertical-align:bottom"><span class="muted" style="font-size:12px;font-weight:400">Session →</span></th>
-    ${sess.map(z => `<th><button class="vh ${S.pane && S.pane.z === z._id && !S.pane.r ? "sel" : ""}" data-pane="${z._id}|"><span class="bar" style="background:${z.satisfies_template === false ? "var(--bad)" : "var(--ok)"}"></span><b>${esc(z.label)}</b><small>${dt(z.timestamp || z.created).slice(0, 10)}</small></button></th>`).join("")}</tr></thead><tbody>
+    ${sess.map(z => `<th><button class="vh ${S.pane && S.pane.z === z._id && !S.pane.r ? "sel" : ""}" data-pane="${z._id}|">${(st => `<span class="bar" style="background:${st.k ? `var(--${st.k})` : "#33415a"}"></span><b>${esc(z.label)}</b><small>${dt(z.timestamp || z.created).slice(0, 10)}</small><em class="vst ${st.k}" title="${esc(st.all)}"><i class="vd ${st.k}"></i>${esc(st.t)}</em>`)(sessStatus(z, S.subj))}</button></th>`).join("")}</tr></thead><tbody>
     ${rows.map(r => r.group ? `<tr class="grp"><td class="rl">${r.group}</td>${sess.map(() => "<td></td>").join("")}</tr>` : `<tr><th class="rl" scope="row">${esc(r.label)}</th>${sess.map(z => `<td>${cell(z, r.key)}</td>`).join("")}</tr>`).join("")}
     </tbody></table></div></div>`;
 }
@@ -584,7 +611,7 @@ function pane() {
   if (!r || r === "info") { const kv = flatKV(z.info || {}, "", []); body += sec("Session custom info", kv.length ? `<div class="kvgrid">${kv.slice(0, 40).map(([k, v]) => `<div><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`).join("")}</div>` : `<span class="muted">No custom info.</span>`); }
   const prev = sess[i - 1], next = sess[i + 1];
   host.innerHTML = `<aside class="pane" role="dialog" aria-label="${esc(z.label)}"><header><div style="display:flex;align-items:center;gap:8px"><nav class="bc"><button data-act="closePane">${esc(s.label)}</button><i>›</i>${r ? `<button data-pane="${z._id}|">${esc(z.label)}</button><i>›</i><b>${esc(r.replace("mod:", ""))}</b>` : `<b>${esc(z.label)}</b>`}</nav><span style="flex:1"></span><button class="ibtn" ${prev ? `data-pane="${prev._id}|${r || ""}"` : "disabled"}>‹</button><button class="ibtn" ${next ? `data-pane="${next._id}|${r || ""}"` : "disabled"}>›</button><button class="tbtn" data-act="closePane" aria-label="Close"><svg class="i s"><use href="#i-x"/></svg></button></div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="src">${dt(z.timestamp || z.created)} · ${as.length} acquisitions</span>${z.satisfies_template === false ? `<span class="pill status-off">template not satisfied</span>` : ""}<a class="lnk" style="font-size:12px" href="${coreLink("sessions", z._id)}" target="_blank" rel="noopener">Open session in Flywheel ↗</a></div></header><div class="body">${body}</div></aside>`;
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="src">${dt(z.timestamp || z.created)} · ${as.length} acquisitions</span>${(st => st.k ? `<span class="vst-pill" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--${st.k}-t)"><i class="vd ${st.k}"></i>${esc(st.all)}</span>` : "")(sessStatus(z, S.subj))}<a class="lnk" style="font-size:12px" href="${coreLink("sessions", z._id)}" target="_blank" rel="noopener">Open session in Flywheel ↗</a></div></header><div class="body">${body}</div></aside>`;
 }
 function render() {
   renderSide();
