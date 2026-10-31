@@ -348,6 +348,29 @@ a.btn,a.ibtn{text-decoration:none}
 .vh .vst.ok{color:var(--ok-t)}.vh .vst.warn{color:var(--warn-t)}.vh .vst.bad{color:var(--bad-t)}
 .vlegend{display:inline-flex;gap:12px;align-items:center;font-size:12px;color:var(--ink-3)}
 .vlegend span{display:inline-flex;gap:5px;align-items:center}
+/* v0.3: gear job card */
+.jobpane{width:min(680px,100%);z-index:19}
+.jhead{display:flex;flex-direction:column;gap:8px}
+.jtitle{display:flex;align-items:center;gap:10px;font-size:16px}
+.jwhere{font-size:12px;color:var(--ink-3);display:flex;flex-wrap:wrap;gap:6px;align-items:center}.jwhere i{font-style:normal;color:var(--ink-4)}
+.jfacts{display:grid;grid-template-columns:92px 1fr;gap:4px 12px;margin:0;font-size:12.5px}.jfacts dt{color:var(--ink-3)}.jfacts dd{margin:0;color:var(--ink-2)}
+.jrec{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:10px;border:1px solid var(--line);font-size:13.5px}
+.jrec b{font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+.jrec.ok{background:rgba(76,195,138,.12);border-color:rgba(76,195,138,.4)}.jrec.ok b{color:var(--ok-t)}
+.jrec.warn{background:rgba(240,179,94,.12);border-color:rgba(240,179,94,.4)}.jrec.warn b{color:var(--warn-t)}
+.jrec.bad{background:rgba(242,100,90,.12);border-color:rgba(242,100,90,.4)}.jrec.bad b{color:var(--bad-t)}
+.jcls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.jcls .pill{color:var(--bad-t);background:var(--bad-wash)}
+pre.jerr span.e{color:var(--bad-t)}
+.jin{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border:1px solid var(--line-soft);border-radius:8px}
+.jsince{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--ink-2)}
+.jsince li.ok::marker{color:var(--ok)}.jsince li.bad::marker{color:var(--bad)}.jsince li.warn::marker{color:var(--warn)}
+.jsince li.ok{color:var(--ok-t)}.jsince li.bad{color:var(--bad-t)}
+.jsame{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line-strong);background:var(--card);color:var(--ink-2);border-radius:999px;padding:4px 10px;font-size:12px}
+.chip:hover{background:var(--hover)}
+.jacts{display:flex;flex-wrap:wrap;gap:8px}.jacts .btn[disabled]{background:var(--card-2)!important;color:var(--ink-4)!important;border-color:var(--line)!important;cursor:not-allowed}
+.jobpane .body{padding-bottom:72px}
+.lnkbtn{border:0;background:none;color:var(--accent-ink,#AEB8FF);padding:0;font:inherit;text-decoration:underline;cursor:pointer}
 
 </style>
 
@@ -386,9 +409,9 @@ a.btn,a.ibtn{text-decoration:none}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.2.1";
+const VERSION = "subject-view-harness/0.3.0";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const S = { ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {} };
+const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {} };
 const DIAG_MAX = 60;
 
 function toast(m) { const h = document.getElementById("toastHost"); h.innerHTML = `<div class="toast" role="status">${esc(m)}</div>`; clearTimeout(toast.t); toast.t = setTimeout(() => h.innerHTML = "", 3500); }
@@ -450,6 +473,7 @@ async function loadAll(quiet) {
     if (!S.subj && S.subjects.length) S.subj = S.subjects[0]._id;
     S.loading = false; S.updated = new Date(); S.stale = false; render();
     loadTasks(); if (S.subj) loadSubject(S.subj);
+    api("/api/jobs", { filter: `parents.project=${S.projectId},state=failed`, limit: 50, sort: "created:desc" }, { soft: true }).then(r => { S.projFailed = r ? listOf(r) : null; if (S.tab === "tasks") render(); });
   } catch (e) {
     S.loading = false; if (S.project) { S.stale = true; toast("Refresh failed. Showing the last good data."); render(); } else fail("Could not load the project: " + (e && e.message || e));
   }
@@ -507,6 +531,129 @@ function sessionOfTask(t, id) { const ss = subjSessions(id); if (t.parents && t.
 const fmtSize = b => b == null ? "" : b > 1e9 ? (b / 1e9).toFixed(1) + " GB" : b > 1e6 ? (b / 1e6).toFixed(0) + " MB" : (b / 1e3).toFixed(0) + " KB";
 const dt = s => s ? String(s).replace("T", " ").slice(0, 16) : "—";
 const coreLink = (type, id) => S.origin ? `${S.origin}/#/projects/${S.projectId}/${type}/${id}` : "#";
+
+/* ---------- gear job troubleshooting card (v0.3) ---------- */
+const JOB_CLASSES = [
+  { k: "dep", label: "Missing gear or dependency", re: /was not found on this system|cannot be found on this system|please install it|no such gear|gear not found/i },
+  { k: "mem", label: "Out of memory", re: /\bkilled\b|memoryerror|out of memory|\boom\b|exit code 137|cannot allocate memory/i },
+  { k: "compute", label: "Compute or time-out", re: /timed? ?out|evict|preempt|node lost|no space left|docker pull|connection (reset|refused)|503|504/i },
+  { k: "input", label: "Input does not meet the gear's requirements", re: /invalid input|input .*(missing|not found|invalid)|dimension|slice ?thickness|modality|classification|unsupported (file|format)|could not read|no dicom|empty (file|series)|shape mismatch/i },
+  { k: "gear", label: "Error inside the gear", re: /traceback|exception|error/i }
+];
+const ERR_RE = /\b(ERROR|CRITICAL|FATAL)\b|Traceback|Exception|Error:|was not found|cannot be found|Killed|exit code|completed unsuccessfully/i;
+const fmtDur = ms => ms == null || isNaN(ms) || ms < 0 ? "—" : ms < 1000 ? ms + " ms" : ms < 60e3 ? (ms / 1000).toFixed(1) + " s" : ms < 3600e3 ? Math.round(ms / 60e3) + " min" : (ms / 3600e3).toFixed(1) + " h";
+const tms = s => s ? Date.parse(s) : null;
+const jid = j => j._id || j.id;
+function findJob(id) {
+  for (const d of Object.values(S.detail)) { const j = d && d.jobs && d.jobs.find(x => jid(x) === id); if (j) return j; }
+  return (S.projFailed || []).find(x => jid(x) === id) || null;
+}
+async function loadJob(id) {
+  const J = S.jobData[id] = S.jobData[id] || { loading: true };
+  render();
+  J.job = findJob(id) || await api(`/api/jobs/${id}`, null, { soft: true });
+  if (!J.job) { J.loading = false; J.err = "Couldn't load this job."; render(); return; }
+  const j = J.job, name = j.gear_info ? j.gear_info.name : "";
+  const [log, rules, same] = await Promise.all([
+    api(`/api/jobs/${id}/logs`, null, { soft: true }),
+    S.rules !== undefined ? S.rules : api(`/api/projects/${S.projectId}/rules`, null, { soft: true }),
+    name ? api("/api/jobs", { filter: `gear_info.name=${name},parents.project=${S.projectId}`, limit: 100, sort: "created:desc" }, { soft: true }) : null
+  ]);
+  if (S.rules === undefined) S.rules = rules ? listOf(rules) : null;
+  J.logOk = !!log;
+  J.lines = log ? listOf(log.logs || log).map(x => x.msg != null ? x.msg : String(x)).join("").split("\n") : [];
+  J.same = same ? listOf(same) : null;
+  /* dependencies named in the log, plus this gear itself: what's installed now? */
+  const deps = []; J.lines.forEach(l => { const m = l.match(/([a-z0-9][\w.-]*):([\w.+-]+) was not found on this system/i); if (m && !deps.find(x => x.name === m[1])) deps.push({ name: m[1], version: m[2] }); });
+  const names = [...new Set([name, ...deps.map(x => x.name)].filter(Boolean))];
+  J.gears = {};
+  await Promise.all(names.map(async n => { const r = await api("/api/gears", { filter: `gear.name=${n}`, all_versions: true }, { soft: true }); J.gears[n] = r ? listOf(r).map(g => (g.gear || g).version).filter(Boolean) : null; }));
+  J.deps = deps; J.loading = false; render();
+}
+function jobAnalysis(J) {
+  const j = J.job, name = j.gear_info ? j.gear_info.name : "", ver = j.gear_info ? j.gear_info.version : "", tr = j.transitions || {};
+  const errs = J.lines.filter(l => ERR_RE.test(l)).map(l => l.trim()).filter(Boolean);
+  const blob = errs.join("\n") || J.lines.slice(-40).join("\n");
+  const cls = j.state === "failed" ? (JOB_CLASSES.find(c => c.re.test(blob)) || { k: "unknown", label: "Cause not found in the log" }) : null;
+  const end = tms(tr.failed) || tms(tr.complete) || tms(tr.cancelled), run = tms(tr.running), pend = tms(tr.pending) || tms(j.created);
+  const created = tms(j.created) || 0, same = J.same || [];
+  const later = same.filter(x => jid(x) !== jid(j) && (tms(x.created) || 0) > created);
+  const okSince = later.filter(x => x.state === "complete");
+  const othersFailed = same.filter(x => jid(x) !== jid(j) && x.state === "failed");
+  const installed = J.gears[name], newer = installed ? installed.filter(v => v !== ver && cmpVer(v, ver) > 0) : null;
+  const deps = (J.deps || []).map(d => { const iv = J.gears[d.name]; return Object.assign({}, d, { installed: iv, nowOk: iv ? iv.includes(d.version) : null }); });
+  /* input files changed after the run? */
+  const changed = [];
+  const d = S.detail[S.subj]; const acqFiles = d && d.acqs ? Object.values(d.acqs).flat().flatMap(a => (a.files || []).map(f => ({ a, f }))) : [];
+  (j.inputs || []).forEach(inp => { const hit = acqFiles.find(x => x.f.name === inp.name && x.a._id === inp.id); if (hit && (tms(hit.f.modified) || tms(hit.f.created) || 0) > created) changed.push(inp.name); });
+  /* recommendation */
+  let rec = null;
+  if (j.state === "failed") {
+    if (cls.k === "dep") { const missing = deps.filter(x => x.nowOk === false), fixed = deps.filter(x => x.nowOk === true), unk = deps.filter(x => x.nowOk === null);
+      rec = missing.length ? { tone: "bad", t: `Install ${missing.map(x => x.name + " " + x.version).join(", ")} first. A retry will fail the same way.` }
+        : fixed.length && !unk.length ? { tone: "ok", t: `Retry is likely to work: ${fixed.map(x => x.name + " " + x.version).join(", ")} ${fixed.length > 1 ? "are" : "is"} installed now.` }
+        : { tone: "warn", t: "Check that the missing gears are installed before retrying (installed versions couldn't be read)." }; }
+    else if (cls.k === "mem" || cls.k === "compute") rec = { tone: "warn", t: cls.k === "mem" ? "Resource failure. Retry on a larger compute profile, or ask an admin." : "Likely transient. Retry; Flywheel already retries compute overloads up to 3 times." };
+    else if (cls.k === "input") rec = changed.length ? { tone: "ok", t: `The input (${changed.join(", ")}) has changed since this run. Re-run on the new file.` } : { tone: "bad", t: "The same input will fail again. Fix or replace the input, or re-run on a different series." };
+    else rec = okSince.length ? { tone: "warn", t: `This gear has succeeded ${okSince.length} time${okSince.length > 1 ? "s" : ""} in this project since. Worth one retry; if it fails again, send the log to the gear owner.` } : { tone: "warn", t: "Gear error. Send the log to the gear owner before retrying." };
+  }
+  return { name, ver, errs, cls, queued: run && pend ? run - pend : null, ran: end && run ? end - run : null, okSince, othersFailed, newer, deps, changed, rec };
+}
+function cmpVer(a, b) { const pa = String(a).split(/[._-]/).map(x => parseInt(x, 10) || 0), pb = String(b).split(/[._-]/).map(x => parseInt(x, 10) || 0); for (let i = 0; i < Math.max(pa.length, pb.length); i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d) return d; } return 0; }
+function jobWhere(j) {
+  const p = j.parents || {}, s = S.subjects.find(x => x._id === p.subject), z = S.sessions.find(x => x._id === p.session);
+  const parts = [S.project ? S.project.label : "Project"];
+  if (s) parts.push(s.label); if (z) parts.push(z.label);
+  const inp = (j.inputs || [])[0]; if (inp && inp.name) parts.push(inp.name);
+  return parts;
+}
+function jobPane() {
+  const host = document.getElementById("paneHost"), id = S.job, J = S.jobData[id] || {}, j = J.job;
+  const shell = (title, body, sub) => `<aside class="pane jobpane" role="dialog" aria-label="Gear job"><header><div style="display:flex;align-items:center;gap:8px"><nav class="bc"><button data-act="closeJob">${S.pane ? "Back" : "Close"}</button><i>›</i><b>${title}</b></nav><span style="flex:1"></span><button class="tbtn" data-act="closeJob" aria-label="Close"><svg class="i s"><use href="#i-x"/></svg></button></div>${sub || ""}</header><div class="body">${body}</div></aside>`;
+  if (!j) { host.innerHTML = shell("Gear job", J.err ? `<span class="muted">${esc(J.err)}</span>` : `<div class="loading"><span class="spin"></span>Loading job…</div>`); return; }
+  const A = J.loading ? null : jobAnalysis(J), tr = j.transitions || {};
+  const rule = j.rule_id ? ((S.rules || []).find(r => r._id === j.rule_id) || null) : null;
+  const startedBy = j.rule_id ? `Gear rule <b>${esc(rule ? rule.name : "")}</b>${rule ? "" : `<span class="mono muted"> ${esc(j.rule_id)}</span>`}` : (j.tags || []).includes("auto") ? "A gear rule" : (j.origin && j.origin.id) ? `${esc(j.origin.type || "user")} <b>${esc(j.origin.id)}</b>` : "A user (see Jobs Log)";
+  const sub = `<div class="jhead"><div class="jtitle"><span class="st ${esc(j.state)}">${esc(j.state)}</span><b>${esc(j.gear_info ? j.gear_info.name : "Gear")}</b><span class="mono muted">${esc(j.gear_info ? j.gear_info.version : "")}</span></div>
+    <div class="jwhere">${jobWhere(j).map(esc).join(' <i>›</i> ')}</div>
+    <dl class="jfacts"><dt>Started by</dt><dd>${startedBy}</dd><dt>Attempt</dt><dd>${j.attempt || 1}${j.previous_job_id ? ` · <button class="lnkbtn" data-job="${esc(j.previous_job_id)}">previous run</button>` : ""}${j.retried ? ` · retried ${dt(j.retried)}` : ""}</dd>
+    <dt>Queued</dt><dd>${dt(tr.pending || j.created)} · waited ${A ? fmtDur(A.queued) : "…"}</dd><dt>Ran</dt><dd>${tr.running ? dt(tr.running) : "never started"} · ${A ? fmtDur(A.ran) : "…"}</dd>
+    <dt>Job ID</dt><dd class="mono">${esc(id)}</dd></dl></div>`;
+  if (!A) { host.innerHTML = shell("Gear job", `<div class="loading"><span class="spin"></span>Reading the log, rules and installed gears…</div>`, sub); return; }
+  const sec = (h, b, note) => `<section class="psec"><h4>${h}${note ? `<span class="src" style="text-transform:none;letter-spacing:0">${note}</span>` : ""}</h4>${b}</section>`;
+  let body = "";
+  if (A.rec) body += `<div class="jrec ${A.rec.tone}"><b>Recommendation</b><span>${esc(A.rec.t)}</span></div>`;
+  if (j.state === "failed") {
+    const shown = (A.errs.length ? A.errs : J.lines.filter(Boolean)).slice(-12);
+    body += sec("Why it failed", `<div class="jcls"><span class="pill">${esc(A.cls.label)}</span><span class="src">classified from the log text, not a structured reason</span></div>
+      ${J.logOk ? `<pre class="logx jerr">${shown.map(l => `<span class="${/ERROR|Traceback|not found|Killed|unsuccessfully/i.test(l) ? "e" : ""}">${esc(l.slice(0, 400))}</span>`).join("\n")}</pre>
+      <button class="ibtn" data-act="fulllog">${S.fullLog ? "Hide full log" : `Show full log (${J.lines.length} lines)`}</button>${S.fullLog ? `<pre class="logx" style="max-height:340px;overflow:auto">${esc(J.lines.slice(-400).join("\n"))}</pre>` : ""}` : `<span class="muted">The log isn't reachable through the extension proxy. Open it in the Jobs Log.</span>`}`, "GET /api/jobs/{id}/logs");
+  }
+  const ins = Object.entries((j.config && j.config.inputs) || {});
+  body += sec("Inputs as used", ins.length ? ins.map(([k, v]) => { const o = v.object || {}, h = v.hierarchy || {}, nm = (v.location && v.location.name) || ((j.inputs || []).find(x => x.input === k) || {}).name || ""; const cl = Object.entries(o.classification || {}).map(([a, b]) => a + ": " + [].concat(b).join(", ")).join(" · ");
+      return `<div class="jin"><div><span class="mono muted">${esc(k)}</span> <b>${esc(nm)}</b>${A.changed.includes(nm) ? ` <span class="pill" style="color:var(--warn-t)">changed since</span>` : ""}</div><div class="src">${esc([o.type, o.modality, h.type].filter(Boolean).join(" · "))}${cl ? " · " + esc(cl) : ""}${o.size ? " · " + fmtSize(o.size) : ""}</div></div>`; }).join("") : `<span class="muted">No file inputs.</span>`);
+  const cfg = Object.entries((j.config && j.config.config) || {});
+  if (cfg.length) body += sec("Settings used", `<div class="kvgrid">${cfg.slice(0, 30).map(([k, v]) => `<div><div class="k">${esc(k)}</div><div class="v mono">${esc(typeof v === "object" ? JSON.stringify(v) : String(v))}</div></div>`).join("")}</div>`);
+  const since = [];
+  A.deps.forEach(x => since.push(x.nowOk === true ? `<li class="ok">${esc(x.name)} ${esc(x.version)} is installed now (was missing).</li>` : x.nowOk === false ? `<li class="bad">${esc(x.name)} ${esc(x.version)} is still not installed${x.installed && x.installed.length ? ` (installed: ${esc(x.installed.join(", "))})` : ""}.</li>` : `<li>${esc(x.name)} ${esc(x.version)}: couldn't read installed versions.</li>`));
+  if (A.newer && A.newer.length) since.push(`<li class="warn">Newer ${esc(A.name)} installed: ${esc(A.newer.join(", "))}.</li>`); else if (A.newer) since.push(`<li>No newer version of ${esc(A.name)} is installed.</li>`);
+  if (A.changed.length) since.push(`<li class="ok">Input changed after this run: ${esc(A.changed.join(", "))}.</li>`);
+  if (J.same) since.push(A.okSince.length ? `<li class="ok">${esc(A.name)} has completed ${A.okSince.length} time${A.okSince.length > 1 ? "s" : ""} in this project since this run.</li>` : `<li>No successful ${esc(A.name)} runs in this project since.</li>`);
+  if (j.state === "failed") body += sec("What's changed since", since.length ? `<ul class="jsince">${since.join("")}</ul>` : `<span class="muted">Nothing found.</span>`, "installed gears, input files, later runs");
+  if (j.state === "failed" && J.same) { const by = {}; A.othersFailed.forEach(x => { const s = S.subjects.find(y => y._id === (x.parents || {}).subject); const key = s ? s.label : "project level"; (by[key] = by[key] || []).push(x); });
+    body += sec("Same gear failed elsewhere", A.othersFailed.length ? `<div class="jsame">${Object.entries(by).map(([k, xs]) => `<button class="chip" data-job="${esc(jid(xs[0]))}">${esc(k)} · ${xs.length}</button>`).join("")}</div><span class="src">${A.othersFailed.length} other failed ${esc(A.name)} job${A.othersFailed.length > 1 ? "s" : ""} in this project. Error text not compared yet.</span>` : `<span class="muted">No other failed ${esc(A.name)} jobs in this project.</span>`); }
+  if (j.outputs || j.saved_files) body += sec("Outputs", (j.saved_files || []).length ? `<span class="src">${(j.saved_files || []).length} files saved</span>` : `<span class="muted">No outputs.</span>`);
+  const jl = S.origin ? `${S.origin}/#/jobs/${id}` : "#";
+  body += sec("Actions", `<div class="jacts">${j.state === "failed" ? `<button class="btn pri" disabled title="This harness is read-only. Retry from the Jobs Log.">Retry</button><button class="btn" disabled title="Needs write access (POST /api/jobs/add). Planned.">Re-run with changes…</button>` : ""}<a class="btn" href="${jl}" target="_blank" rel="noopener">Open in Jobs Log ↗</a>${J.logOk ? `<button class="btn" data-act="dllog">Download log</button>` : ""}<button class="btn" data-act="copyjob">Copy job ID</button></div>${j.state === "failed" ? `<span class="src">Retry and re-run are disabled: this harness only reads. The recommendation above says whether a retry is worth it.</span>` : ""}`);
+  host.innerHTML = shell("Gear job", body, sub);
+}
+function failedProjectCard() {
+  const f = S.projFailed;
+  if (f === undefined) return "";
+  const rows = f === null ? `<div class="card-b muted">Couldn't list failed jobs for this project.</div>` : !f.length ? `<div class="card-b muted">No failed jobs in this project.</div>` :
+    `<div class="tw"><table><thead><tr><th>Gear</th><th>Where</th><th>Created</th><th>State</th><th></th></tr></thead><tbody>${f.map(j => `<tr><td>${esc(j.gear_info ? j.gear_info.name : "")} <span class="mono muted">${esc(j.gear_info ? j.gear_info.version : "")}</span></td><td class="muted">${esc(jobWhere(j).slice(1).join(" › ") || "project level")}</td><td class="mono">${dt(j.created)}</td><td><span class="st failed">failed</span></td><td class="r"><button class="ibtn" data-job="${esc(jid(j))}">Troubleshoot</button></td></tr>`).join("")}</tbody></table></div>`;
+  return `<div class="card"><div class="card-h"><h3>Failed jobs in this project</h3><span class="src">GET /api/jobs?filter=parents.project,state=failed</span></div>${rows}</div>`;
+}
 
 /* ---------- render ---------- */
 function renderSide() {
@@ -571,9 +718,9 @@ function matrix(s, d) {
 function tasksTab(s, d) {
   const t = tasksForSubject(s._id);
   const tt = t === null ? `<div class="loading"><span class="spin"></span>Loading reader tasks…</div>` : `<div class="tw"><table><thead><tr><th>Task</th><th>Session</th><th>Protocol</th><th>Type</th><th>Assignee</th><th>Due</th><th>Status</th></tr></thead><tbody>${t.length ? t.map(x => { const z = sessionOfTask(x, s._id); return `<tr><td class="mono">${esc(x.task_id)}</td><td>${esc(z ? z.label : "—")}</td><td>${esc(x.protocol_label || "")}</td><td>${esc(x.subcategory === "adjudicator" ? "Adjudication" : "Read " + (x.read_number || ""))}</td><td class="muted">${esc(x.assignee ? x.assignee.id : "")}</td><td class="mono">${esc((x.due_date || "").slice(0, 10))}</td><td><span class="st ${esc(x.status)}">${esc(String(x.status).replace("_", " "))}</span></td></tr>`; }).join("") : `<tr><td colspan="7" class="empty-s">No reader tasks on this subject.</td></tr>`}</tbody></table></div>`;
-  const jj = !d || !d.ok ? `<div class="loading"><span class="spin"></span>Loading jobs…</div>` : !d.jobsOk ? `<div class="card-b muted">The jobs list isn't reachable through the extension proxy on this site (see Diagnostics). The product app on the site origin can call it directly.</div>` : `<div class="tw"><table><thead><tr><th>Gear</th><th>Version</th><th>Destination</th><th>Created</th><th>State</th><th></th></tr></thead><tbody>${d.jobs.length ? d.jobs.map(j => `<tr><td>${esc(j.gear_info ? j.gear_info.name : "")}</td><td class="mono">${esc(j.gear_info ? j.gear_info.version : "")}</td><td class="muted">${esc(j.destination ? j.destination.type : "")}</td><td class="mono">${dt(j.created)}</td><td><span class="st ${esc(j.state)}">${esc(j.state)}</span></td><td class="r">${j.state === "failed" ? `<button class="ibtn" data-log="${j._id || j.id}">Log tail</button>` : ""}</td></tr>${S.logs[j._id || j.id] ? `<tr><td colspan="6"><pre class="logx">${esc(S.logs[j._id || j.id])}</pre></td></tr>` : ""}`).join("") : `<tr><td colspan="6" class="empty-s">No jobs on this subject.</td></tr>`}</tbody></table></div>`;
+  const jj = !d || !d.ok ? `<div class="loading"><span class="spin"></span>Loading jobs…</div>` : !d.jobsOk ? `<div class="card-b muted">The jobs list isn't reachable through the extension proxy on this site (see Diagnostics). The product app on the site origin can call it directly.</div>` : `<div class="tw"><table><thead><tr><th>Gear</th><th>Version</th><th>Destination</th><th>Created</th><th>State</th><th></th></tr></thead><tbody>${d.jobs.length ? d.jobs.map(j => `<tr><td>${esc(j.gear_info ? j.gear_info.name : "")}</td><td class="mono">${esc(j.gear_info ? j.gear_info.version : "")}</td><td class="muted">${esc(j.destination ? j.destination.type : "")}</td><td class="mono">${dt(j.created)}</td><td><span class="st ${esc(j.state)}">${esc(j.state)}</span></td><td class="r"><button class="ibtn" data-job="${j._id || j.id}">${j.state === "failed" ? "Troubleshoot" : "Details"}</button></td></tr>`).join("") : `<tr><td colspan="6" class="empty-s">No jobs on this subject.</td></tr>`}</tbody></table></div>`;
   return `<div class="card"><div class="card-h"><h3>Reader tasks</h3><span class="src">GET /api/tasks/reader · this project, matched to this subject</span></div>${tt}</div>
-    <div class="card"><div class="card-h"><h3>Gear jobs</h3><span class="src">GET /api/jobs?filter=parents.subject</span></div>${jj}</div>`;
+    <div class="card"><div class="card-h"><h3>Gear jobs</h3><span class="src">GET /api/jobs?filter=parents.subject</span></div>${jj}</div>${failedProjectCard()}`;
 }
 function flatKV(o, prefix, out) { Object.entries(o || {}).forEach(([k, v]) => { const key = prefix ? prefix + "." + k : k; if (v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).length < 40 && prefix.split(".").length < 2) flatKV(v, key, out); else out.push([key, Array.isArray(v) ? v.join(", ") : typeof v === "object" ? JSON.stringify(v) : v]); }); return out; }
 function infoTab(s, d) {
@@ -595,6 +742,7 @@ function diagTab() {
 }
 function pane() {
   const host = document.getElementById("paneHost");
+  if (S.job) { jobPane(); return; }
   if (!S.pane) { host.innerHTML = ""; return; }
   const s = S.subjects.find(x => x._id === S.subj), d = S.detail[S.subj], sess = subjSessions(S.subj), i = sess.findIndex(z => z._id === S.pane.z), z = sess[i], r = S.pane.r;
   if (!z) { host.innerHTML = ""; return; }
@@ -607,7 +755,7 @@ function pane() {
   let body = "";
   if (!r || r.startsWith("mod:")) body += sec(r ? r.slice(4) : "Acquisitions", shown.length ? shown.map(a => `<div class="acq"><div class="acq-h"><span class="pill" style="background:var(--card-2);color:var(--ink-2)">${esc(acqMod(a))}</span><b>${esc(a.label)}</b><span class="mono muted" style="font-size:12px">${dt(a.timestamp || a.created)}</span></div>${files(a)}</div>`).join("") : `<span class="muted">${d && d.acqs ? "No acquisitions." : "Loading…"}</span>`);
   if (!r || r === "tasks") body += sec("Reader tasks", t.length ? t.map(x => `<div class="frow" style="border:1px solid var(--line-soft);border-radius:8px"><span><span class="mono">${esc(x.task_id)}</span> <span class="muted">· ${esc(x.protocol_label || "")} · ${esc(x.assignee ? x.assignee.id : "unassigned")}</span></span><span class="acts"><span class="st ${esc(x.status)}">${esc(String(x.status).replace("_", " "))}</span></span></div>`).join("") : `<span class="muted">No reader tasks.</span>`);
-  if (!r || r === "jobs") body += sec("Gear jobs", d && d.jobsOk ? (jj.length ? jj.map(j => `<div class="frow" style="border:1px solid var(--line-soft);border-radius:8px"><span>${esc(j.gear_info ? j.gear_info.name : "")} <span class="muted mono">${esc(j.gear_info ? j.gear_info.version : "")}</span></span><span class="acts"><span class="st ${esc(j.state)}">${esc(j.state)}</span>${j.state === "failed" ? `<button class="ibtn" data-log="${j._id || j.id}">Log tail</button>` : ""}</span>${S.logs[j._id || j.id] ? `<pre class="logx" style="grid-column:1/-1">${esc(S.logs[j._id || j.id])}</pre>` : ""}</div>`).join("") : `<span class="muted">No jobs.</span>`) : `<span class="muted">Jobs not available through the extension proxy.</span>`);
+  if (!r || r === "jobs") body += sec("Gear jobs", d && d.jobsOk ? (jj.length ? jj.map(j => `<div class="frow" style="border:1px solid var(--line-soft);border-radius:8px"><span>${esc(j.gear_info ? j.gear_info.name : "")} <span class="muted mono">${esc(j.gear_info ? j.gear_info.version : "")}</span></span><span class="acts"><span class="st ${esc(j.state)}">${esc(j.state)}</span><button class="ibtn" data-job="${j._id || j.id}">${j.state === "failed" ? "Troubleshoot" : "Details"}</button></span></div>`).join("") : `<span class="muted">No jobs.</span>`) : `<span class="muted">Jobs not available through the extension proxy.</span>`);
   if (!r || r === "info") { const kv = flatKV(z.info || {}, "", []); body += sec("Session custom info", kv.length ? `<div class="kvgrid">${kv.slice(0, 40).map(([k, v]) => `<div><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`).join("")}</div>` : `<span class="muted">No custom info.</span>`); }
   const prev = sess[i - 1], next = sess[i + 1];
   host.innerHTML = `<aside class="pane" role="dialog" aria-label="${esc(z.label)}"><header><div style="display:flex;align-items:center;gap:8px"><nav class="bc"><button data-act="closePane">${esc(s.label)}</button><i>›</i>${r ? `<button data-pane="${z._id}|">${esc(z.label)}</button><i>›</i><b>${esc(r.replace("mod:", ""))}</b>` : `<b>${esc(z.label)}</b>`}</nav><span style="flex:1"></span><button class="ibtn" ${prev ? `data-pane="${prev._id}|${r || ""}"` : "disabled"}>‹</button><button class="ibtn" ${next ? `data-pane="${next._id}|${r || ""}"` : "disabled"}>›</button><button class="tbtn" data-act="closePane" aria-label="Close"><svg class="i s"><use href="#i-x"/></svg></button></div>
@@ -628,7 +776,8 @@ function render() {
 
 /* ---------- events ---------- */
 document.addEventListener("click", async e => {
-  const t = e.target.closest("[data-subj],[data-tab],[data-pane],[data-act],[data-fmeta],[data-log],[data-diag],#toggleList,#toggleList2,#fsBtn"); if (!t) return;
+  const t = e.target.closest("[data-subj],[data-tab],[data-pane],[data-act],[data-fmeta],[data-log],[data-diag],[data-job],#toggleList,#toggleList2,#fsBtn"); if (!t) return;
+  if (t.dataset.job) { S.job = t.dataset.job; S.fullLog = false; if (!S.jobData[S.job] || S.jobData[S.job].err) { delete S.jobData[S.job]; loadJob(S.job); } else render(); return; }
   if (t.id === "toggleList" || t.id === "toggleList2") { document.getElementById("list").classList.toggle("collapsed"); return; }
   if (t.id === "fsBtn") { try { const p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); if (p && p.catch) p.catch(() => toast("Full screen isn't allowed in this frame")); } catch (er) {} return; }
   if (t.dataset.subj) { S.subj = t.dataset.subj; S.pane = null; loadSubject(S.subj); return; }
@@ -641,11 +790,15 @@ document.addEventListener("click", async e => {
   if (a === "phi") { S.phi = !S.phi; render(); }
   if (a === "refresh") { S.detail = {}; S.error = null; loadAll(); }
   if (a === "closePane") { S.pane = null; render(); }
+  if (a === "closeJob") { S.job = null; render(); }
+  if (a === "fulllog") { S.fullLog = !S.fullLog; render(); }
+  if (a === "copyjob") { try { await navigator.clipboard.writeText(S.job); toast("Job ID copied"); } catch (er) { toast("Copy blocked by the frame: " + S.job); } }
+  if (a === "dllog") { const J = S.jobData[S.job]; try { const u = URL.createObjectURL(new Blob([(J.lines || []).join("\n")], { type: "text/plain" })); const l = document.createElement("a"); l.href = u; l.download = `job-${S.job}.log`; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); } catch (er) { toast("Download blocked by the frame. Use Open in Jobs Log."); } }
   if (a === "diagnext") { S.diagOpen = 0; render(); }
   if (a === "copydiag") { const txt = JSON.stringify({ version: VERSION, origin: S.origin, project: S.projectId, calls: S.calls }, null, 2); try { await navigator.clipboard.writeText(txt); toast("Diagnostics copied"); } catch (er) { toast("Copy blocked by the frame. Open Diagnostics and select the text."); } }
 });
 document.addEventListener("input", e => { if (e.target.id === "q") { S.q = e.target.value; renderSide(); } });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && S.pane) { S.pane = null; render(); } });
+document.addEventListener("keydown", e => { if (e.key !== "Escape") return; if (S.job) { S.job = null; render(); } else if (S.pane) { S.pane = null; render(); } });
 let lastRefresh = 0; const softRefresh = () => { if (!S.ext || Date.now() - lastRefresh < 4000) return; lastRefresh = Date.now(); S.detail = {}; loadAll(true); };
 document.addEventListener("visibilitychange", () => { if (!document.hidden) softRefresh(); });
 window.addEventListener("focus", softRefresh);
