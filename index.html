@@ -409,7 +409,7 @@ pre.jerr span.e{color:var(--bad-t)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.3.1";
+const VERSION = "subject-view-harness/0.3.2";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {} };
 const DIAG_MAX = 60;
@@ -545,6 +545,13 @@ const ERR_RE = /\b(ERROR|CRITICAL|FATAL)\b|Traceback|Exception|Error:|was not fo
 const fmtDur = ms => ms == null || isNaN(ms) || ms < 0 ? "—" : ms < 1000 ? ms + " ms" : ms < 60e3 ? (ms / 1000).toFixed(1) + " s" : ms < 3600e3 ? Math.round(ms / 60e3) + " min" : (ms / 3600e3).toFixed(1) + " h";
 const tms = s => s ? Date.parse(s) : null;
 const jid = j => j._id || j.id;
+/* The list endpoint returns inputs as an array; the single-job endpoint may return an object keyed by input name. */
+function normJob(j) {
+  if (!j || typeof j !== "object") return j;
+  if (j.inputs && !Array.isArray(j.inputs)) j.inputs = Object.entries(j.inputs).map(([k, v]) => Object.assign({ input: k }, v || {}));
+  if (j.config && j.config.inputs && typeof j.config.inputs !== "object") j.config.inputs = {};
+  return j;
+}
 function findJob(id) {
   for (const d of Object.values(S.detail)) { const j = d && d.jobs && d.jobs.find(x => jid(x) === id); if (j) return j; }
   return (S.projFailed || []).find(x => jid(x) === id) || null;
@@ -552,7 +559,7 @@ function findJob(id) {
 async function loadJob(id) {
   const J = S.jobData[id] = S.jobData[id] || { loading: true };
   render();
-  J.job = findJob(id) || await api(`/api/jobs/${id}`, null, { soft: true });
+  J.job = normJob(findJob(id) || await api(`/api/jobs/${id}`, null, { soft: true }));
   if (!J.job) { J.loading = false; J.err = "Couldn't load this job."; render(); return; }
   const j = J.job, name = j.gear_info ? j.gear_info.name : "";
   const [log, rules, same] = await Promise.all([
@@ -617,6 +624,13 @@ function jobWhere(j) {
   return parts;
 }
 function jobPane() {
+  try { jobPaneInner(); } catch (e) {
+    const host = document.getElementById("paneHost");
+    host.innerHTML = `<aside class="pane jobpane" role="dialog" aria-label="Gear job"><header><div style="display:flex;align-items:center;gap:8px"><nav class="bc"><button data-act="closeJob">Close</button><i>›</i><b>Gear job</b></nav><span style="flex:1"></span><button class="tbtn" data-act="closeJob" aria-label="Close"><svg class="i s"><use href="#i-x"/></svg></button></div></header><div class="body"><div class="jrec bad"><b>Couldn't draw this job</b><span>${esc(String(e && e.message || e))}</span></div><span class="src">Copy Diagnostics and send it over. Job ${esc(S.job)}.</span></div></aside>`;
+    console.error("jobPane", e);
+  }
+}
+function jobPaneInner() {
   const host = document.getElementById("paneHost"), id = S.job, J = S.jobData[id] || {}, j = J.job;
   const shell = (title, body, sub) => `<aside class="pane jobpane" role="dialog" aria-label="Gear job"><header><div style="display:flex;align-items:center;gap:8px"><nav class="bc"><button data-act="closeJob">${S.pane ? "Back" : "Close"}</button><i>›</i><b>${title}</b></nav><span style="flex:1"></span><button class="tbtn" data-act="closeJob" aria-label="Close"><svg class="i s"><use href="#i-x"/></svg></button></div>${sub || ""}</header><div class="body">${body}</div></aside>`;
   if (!j) { host.innerHTML = shell("Gear job", J.err ? `<span class="muted">${esc(J.err)}</span>` : `<div class="loading"><span class="spin"></span>Loading job…</div>`); return; }
@@ -638,7 +652,7 @@ function jobPane() {
       ${J.logOk ? `<pre class="logx jerr">${shown.map(l => `<span class="${/ERROR|Traceback|not found|Killed|unsuccessfully/i.test(l) ? "e" : ""}">${esc(l.slice(0, 400))}</span>`).join("\n")}</pre>
       <button class="ibtn" data-act="fulllog">${S.fullLog ? "Hide full log" : `Show full log (${J.lines.length} lines)`}</button>${S.fullLog ? `<pre class="logx" style="max-height:340px;overflow:auto">${esc(J.lines.slice(-400).join("\n"))}</pre>` : ""}` : `<span class="muted">The log isn't reachable through the extension proxy. Open it in the Jobs Log.</span>`}`, "GET /api/jobs/{id}/logs");
   }
-  const ins = Object.entries((j.config && j.config.inputs) || {});
+  const ins = Object.entries((j.config && j.config.inputs) || {}).filter(([, v]) => v && typeof v === "object");
   body += sec("Inputs as used", ins.length ? ins.map(([k, v]) => { const o = v.object || {}, h = v.hierarchy || {}, nm = (v.location && v.location.name) || ((j.inputs || []).find(x => x.input === k) || {}).name || ""; const cl = Object.entries(o.classification || {}).map(([a, b]) => a + ": " + [].concat(b).join(", ")).join(" · ");
       return `<div class="jin"><div><span class="mono muted">${esc(k)}</span> <b>${esc(nm)}</b>${A.changed.includes(nm) ? ` <span class="pill" style="color:var(--warn-t)">changed since</span>` : ""}</div><div class="src">${esc([o.type, o.modality, h.type].filter(Boolean).join(" · "))}${cl ? " · " + esc(cl) : ""}${o.size ? " · " + fmtSize(o.size) : ""}</div></div>`; }).join("") : `<span class="muted">No file inputs.</span>`);
   const cfg = Object.entries((j.config && j.config.config) || {});
