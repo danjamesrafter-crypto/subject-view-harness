@@ -409,7 +409,7 @@ pre.jerr span.e{color:var(--bad-t)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.3.0";
+const VERSION = "subject-view-harness/0.3.1";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {} };
 const DIAG_MAX = 60;
@@ -515,10 +515,11 @@ function tasksForSubject(id) {
   return S.tasks.filter(t => (t.parents && t.parents.subject === id) || (t.parent_ref && (sids.has(t.parent_ref.id) || aids.has(t.parent_ref.id))));
 }
 const OPEN = x => x.status === "todo" || x.status === "in_progress";
+const openFail = (jobs) => jobs.filter(j => j.state === "failed" && !jobs.some(x => x.previous_job_id === (j._id || j.id)));
 function sessStatus(z, sid) {
   const tt = (tasksForSubject(sid) || []).filter(x => { const s = sessionOfTask(x, sid); return s && s._id === z._id; });
   const open = tt.filter(OPEN).length, d = S.detail[sid];
-  const failed = d && d.jobsOk ? d.jobs.filter(j => j.state === "failed" && ((j.parents && j.parents.session === z._id) || (j.destination && j.destination.id === z._id))).length : 0;
+  const failed = d && d.jobsOk ? openFail(d.jobs).filter(j => (j.parents && j.parents.session === z._id) || (j.destination && j.destination.id === z._id)).length : 0;
   const why = [];
   if (z.satisfies_template === false) why.push("template not satisfied");
   if (failed) why.push(failed + " failed job" + (failed > 1 ? "s" : ""));
@@ -586,9 +587,17 @@ function jobAnalysis(J) {
   const changed = [];
   const d = S.detail[S.subj]; const acqFiles = d && d.acqs ? Object.values(d.acqs).flat().flatMap(a => (a.files || []).map(f => ({ a, f }))) : [];
   (j.inputs || []).forEach(inp => { const hit = acqFiles.find(x => x.f.name === inp.name && x.a._id === inp.id); if (hit && (tms(hit.f.modified) || tms(hit.f.created) || 0) > created) changed.push(inp.name); });
+  /* was this job already retried? (core greys Retry out in that case) */
+  const retryJob = same.find(x => x.previous_job_id === jid(j)) || null;
   /* recommendation */
   let rec = null;
-  if (j.state === "failed") {
+  if (j.state === "failed" && (j.retried || retryJob)) {
+    const when = j.retried ? dt(j.retried) : retryJob ? dt(retryJob.created) : "";
+    rec = !retryJob ? { tone: "warn", t: `Already retried${when ? " on " + when : ""}. The retry isn't in this project's job list; check the Jobs Log before running it again.` }
+      : retryJob.state === "complete" ? { tone: "ok", t: `Already retried on ${when}, and the retry completed. Nothing to do.` }
+      : retryJob.state === "failed" ? { tone: "bad", t: `Retried on ${when} and failed again. Troubleshoot the retry rather than this run.` }
+      : { tone: "warn", t: `Retried on ${when}; the retry is ${retryJob.state}.` };
+  } else if (j.state === "failed") {
     if (cls.k === "dep") { const missing = deps.filter(x => x.nowOk === false), fixed = deps.filter(x => x.nowOk === true), unk = deps.filter(x => x.nowOk === null);
       rec = missing.length ? { tone: "bad", t: `Install ${missing.map(x => x.name + " " + x.version).join(", ")} first. A retry will fail the same way.` }
         : fixed.length && !unk.length ? { tone: "ok", t: `Retry is likely to work: ${fixed.map(x => x.name + " " + x.version).join(", ")} ${fixed.length > 1 ? "are" : "is"} installed now.` }
@@ -597,7 +606,7 @@ function jobAnalysis(J) {
     else if (cls.k === "input") rec = changed.length ? { tone: "ok", t: `The input (${changed.join(", ")}) has changed since this run. Re-run on the new file.` } : { tone: "bad", t: "The same input will fail again. Fix or replace the input, or re-run on a different series." };
     else rec = okSince.length ? { tone: "warn", t: `This gear has succeeded ${okSince.length} time${okSince.length > 1 ? "s" : ""} in this project since. Worth one retry; if it fails again, send the log to the gear owner.` } : { tone: "warn", t: "Gear error. Send the log to the gear owner before retrying." };
   }
-  return { name, ver, errs, cls, queued: run && pend ? run - pend : null, ran: end && run ? end - run : null, okSince, othersFailed, newer, deps, changed, rec };
+  return { retryJob, name, ver, errs, cls, queued: run && pend ? run - pend : null, ran: end && run ? end - run : null, okSince, othersFailed, newer, deps, changed, rec };
 }
 function cmpVer(a, b) { const pa = String(a).split(/[._-]/).map(x => parseInt(x, 10) || 0), pb = String(b).split(/[._-]/).map(x => parseInt(x, 10) || 0); for (let i = 0; i < Math.max(pa.length, pb.length); i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d) return d; } return 0; }
 function jobWhere(j) {
@@ -616,7 +625,7 @@ function jobPane() {
   const startedBy = j.rule_id ? `Gear rule <b>${esc(rule ? rule.name : "")}</b>${rule ? "" : `<span class="mono muted"> ${esc(j.rule_id)}</span>`}` : (j.tags || []).includes("auto") ? "A gear rule" : (j.origin && j.origin.id) ? `${esc(j.origin.type || "user")} <b>${esc(j.origin.id)}</b>` : "A user (see Jobs Log)";
   const sub = `<div class="jhead"><div class="jtitle"><span class="st ${esc(j.state)}">${esc(j.state)}</span><b>${esc(j.gear_info ? j.gear_info.name : "Gear")}</b><span class="mono muted">${esc(j.gear_info ? j.gear_info.version : "")}</span></div>
     <div class="jwhere">${jobWhere(j).map(esc).join(' <i>›</i> ')}</div>
-    <dl class="jfacts"><dt>Started by</dt><dd>${startedBy}</dd><dt>Attempt</dt><dd>${j.attempt || 1}${j.previous_job_id ? ` · <button class="lnkbtn" data-job="${esc(j.previous_job_id)}">previous run</button>` : ""}${j.retried ? ` · retried ${dt(j.retried)}` : ""}</dd>
+    <dl class="jfacts"><dt>Started by</dt><dd>${startedBy}</dd><dt>Attempt</dt><dd>${j.attempt || 1}${j.previous_job_id ? ` · <button class="lnkbtn" data-job="${esc(j.previous_job_id)}">previous run</button>` : ""}${j.retried ? ` · retried ${dt(j.retried)}` : ""}${A && A.retryJob ? ` · <button class="lnkbtn" data-job="${esc(jid(A.retryJob))}">open the retry (${esc(A.retryJob.state)})</button>` : ""}</dd>
     <dt>Queued</dt><dd>${dt(tr.pending || j.created)} · waited ${A ? fmtDur(A.queued) : "…"}</dd><dt>Ran</dt><dd>${tr.running ? dt(tr.running) : "never started"} · ${A ? fmtDur(A.ran) : "…"}</dd>
     <dt>Job ID</dt><dd class="mono">${esc(id)}</dd></dl></div>`;
   if (!A) { host.innerHTML = shell("Gear job", `<div class="loading"><span class="spin"></span>Reading the log, rules and installed gears…</div>`, sub); return; }
@@ -638,7 +647,7 @@ function jobPane() {
   A.deps.forEach(x => since.push(x.nowOk === true ? `<li class="ok">${esc(x.name)} ${esc(x.version)} is installed now (was missing).</li>` : x.nowOk === false ? `<li class="bad">${esc(x.name)} ${esc(x.version)} is still not installed${x.installed && x.installed.length ? ` (installed: ${esc(x.installed.join(", "))})` : ""}.</li>` : `<li>${esc(x.name)} ${esc(x.version)}: couldn't read installed versions.</li>`));
   if (A.newer && A.newer.length) since.push(`<li class="warn">Newer ${esc(A.name)} installed: ${esc(A.newer.join(", "))}.</li>`); else if (A.newer) since.push(`<li>No newer version of ${esc(A.name)} is installed.</li>`);
   if (A.changed.length) since.push(`<li class="ok">Input changed after this run: ${esc(A.changed.join(", "))}.</li>`);
-  if (J.same) since.push(A.okSince.length ? `<li class="ok">${esc(A.name)} has completed ${A.okSince.length} time${A.okSince.length > 1 ? "s" : ""} in this project since this run.</li>` : `<li>No successful ${esc(A.name)} runs in this project since.</li>`);
+  if (J.same) since.push(A.okSince.length ? `<li class="ok">${esc(A.name)} has completed ${A.okSince.length} time${A.okSince.length > 1 ? "s" : ""} in this project since this run${A.retryJob && A.retryJob.state === "complete" ? ", including this job's retry" : ""}.</li>` : `<li>No successful ${esc(A.name)} runs in this project since.</li>`);
   if (j.state === "failed") body += sec("What's changed since", since.length ? `<ul class="jsince">${since.join("")}</ul>` : `<span class="muted">Nothing found.</span>`, "installed gears, input files, later runs");
   if (j.state === "failed" && J.same) { const by = {}; A.othersFailed.forEach(x => { const s = S.subjects.find(y => y._id === (x.parents || {}).subject); const key = s ? s.label : "project level"; (by[key] = by[key] || []).push(x); });
     body += sec("Same gear failed elsewhere", A.othersFailed.length ? `<div class="jsame">${Object.entries(by).map(([k, xs]) => `<button class="chip" data-job="${esc(jid(xs[0]))}">${esc(k)} · ${xs.length}</button>`).join("")}</div><span class="src">${A.othersFailed.length} other failed ${esc(A.name)} job${A.othersFailed.length > 1 ? "s" : ""} in this project. Error text not compared yet.</span>` : `<span class="muted">No other failed ${esc(A.name)} jobs in this project.</span>`); }
@@ -668,7 +677,7 @@ function phi(v) { return S.phi ? `<span class="phi shown">${esc(v || "—")}</sp
 function header(s, d) {
   const sess = subjSessions(s._id), acqs = d && d.acqs ? Object.values(d.acqs).flat() : [], files = acqs.reduce((m, a) => m + (a.files || []).length, 0);
   const t = tasksForSubject(s._id), openT = t ? t.filter(x => x.status === "todo" || x.status === "in_progress") : null;
-  const failed = d && d.jobs ? d.jobs.filter(j => j.state === "failed") : null, info = (d && d.subject && d.subject.info) || {};
+  const failed = d && d.jobs ? openFail(d.jobs) : null, info = (d && d.subject && d.subject.info) || {};
   const tiles = [
     ["Sessions", sess.length, sess.length ? `${dt(sess[0].timestamp).slice(0, 10)} → ${dt(sess[sess.length - 1].timestamp).slice(0, 10)}` : "none yet", ""],
     ["Acquisitions", d && d.acqs ? acqs.length : "…", d && d.acqs ? `${files} files` : "loading", ""],
@@ -703,7 +712,7 @@ function matrix(s, d) {
     const as = acqsOf(z);
     if (key.startsWith("mod:")) { if (!as) return `<span class="src">…</span>`; const m = as.filter(a => acqMod(a) === key.slice(4)); return m.length ? `<button class="cell ok" data-pane="${z._id}|${key}"><span class="g">✓</span>${m.length} acq · ${(n => n + (n === 1 ? " file" : " files"))(m.reduce((n, a) => n + (a.files || []).length, 0))}</button>` : ""; }
     if (key === "tasks") { const tt = t.filter(x => { const sz = sessionOfTask(x, s._id); return sz && sz._id === z._id; }); if (!tt.length) return ""; const open = tt.filter(x => x.status === "todo" || x.status === "in_progress").length, done = tt.filter(x => x.status === "completed").length; return `<button class="cell ${open ? "warn" : "ok"}" data-pane="${z._id}|tasks"><span class="g">${open ? open : "✓"}</span>${done} done${open ? " · " + open + " open" : ""}</button>`; }
-    if (key === "jobs") { if (!d || !d.jobsOk) return d && d.ok ? `<span class="src">n/a</span>` : ""; const jj = d.jobs.filter(j => (j.parents && j.parents.session === z._id) || (j.destination && j.destination.id === z._id)); if (!jj.length) return ""; const f = jj.filter(j => j.state === "failed").length; return `<button class="cell ${f ? "bad" : "ok"}" data-pane="${z._id}|jobs"><span class="g">${f ? "!" : "✓"}</span>${f ? f + " failed" : jj.length + " done"}</button>`; }
+    if (key === "jobs") { if (!d || !d.jobsOk) return d && d.ok ? `<span class="src">n/a</span>` : ""; const jj = d.jobs.filter(j => (j.parents && j.parents.session === z._id) || (j.destination && j.destination.id === z._id)); if (!jj.length) return ""; const f = openFail(jj).length; return `<button class="cell ${f ? "bad" : "ok"}" data-pane="${z._id}|jobs"><span class="g">${f ? "!" : "✓"}</span>${f ? f + " failed" : jj.length + " done"}</button>`; }
     if (key === "info") { const k = Object.keys(z.info || {}); return k.length ? `<button class="cell info" data-pane="${z._id}|info"><span class="g">${k.length}</span>keys</button>` : ""; }
     if (key === "tpl") { if (z.satisfies_template === undefined) return ""; if (z.satisfies_template === null) return `<span class="cell"><span class="g">–</span>not checked</span>`; return `<span class="cell ${z.satisfies_template ? "ok" : "bad"}"><span class="g">${z.satisfies_template ? "✓" : "✗"}</span>${z.satisfies_template ? "satisfied" : "not satisfied"}</span>`; }
     return "";
