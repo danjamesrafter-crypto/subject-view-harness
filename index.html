@@ -479,7 +479,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.6.2";
+const VERSION = "subject-view-harness/0.6.3";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {} };
 const DIAG_MAX = 60;
@@ -939,9 +939,11 @@ function infoTab(s, d) {
       return `<div class="card infocard"><div class="card-h"><h3>${esc(k)}</h3><span class="src">subject.info.${esc(k)} · ${kv.length} field${kv.length === 1 ? "" : "s"}</span></div>${nested.map(([kk, vv]) => `<div class="card-b" style="padding-bottom:0"><div class="k" style="font-size:12px;color:var(--ink-3)">${esc(kk)} · ${vv.length}</div></div>${rowsTable(vv, phiKey)}`).join("")}${flat.length ? `<div class="card-b"><div class="kvgrid">` : ""}${flat.slice(0, 60).map(([kk, vv]) => `<div><div class="k">${esc(kk)}</div><div class="v ${typeof vv === "number" ? "mono" : ""}">${phiKey(kk) && !S.phi ? `<span class="phi">••••••</span>` : esc(cellVal(vv))}</div></div>`).join("")}${flat.length ? `</div>${flat.length > 60 ? `<div class="src">${flat.length - 60} more fields</div>` : ""}</div>` : ""}</div>`; }).join("");
 }
 function diagTab() {
+  setTimeout(() => tcCount().then(n => { const e = document.getElementById("tcN"); if (e) e.textContent = n == null ? "storage unavailable" : n + " stored"; }), 0);
   const ok = S.calls.filter(c => c.status === "ok").length, er = S.calls.filter(c => c.status === "error").length;
   return `<div class="card diag"><div class="card-h"><h3>Diagnostics</h3><span class="src">${VERSION} · ${ok} ok · ${er} failed · newest first · GET + SDK tag/info writes</span></div>
     <div class="card-b" style="font-size:13px;color:var(--ink-2)">Origin <span class="mono">${esc(S.origin || "unknown")}</span> · user <span class="mono">${esc(S.user ? S.user._id : "?")}</span> · opened from <span class="mono">${esc(S.opener ? (S.opener.container_type || "?") + " " + (S.opener._id || "") : "?")}</span> · project <span class="mono">${esc(S.projectId || "?")}</span></div>
+    <div class="card-b" style="font-size:13px;color:var(--ink-2);display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span>Thumbnail cache on this device: <b id="tcStat">${tcOn() ? "on" : "off"}</b> · <span class="mono">${TC.hits} hits · ${TC.misses} misses this session${TC.err ? " · storage " + esc(TC.err) : ""}</span> · <span id="tcN" class="mono"></span></span><button class="ibtn" data-act="tctoggle">${tcOn() ? "Turn off" : "Turn on"}</button><button class="ibtn" data-act="tcclear">Clear thumbnail cache</button><span class="src" style="font-family:var(--font-ui);flex-basis:100%">Rendered middle slices are kept in this browser for 14 days (newest 400) so they appear instantly next launch. They are image pixels from your data: turn this off on shared machines.</span></div>
     ${schedule().length || (S.project && (S.project.templates || S.project.template)) ? `<div class="card-b"><div class="src" style="font-family:var(--font-ui);margin-bottom:6px">Session templates as read from project.templates (${schedule().length} parsed)</div><pre>${esc(JSON.stringify(S.project.templates || S.project.template, null, 2).slice(0, 4000))}</pre></div>` : `<div class="card-b src" style="font-family:var(--font-ui)">No session templates on this project (project.templates is empty).</div>`}
     ${S.calls.map((c, i) => `<div class="call" data-diag="${i}" title="Show a sample row"><span class="${c.status === "ok" ? "ok" : c.status === "error" ? "er" : ""}">${c.status}</span><code>${c.sdk ? "" : "GET "}${esc(c.path)}${c.params ? " " + esc(JSON.stringify(c.params)) : ""}</code><span class="mono muted">${c.n != null ? c.n + (c.total != null ? "/" + c.total : "") + " rows" : ""}</span><span class="mono muted">${c.ms} ms${c.err ? " · " + esc(c.err) : ""}</span></div>${i === S.diagOpen ? `<pre>${esc(JSON.stringify(c.sample, null, 2))}</pre>` : ""}`).join("")}
     <div class="card-b"><span class="src" style="font-family:var(--font-ui)">Click a call to see one sample row (PHI fields redacted).</span> <button class="ibtn" data-act="copydiag">Copy Diagnostics</button></div></div>`;
@@ -1097,6 +1099,48 @@ function thumbHTML(a, big) {
   const msg = st.state === "none" || st.state === "err" ? esc(st.note || "No preview") : "";
   return `<span class="thumb ph ${st.state === "loading" || st.state === "idle" ? "ld" : ""}" data-thumb="${a._id}" data-big="${big ? 1 : 0}" style="width:${sz}px;height:${sz}px" title="${msg}">${msg ? `<span>${msg}</span>` : ""}</span>`;
 }
+/* Persistent thumbnail cache (0.6.3). IndexedDB on this app's origin, partitioned by the browser under the Flywheel site.
+   Key = site origin | user | file id | modified | size, so a re-uploaded or edited file never shows a stale slice.
+   14-day TTL, newest 400 kept. Every access is wrapped: if storage is blocked the app just renders from the file. */
+const TC = { db: null, open: null, hits: 0, misses: 0, puts: 0, err: "", TTL: 14 * 864e5, MAX: 400 };
+const tcOn = () => { try { return localStorage.getItem("svh-thumbcache") !== "off"; } catch (e) { return true; } };
+function tcDb() {
+  if (TC.open) return TC.open;
+  TC.open = new Promise(res => {
+    try {
+      const rq = indexedDB.open("svh-thumbs", 1);
+      rq.onupgradeneeded = () => { const os = rq.result.createObjectStore("t", { keyPath: "k" }); os.createIndex("at", "at"); };
+      rq.onsuccess = () => { TC.db = rq.result; res(TC.db); };
+      rq.onerror = () => { TC.err = String(rq.error && rq.error.name || "open failed"); res(null); };
+      rq.onblocked = () => { TC.err = "blocked"; res(null); };
+      setTimeout(() => res(TC.db), 3000);
+    } catch (e) { TC.err = String(e && e.name || e); res(null); }
+  });
+  return TC.open;
+}
+const tcKey = (f, a) => [S.origin || "?", S.user && S.user._id || "?", f.file_id || f._id || (a._id + "/" + f.name), f.modified || "", f.size || 0, 1].join("|");
+const tcReq = (db, mode, fn) => new Promise(res => { try { const tx = db.transaction("t", mode), os = tx.objectStore("t"); const r = fn(os); tx.oncomplete = () => res(r && r.result); tx.onerror = tx.onabort = () => res(undefined); } catch (e) { res(undefined); } });
+async function tcGet(k) {
+  if (!tcOn()) return null; const db = await tcDb(); if (!db) return null;
+  const v = await tcReq(db, "readonly", os => os.get(k));
+  if (!v || Date.now() - v.made > TC.TTL) { TC.misses++; return null; }
+  TC.hits++; v.at = Date.now(); tcReq(db, "readwrite", os => os.put(v)); return v;
+}
+async function tcPut(k, v) {
+  if (!tcOn()) return; const db = await tcDb(); if (!db) return;
+  await tcReq(db, "readwrite", os => os.put({ k, ...v, made: Date.now(), at: Date.now() })); TC.puts++;
+  if (TC.puts % 20 === 1) tcPrune();
+}
+async function tcPrune() { /* drop expired, then oldest-used beyond MAX */
+  const db = await tcDb(); if (!db) return;
+  const all = await tcReq(db, "readonly", os => os.index("at").getAll()) || [];
+  const now = Date.now(), drop = all.filter(v => now - v.made > TC.TTL).map(v => v.k);
+  const live = all.filter(v => now - v.made <= TC.TTL); if (live.length > TC.MAX) drop.push(...live.slice(0, live.length - TC.MAX).map(v => v.k));
+  if (drop.length) await tcReq(db, "readwrite", os => { drop.forEach(k => os.delete(k)); });
+  return all.length - drop.length;
+}
+async function tcCount() { const db = await tcDb(); if (!db) return null; return tcReq(db, "readonly", os => os.count()); }
+async function tcClear() { const db = await tcDb(); if (!db) return false; await tcReq(db, "readwrite", os => os.clear()); return true; }
 let thumbActive = 0; const thumbQ = [];
 const thumbSlot = () => new Promise(r => { if (thumbActive < 3) { thumbActive++; r(); } else thumbQ.push(r); });
 const thumbFree = () => { const n = thumbQ.shift(); if (n) n(); else thumbActive--; };
@@ -1107,6 +1151,8 @@ async function loadThumb(a) {
   if (!window.dicomParser) { st.state = "err"; st.note = "Viewer lib not loaded"; return; }
   st.state = "loading";
   st.p = (async () => {
+    const ck = tcKey(f, a), hit = await tcGet(ck);
+    if (hit) { if (hit.url) { st.url = hit.url; st.state = "ok"; } else { st.state = "err"; st.note = hit.note; } st.meta = hit.meta || null; st.cached = true; thumbDone(a); return; }
     await thumbSlot();
     try {
       const ref = fileRef(f, a); let buf;
@@ -1124,11 +1170,17 @@ async function loadThumb(a) {
         buf = await (await sdk(`SDK getFileBlob ${f.name}`, () => S.ext.getFileBlob(ref))).arrayBuffer();
       }
       st.url = await renderDicom(new Uint8Array(buf)); st.state = "ok";
-    } catch (e) { st.state = "err"; st.note = String(e && e.message || e).slice(0, 60); }
-    thumbFree();
-    if (S.hover) drawHover(); document.querySelectorAll(`.pane [data-thumb="${CSS.escape(a._id)}"]`).forEach(n => { const t = document.createElement("template"); t.innerHTML = thumbHTML(a, n.dataset.big === "1"); n.replaceWith(t.content.firstElementChild); });
+      tcPut(ck, { url: st.url, meta: st.meta || null });
+    } catch (e) {
+      st.state = "err"; st.note = String(e && e.message || e).slice(0, 60);
+      if (/^(Compressed|No pixel data|Slice too large|File too large|Empty archive)/.test(st.note)) tcPut(ck, { note: st.note, meta: st.meta || null }); /* deterministic: don't re-download next launch */
+    }
+    thumbFree(); thumbDone(a);
   })();
   return st.p;
+}
+function thumbDone(a) {
+  if (S.hover) drawHover(); document.querySelectorAll(`.pane [data-thumb="${CSS.escape(a._id)}"]`).forEach(n => { const t = document.createElement("template"); t.innerHTML = thumbHTML(a, n.dataset.big === "1"); n.replaceWith(t.content.firstElementChild); });
 }
 async function renderDicom(bytes) {
   let ds; try { ds = dicomParser.parseDicom(bytes); } catch (e) { ds = dicomParser.parseDicom(bytes, { TransferSyntaxUID: "1.2.840.10008.1.2" }); }
@@ -1442,6 +1494,8 @@ document.addEventListener("click", async e => {
   if (a === "copyjob") { try { await navigator.clipboard.writeText(S.job); toast("Job ID copied"); } catch (er) { toast("Copy blocked by the frame: " + S.job); } }
   if (a === "dllog") { const J = S.jobData[S.job]; try { const u = URL.createObjectURL(new Blob([(J.lines || []).join("\n")], { type: "text/plain" })); const l = document.createElement("a"); l.href = u; l.download = `job-${S.job}.log`; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); } catch (er) { toast("Download blocked by the frame. Use Open in Jobs Log."); } }
   if (a === "diagnext") { S.diagOpen = 0; render(); }
+  if (a === "tcclear") { const ok = await tcClear(); toast(ok ? "Thumbnail cache cleared" : "Browser storage isn't available in this frame", ok ? "success" : "warning"); render(); return; }
+  if (a === "tctoggle") { const on = !tcOn(); try { localStorage.setItem("svh-thumbcache", on ? "on" : "off"); } catch (e) {} if (!on) await tcClear(); toast(on ? "Thumbnail cache on" : "Thumbnail cache off and cleared"); render(); return; }
   if (a === "copydiag") { const txt = JSON.stringify({ version: VERSION, origin: S.origin, project: S.projectId, calls: S.calls }, null, 2); try { await navigator.clipboard.writeText(txt); toast("Diagnostics copied"); } catch (er) { toast("Copy blocked by the frame. Open Diagnostics and select the text."); } }
 });
 document.addEventListener("input", e => { if (e.target.id === "q") { S.q = e.target.value; renderSide(); } });
