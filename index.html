@@ -303,7 +303,8 @@ td.r,th.r{text-align:right;white-space:nowrap}
 .vlegend span{display:inline-flex;gap:4px;align-items:center}
 
 /* ---------- docked panels (PanelLayout, border-left, extra-large shadow) ---------- */
-.pane,.fermi{position:fixed;top:0;right:0;bottom:0;background:var(--card-background);border-left:1px solid var(--separations-border);display:flex;flex-direction:column;box-shadow:var(--shadow-extra-large);animation:slidein 250ms var(--ease-pop)}
+.pane,.fermi{position:fixed;top:0;right:0;bottom:0;background:var(--card-background);border-left:1px solid var(--separations-border);display:flex;flex-direction:column;box-shadow:var(--shadow-extra-large)}
+.pane.enter,.fermi.enter{animation:slidein 250ms var(--ease-pop)}
 @keyframes slidein{from{transform:translateX(16px);opacity:0}to{transform:none;opacity:1}}
 .pane{width:min(620px,100%);z-index:18}
 .jobpane{width:min(680px,100%);z-index:19}
@@ -478,7 +479,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.6.1";
+const VERSION = "subject-view-harness/0.6.2";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {} };
 const DIAG_MAX = 60;
@@ -943,7 +944,7 @@ function diagTab() {
     ${S.calls.map((c, i) => `<div class="call" data-diag="${i}" title="Show a sample row"><span class="${c.status === "ok" ? "ok" : c.status === "error" ? "er" : ""}">${c.status}</span><code>${c.sdk ? "" : "GET "}${esc(c.path)}${c.params ? " " + esc(JSON.stringify(c.params)) : ""}</code><span class="mono muted">${c.n != null ? c.n + (c.total != null ? "/" + c.total : "") + " rows" : ""}</span><span class="mono muted">${c.ms} ms${c.err ? " · " + esc(c.err) : ""}</span></div>${i === S.diagOpen ? `<pre>${esc(JSON.stringify(c.sample, null, 2))}</pre>` : ""}`).join("")}
     <div class="card-b"><span class="src" style="font-family:var(--font-ui)">Click a call to see one sample row (PHI fields redacted).</span> <button class="ibtn" data-act="copydiag">Copy Diagnostics</button></div></div>`;
 }
-function pane() {
+function paneRaw() {
   const host = document.getElementById("paneHost");
   if (S.job) { jobPane(); return; }
   if (!S.pane) { host.innerHTML = ""; return; }
@@ -976,6 +977,35 @@ function pane() {
   if (!r || r === "info") { const kv = flatKV(z.info || {}, "", []); body += sec("Session custom info", kv.length ? `<div class="kvgrid">${kv.filter(([, v]) => !isRows(v)).slice(0, 40).map(([k, v]) => `<div><div class="k">${esc(k)}</div><div class="v">${esc(cellVal(v))}</div></div>`).join("")}</div>${kv.filter(([, v]) => isRows(v)).map(([k, v]) => `<div class="k" style="font-size:12px;color:var(--ink-3);margin-top:8px">${esc(k)} · ${v.length}</div>${rowsTable(v)}`).join("")}` : `<span class="muted">No custom info.</span>`); }
   host.innerHTML = `<aside class="pane" role="dialog" aria-label="${esc(z.label)}"><header><div style="display:flex;align-items:center;gap:8px"><nav class="bc"><button data-act="closePane">${esc(s.label)}</button>${ic("chevron-forward","sep")}${r ? `<button data-pane="${col.key}|">${esc(z.label)}</button>${ic("chevron-forward","sep")}<b>${esc(r === "req" ? "Visit requirements" : r.replace("mod:", ""))}</b>` : `<b>${esc(z.label)}</b>`}</nav><span style="flex:1"></span>${nav}</div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="src">${dt(z.timestamp || z.created)} · ${as.length} acquisitions</span>${tagRow("session|" + z._id, z.tags, { sm: true })}${(st => st.k ? `<span class="vst-pill" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--${st.k}-t)"><i class="vd ${st.k}"></i>${esc(st.all)}</span>` : "")(sessStatus(z, S.subj, col.v))}<a class="lnk" style="font-size:12px" href="${coreLink("sessions", z._id)}" target="_blank" rel="noopener">${ic("open")}Open Session in Flywheel</a></div></header><div class="body">${body}</div></aside>`;
+}
+/* v0.6.2: docked panels re-render in place. The entrance animation plays only when the panel opens or switches to a
+   different visit/job; scroll position (and the Fermi input) survive data-driven re-renders. */
+function remount(host, key, draw, opts) {
+  const old = host.firstElementChild, same = !!(old && old.dataset && old.dataset.k === key);
+  const scr = same ? [...old.querySelectorAll(".body,.fbody")].map(e => e.scrollTop) : [];
+  const inp = same && opts && opts.input ? old.querySelector(opts.input) : null, val = inp ? inp.value : null, foc = inp && document.activeElement === inp;
+  draw();
+  let el = host.firstElementChild; if (!el || !el.classList) return;
+  if (!el.matches(".pane,.fermi")) return;
+  el.dataset.k = key;
+  if (!same) { el.classList.add("enter"); return; }
+  /* keep the existing panel element (so an entrance animation in progress is not restarted); swap only its contents */
+  const keepEnter = old.classList.contains("enter");
+  old.className = el.className + (keepEnter ? " enter" : ""); for (const a of [...el.attributes]) if (a.name !== "class") old.setAttribute(a.name, a.value);
+  old.replaceChildren(...el.childNodes); host.replaceChildren(old); el = old;
+  if (!(opts && opts.keepScrollIf === false)) [...el.querySelectorAll(".body,.fbody")].forEach((e, i) => { if (scr[i] != null) e.scrollTop = scr[i]; });
+  if (opts && opts.input && val != null) { const n = el.querySelector(opts.input); if (n) { n.value = val; if (foc) n.focus(); } }
+}
+function pane() {
+  const host = document.getElementById("paneHost");
+  const key = S.job ? "job|" + S.job : S.pane ? `${S.subj}|${S.pane.z}|${S.pane.r || ""}` : "";
+  remount(host, key, paneRaw);
+}
+let fermiSig = "";
+function drawFermi() {
+  const F = S.fermi, sig = F.thread.length + "|" + (F.busy ? 1 : 0) + "|" + F.thread.filter(t => t.a).length;
+  const changed = sig !== fermiSig; fermiSig = sig;
+  remount(document.getElementById("fermiHost"), "fermi", drawFermiRaw, { input: "#fermiQ", keepScrollIf: !changed });
 }
 function render() {
   renderSide();
@@ -1061,9 +1091,9 @@ const thumbState = id => (S.thumbs[id] = S.thumbs[id] || { state: "idle" });
 const dicomFile = a => (a.files || []).find(f => f.type === "dicom") || null;
 function thumbHTML(a, big) {
   const st = S.thumbs[a._id] || { state: "idle" }, sz = big ? 120 : 96;
-  if (st.state === "ok") return `<img class="thumb" style="width:${sz}px;height:${sz}px" src="${st.url}" alt="${esc(a.label)} middle slice">`;
+  if (st.state === "ok") return `<img class="thumb" data-thumb="${a._id}" data-big="${big ? 1 : 0}" style="width:${sz}px;height:${sz}px" src="${st.url}" alt="${esc(a.label)} middle slice">`;
   const msg = st.state === "none" || st.state === "err" ? esc(st.note || "No preview") : "";
-  return `<span class="thumb ph ${st.state === "loading" || st.state === "idle" ? "ld" : ""}" style="width:${sz}px;height:${sz}px" title="${msg}">${msg ? `<span>${msg}</span>` : ""}</span>`;
+  return `<span class="thumb ph ${st.state === "loading" || st.state === "idle" ? "ld" : ""}" data-thumb="${a._id}" data-big="${big ? 1 : 0}" style="width:${sz}px;height:${sz}px" title="${msg}">${msg ? `<span>${msg}</span>` : ""}</span>`;
 }
 let thumbActive = 0; const thumbQ = [];
 const thumbSlot = () => new Promise(r => { if (thumbActive < 3) { thumbActive++; r(); } else thumbQ.push(r); });
@@ -1094,7 +1124,7 @@ async function loadThumb(a) {
       st.url = await renderDicom(new Uint8Array(buf)); st.state = "ok";
     } catch (e) { st.state = "err"; st.note = String(e && e.message || e).slice(0, 60); }
     thumbFree();
-    if (S.hover) drawHover(); if (S.pane && !S.job && !S.tagEdit && !document.querySelector(".pane textarea:focus")) pane();
+    if (S.hover) drawHover(); document.querySelectorAll(`.pane [data-thumb="${CSS.escape(a._id)}"]`).forEach(n => { const t = document.createElement("template"); t.innerHTML = thumbHTML(a, n.dataset.big === "1"); n.replaceWith(t.content.firstElementChild); });
   })();
   return st.p;
 }
@@ -1329,7 +1359,7 @@ const FERMI = {
   }
 };
 function nearLabels(as, miss) { const labs = as.map(a => a.label); return miss.flatMap(m => labs.filter(l => l.toLowerCase().includes(m.label.toLowerCase().slice(0, 3)))).slice(0, 4); }
-function drawFermi() {
+function drawFermiRaw() {
   const host = document.getElementById("fermiHost"), F = S.fermi;
   if (!F.open) { host.innerHTML = F.thread.length ? `<button class="fermipill" data-act="fermi">${ic("star-ai-artificial-intelligence")}Fermi · ${F.thread.length}</button>` : ""; return; }
   host.innerHTML = `<aside class="fermi" role="dialog" aria-label="Ask Fermi"><header>${ic("star-ai-artificial-intelligence")}<b>Fermi</b><span class="pill" style="background:var(--info-wash);color:var(--info-t)">Concept</span><span style="flex:1"></span>${F.thread.length ? `<button class="ibtn" data-act="fermiclear">Clear</button>` : ""}<button class="tbtn" data-act="fermi" aria-label="Close">${ic("close")}</button></header>
