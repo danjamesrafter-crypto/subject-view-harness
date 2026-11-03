@@ -548,7 +548,7 @@ async function loadAll(quiet) {
     if (!S.subj && S.subjects.length) S.subj = S.subjects[0]._id;
     S.loading = false; S.updated = new Date(); S.stale = false; render();
     loadQueries();
-    loadTasks(); if (S.subj) loadSubject(S.subj);
+    loadTasks(); if (S.subj) loadSubject(S.subj, quiet);
     api("/api/jobs", { filter: `parents.project=${S.projectId},state=failed`, limit: 50, sort: "created:desc" }, { soft: true }).then(r => { S.projFailed = r ? listOf(r) : null; if (S.tab === "tasks") render(); });
   } catch (e) {
     S.loading = false; if (S.project) { S.stale = true; toast("Refresh failed. Showing the last good data."); render(); } else fail("Could not load the project: " + (e && e.message || e));
@@ -567,9 +567,11 @@ async function loadTasks() {
   } catch (e) {}
   S.tasks = [...seen.values()]; render();
 }
-async function loadSubject(id) {
-  if (S.detail[id] && S.detail[id].ok) { render(); return; }
-  S.detail[id] = { loading: true }; render();
+async function loadSubject(id, revalidate) {
+  /* v0.6.2: a background refresh keeps showing the loaded data and swaps in the new copy when it arrives */
+  const had = S.detail[id] && S.detail[id].ok;
+  if (had && !revalidate) { render(); return; }
+  if (!had) { S.detail[id] = { loading: true }; render(); }
   const d = { ok: true };
   d.subject = await api(`/api/subjects/${id}`, null, { soft: true }) || S.subjects.find(x => x._id === id);
   const sess = S.sessions.filter(z => (z.subject && z.subject._id === id) || (z.parents && z.parents.subject === id));
@@ -988,10 +990,10 @@ function remount(host, key, draw, opts) {
   let el = host.firstElementChild; if (!el || !el.classList) return;
   if (!el.matches(".pane,.fermi")) return;
   el.dataset.k = key;
-  if (!same) { el.classList.add("enter"); return; }
+  if (!same) { el.classList.add("enter"); el.dataset.t = Date.now(); return; }
   /* keep the existing panel element (so an entrance animation in progress is not restarted); swap only its contents */
-  const keepEnter = old.classList.contains("enter");
-  old.className = el.className + (keepEnter ? " enter" : ""); for (const a of [...el.attributes]) if (a.name !== "class") old.setAttribute(a.name, a.value);
+  const keepEnter = old.classList.contains("enter") && Date.now() - (+old.dataset.t || 0) < 300;
+  old.className = el.className + (keepEnter ? " enter" : ""); for (const a of [...el.attributes]) if (a.name !== "class" && a.name !== "data-t") old.setAttribute(a.name, a.value);
   old.replaceChildren(...el.childNodes); host.replaceChildren(old); el = old;
   if (!(opts && opts.keepScrollIf === false)) [...el.querySelectorAll(".body,.fbody")].forEach((e, i) => { if (scr[i] != null) e.scrollTop = scr[i]; });
   if (opts && opts.input && val != null) { const n = el.querySelector(opts.input); if (n) { n.value = val; if (foc) n.focus(); } }
@@ -1433,7 +1435,7 @@ document.addEventListener("click", async e => {
   if (t.dataset.diag != null) { S.diagOpen = S.diagOpen === +t.dataset.diag ? -1 : +t.dataset.diag; render(); return; }
   const a = t.dataset.act;
   if (a === "phi") { S.phi = !S.phi; render(); }
-  if (a === "refresh") { S.detail = {}; S.error = null; loadAll(); }
+  if (a === "refresh") { if (!S.project) { S.detail = {}; S.error = null; loadAll(); return; } Object.keys(S.detail).forEach(k => { if (k !== S.subj) delete S.detail[k]; }); S.error = null; lastRefresh = Date.now(); loadAll(true).then(() => toast(S.stale ? "Refresh failed. Showing the last good data." : "Up to date", S.stale ? "error" : "info")); }
   if (a === "closePane") { S.pane = null; render(); }
   if (a === "closeJob") { S.job = null; render(); }
   if (a === "fulllog") { S.fullLog = !S.fullLog; render(); }
@@ -1444,7 +1446,7 @@ document.addEventListener("click", async e => {
 });
 document.addEventListener("input", e => { if (e.target.id === "q") { S.q = e.target.value; renderSide(); } });
 document.addEventListener("keydown", e => { if (e.key !== "Escape") return; if (S.job) { S.job = null; render(); } else if (S.pane) { S.pane = null; render(); } });
-let lastRefresh = 0; const softRefresh = () => { if (!S.ext || Date.now() - lastRefresh < 4000) return; lastRefresh = Date.now(); S.detail = {}; loadAll(true); };
+let lastRefresh = Date.now(); const softRefresh = () => { if (!S.ext || Date.now() - lastRefresh < 30000) return; lastRefresh = Date.now(); Object.keys(S.detail).forEach(k => { if (k !== S.subj) delete S.detail[k]; }); loadAll(true); };
 document.addEventListener("visibilitychange", () => { if (!document.hidden) softRefresh(); });
 window.addEventListener("focus", softRefresh);
 setInterval(() => { if (!document.hidden) softRefresh(); }, 60000);
