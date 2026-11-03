@@ -478,7 +478,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.6.0";
+const VERSION = "subject-view-harness/0.6.1";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {} };
 const DIAG_MAX = 60;
@@ -1297,9 +1297,9 @@ const FERMI = {
       ${pattern && pattern[1].length > 1 ? `<p class="callout"><b>Pattern:</b> ${esc(pattern[0])} is missing in ${pattern[1].length} visits (${esc(pattern[1].join(", "))}). That looks like a protocol or labelling issue rather than one site's miss; worth a single note to sites instead of ${pattern[1].length} queries.</p>` : ""}
       <p><b>Not received yet:</b> ${outstanding.reduce((n, x) => n + x.r.miss, 0)} scheduled visits across ${outstanding.length} subjects. No visit windows are defined, so none can be called overdue.</p>
       <p><b>Readers:</b> ${tasks.length} open reads${Object.keys(byA).length ? " · " + Object.entries(byA).sort((a, b) => b[1] - a[1]).map(([a, n]) => `${esc(a)} ${n}`).join(" · ") : ""}.</p>
-      <p><b>Data management:</b> ${qOpen.length} open quer${qOpen.length === 1 ? "y" : "ies"}${S.projFailed && S.projFailed.length ? `; ${S.projFailed.length} failed job record${S.projFailed.length > 1 ? "s" : ""} in the project (already retried where noted)` : ""}.</p>`,
+      <p><b>Data management:</b> ${qOpen.length} open quer${qOpen.length === 1 ? "y" : "ies"}${S.projFailed && S.projFailed.length ? `; ${S.projFailed.length} failed job record${S.projFailed.length > 1 ? "s" : ""} in the project${(n => n ? `, ${n} not retried yet` : ", all already retried")(S.projFailed.filter(j => !j.retried && !S.projFailed.some(x => x.previous_job_id === j._id)).length)}` : ""}.</p>`,
       tools: ["get_visit_status(project)", `list_acquisitions(session) × ${need.length} (only incomplete visits not already loaded)`, "list_reader_tasks(project, open)", "list_queries(project)", "list_jobs(project, failed)"],
-      props: pattern && pattern[1].length > 1 ? [{ kind: "note", text: `Draft a note to sites about missing ${pattern[0]} at ${sch.find(v => v.reqs.some(r => r.L.text === pattern[0])) ? sch.find(v => v.reqs.some(r => r.L.text === pattern[0])).label : "this visit"}`, body: `Several ${sch.length ? "Session 3" : ""} uploads are missing the ${pattern[0]} acquisition required by the protocol (${pattern[1].join(", ")}). Please check whether it was acquired and upload it, or confirm it was not done.` }] : [] };
+      props: pattern && pattern[1].length > 1 ? [{ kind: "note", text: `Draft a note to sites about missing ${pattern[0]} at ${sch.find(v => v.reqs.some(r => r.L.text === pattern[0])) ? sch.find(v => v.reqs.some(r => r.L.text === pattern[0])).label : "this visit"}`, body: `Several ${(sch.find(v => v.reqs.some(r => r.L.text === pattern[0])) || {}).label || ""} uploads are missing the ${pattern[0]} acquisition required by the protocol (${pattern[1].join(", ")}). Please check whether it was acquired and upload it, or confirm it was not done.` }] : [] };
   },
   summary: async () => {
     const sid = S.subj, s = S.subjects.find(x => x._id === sid); if (!S.detail[sid] || !S.detail[sid].ok) await loadSubject(sid);
