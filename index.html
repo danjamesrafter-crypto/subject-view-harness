@@ -479,7 +479,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.6.3";
+const VERSION = "subject-view-harness/0.6.4";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {} };
 const DIAG_MAX = 60;
@@ -1144,46 +1144,222 @@ async function tcClear() { const db = await tcDb(); if (!db) return false; await
 let thumbActive = 0; const thumbQ = [];
 const thumbSlot = () => new Promise(r => { if (thumbActive < 3) { thumbActive++; r(); } else thumbQ.push(r); });
 const thumbFree = () => { const n = thumbQ.shift(); if (n) n(); else thumbActive--; };
+/* What to preview for an acquisition (0.6.4): DICOM first, then a whole-slide TIFF/SVS, a plain image, or NIfTI. */
+const extOf = f => ((f.name || "").toLowerCase().match(/\.(nii\.gz|[a-z0-9]+)$/) || [, ""])[1];
+function thumbSource(a) {
+  const fs = a.files || [];
+  const d = dicomFile(a); if (d) return { f: d, kind: "dicom" };
+  let f = fs.find(x => /^(svs|tiff?|scn|bif|ndpi|qptiff)$/.test(extOf(x)) || /aperio|tiff/i.test(x.type || "")); if (f) return { f, kind: "slide" };
+  f = fs.find(x => /^(png|jpe?g|gif|webp|bmp)$/.test(extOf(x)) || x.type === "image"); if (f) return { f, kind: "image" };
+  f = fs.find(x => /^(nii|nii\.gz)$/.test(extOf(x)) || /nifti/i.test(x.type || "")); if (f) return { f, kind: "nifti" };
+  return null;
+}
+const THUMB_FINAL = /^(Compressed|No pixel data|Slice too large|File too large|Empty archive|JPEG 2000|Unsupported|No small level|Label image|NIfTI-2|Not a TIFF)/;
 async function loadThumb(a) {
   const st = thumbState(a._id); if (st.state !== "idle") return st.p;
-  const f = dicomFile(a);
-  if (!f) { st.state = "none"; st.note = (a.files || []).some(x => /nifti/i.test(x.type)) ? "NIfTI only" : "No DICOM"; return; }
-  if (!window.dicomParser) { st.state = "err"; st.note = "Viewer lib not loaded"; return; }
+  const src = thumbSource(a);
+  if (!src) { const t = ((a.files || [])[0] || {}).type; st.state = "none"; st.note = t ? `No preview for ${t}` : "No files"; return; }
+  const f = src.f;
+  if (src.kind === "dicom" && !window.dicomParser) { st.state = "err"; st.note = "Viewer lib not loaded"; return; }
   st.state = "loading";
   st.p = (async () => {
     const ck = tcKey(f, a), hit = await tcGet(ck);
     if (hit) { if (hit.url) { st.url = hit.url; st.state = "ok"; } else { st.state = "err"; st.note = hit.note; } st.meta = hit.meta || null; st.cached = true; thumbDone(a); return; }
     await thumbSlot();
     try {
-      const ref = fileRef(f, a); let buf;
-      const isZip = /\.zip$/i.test(f.name) || f.zip_member_count;
-      if (isZip) {
-        const info = await sdk(`SDK getArchiveMembers ${f.name}`, () => S.ext.getArchiveMembers(ref));
-        const mem = (info && info.members || []).filter(m => m.size > 0 && !/\/$/.test(m.path) && !/(dicomdir|\.txt|\.json|\.xml)$/i.test(m.path)).sort((x, y) => x.path.localeCompare(y.path, undefined, { numeric: true }));
-        if (!mem.length) throw new Error("Empty archive");
-        const m = mem[Math.floor(mem.length / 2)];
-        if (m.size > 25e6) throw new Error("Slice too large");
-        buf = await (await sdk(`SDK getFileBlob ${f.name} member ${m.path.split("/").pop()} (${fmtSize(m.size)})`, () => S.ext.getFileBlob(ref, { member: m.path }))).arrayBuffer();
-        st.meta = { slice: mem.indexOf(m) + 1, slices: mem.length };
-      } else {
-        if (f.size > 25e6) throw new Error("File too large for a preview");
-        buf = await (await sdk(`SDK getFileBlob ${f.name}`, () => S.ext.getFileBlob(ref))).arrayBuffer();
+      const ref = fileRef(f, a);
+      if (src.kind === "slide") { const r = await renderSlide(ref, f); st.url = r.url; st.meta = r.meta; }
+      else if (src.kind === "image") {
+        if (f.size > 15e6) throw new Error("File too large for a preview");
+        const blob = await sdk(`SDK getFileBlob ${f.name}`, () => S.ext.getFileBlob(ref));
+        const bmp = await createImageBitmap(blob); st.url = drawScaled(bmp, bmp.width, bmp.height); st.meta = { kind: "image", w: bmp.width, h: bmp.height };
+      } else if (src.kind === "nifti") { const r = await renderNifti(ref, f); st.url = r.url; st.meta = r.meta; }
+      else {
+        let buf;
+        const isZip = /\.zip$/i.test(f.name) || f.zip_member_count;
+        if (isZip) {
+          const info = await sdk(`SDK getArchiveMembers ${f.name}`, () => S.ext.getArchiveMembers(ref));
+          const mem = (info && info.members || []).filter(m => m.size > 0 && !/\/$/.test(m.path) && !/(dicomdir|\.txt|\.json|\.xml)$/i.test(m.path)).sort((x, y) => x.path.localeCompare(y.path, undefined, { numeric: true }));
+          if (!mem.length) throw new Error("Empty archive");
+          const m = mem[Math.floor(mem.length / 2)];
+          if (m.size > 25e6) throw new Error("Slice too large");
+          buf = await (await sdk(`SDK getFileBlob ${f.name} member ${m.path.split("/").pop()} (${fmtSize(m.size)})`, () => S.ext.getFileBlob(ref, { member: m.path }))).arrayBuffer();
+          st.meta = { slice: mem.indexOf(m) + 1, slices: mem.length };
+        } else {
+          if (f.size > 25e6) throw new Error("File too large for a preview");
+          buf = await (await sdk(`SDK getFileBlob ${f.name}`, () => S.ext.getFileBlob(ref))).arrayBuffer();
+        }
+        st.url = await renderDicom(new Uint8Array(buf));
       }
-      st.url = await renderDicom(new Uint8Array(buf)); st.state = "ok";
+      st.state = "ok";
       tcPut(ck, { url: st.url, meta: st.meta || null });
     } catch (e) {
       st.state = "err"; st.note = String(e && e.message || e).slice(0, 60);
-      if (/^(Compressed|No pixel data|Slice too large|File too large|Empty archive)/.test(st.note)) tcPut(ck, { note: st.note, meta: st.meta || null }); /* deterministic: don't re-download next launch */
+      if (THUMB_FINAL.test(st.note)) tcPut(ck, { note: st.note, meta: st.meta || null }); /* deterministic: don't re-download next launch */
     }
     thumbFree(); thumbDone(a);
   })();
   return st.p;
+}
+const thumbCaption = st => { const m = st && st.meta; if (!m) return ""; if (m.slice) return ` · slice ${m.slice}/${m.slices}`; if (m.kind === "slide") return ` · slide thumbnail${m.full ? ` of ${m.full}` : ""}`; if (m.kind === "nifti") return ` · slice ${m.slice1}/${m.nz}`; if (m.kind === "image") return ` · ${m.w}×${m.h}`; return ""; };
+function drawScaled(src, w, h) {
+  const sc = Math.min(1, TH * 2 / Math.max(w, h)), cv = document.createElement("canvas"); cv.width = Math.max(1, Math.round(w * sc)); cv.height = Math.max(1, Math.round(h * sc));
+  const g = cv.getContext("2d"); g.fillStyle = "#000"; g.fillRect(0, 0, cv.width, cv.height); g.imageSmoothingQuality = "high"; g.drawImage(src, 0, 0, cv.width, cv.height); return cv.toDataURL("image/png");
+}
+
+/* ---------- Whole-slide TIFF / SVS: read only the small embedded image, by byte range ----------
+   getFileBlob({range}) is honoured for plain files on this site (Slide Review finding). We walk the IFDs, skip the
+   label and macro images (they can carry the slide label / barcode), pick the smallest pyramid level or thumbnail
+   that is at least ~200 px, and decode its strips or tiles: JPEG (with JPEGTables) by the browser, LZW / Deflate /
+   uncompressed here. JPEG 2000 (Aperio 33003/33005) is not decoded. */
+function tiffReader(ref, f) {
+  const B = 262144, blocks = new Map(), size = f.size || 0; let calls = 0;
+  async function fetchRange(s, e) {
+    calls++; if (calls > 60) throw new Error("Too many range reads");
+    const buf = await (await sdk(`SDK getFileBlob ${f.name} bytes=${s}-${e}`, () => S.ext.getFileBlob(ref, { range: `bytes=${s}-${e}` }))).arrayBuffer();
+    if (buf.byteLength > e - s + 1) { if (size > 40e6) throw new Error("Host ignored the byte range"); return new Uint8Array(buf, s, e - s + 1); }
+    return new Uint8Array(buf);
+  }
+  async function bytes(off, len) {
+    if (len > B) return fetchRange(off, off + len - 1);
+    const out = new Uint8Array(len), first = Math.floor(off / B), last = Math.floor((off + len - 1) / B);
+    for (let b = first; b <= last; b++) {
+      let blk = blocks.get(b); if (!blk) { blk = await fetchRange(b * B, Math.min(size || Infinity, (b + 1) * B) - 1); blocks.set(b, blk); }
+      const bs = b * B, s0 = Math.max(off, bs), e0 = Math.min(off + len, bs + blk.length); if (e0 > s0) out.set(blk.subarray(s0 - bs, e0 - bs), s0 - off);
+    }
+    return out;
+  }
+  return { bytes, calls: () => calls };
+}
+const TSZ = { 1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 6: 1, 7: 1, 8: 2, 9: 4, 10: 8, 11: 4, 12: 8, 16: 8, 17: 8, 18: 8 };
+async function readTiff(rd) {
+  const h = await rd.bytes(0, 16), le = h[0] === 0x49; if (!(le || h[0] === 0x4d) || h[0] !== h[1]) throw new Error("Not a TIFF");
+  const dv0 = new DataView(h.buffer, h.byteOffset, 16), magic = dv0.getUint16(2, le), big = magic === 43; if (magic !== 42 && !big) throw new Error("Not a TIFF");
+  const u64 = (dv, o) => Number(dv.getBigUint64(o, le));
+  let next = big ? u64(dv0, 8) : dv0.getUint32(4, le); const ifds = [];
+  while (next && ifds.length < 40) {
+    const c = await rd.bytes(next, 8), dc = new DataView(c.buffer, c.byteOffset, 8), n = big ? u64(dc, 0) : dc.getUint16(0, le);
+    const es = big ? 20 : 12, hd = big ? 8 : 2, body = await rd.bytes(next + hd, n * es + (big ? 8 : 4)), dv = new DataView(body.buffer, body.byteOffset, body.length), tags = {};
+    for (let i = 0; i < n; i++) {
+      const o = i * es, tag = dv.getUint16(o, le), type = dv.getUint16(o + 2, le), cnt = big ? u64(dv, o + 4) : dv.getUint32(o + 4, le), vo = o + (big ? 12 : 8), sz = (TSZ[type] || 1) * cnt;
+      tags[tag] = { type, cnt, inline: sz <= (big ? 8 : 4) ? body.slice(vo, vo + sz) : null, off: sz <= (big ? 8 : 4) ? 0 : (big ? u64(dv, vo) : dv.getUint32(vo, le)) };
+    }
+    ifds.push(tags); next = big ? u64(dv, n * es) : dv.getUint32(n * es, le);
+  }
+  async function val(t, max) {
+    if (!t) return null; const cnt = Math.min(t.cnt, max || t.cnt), sz = TSZ[t.type] || 1;
+    const raw = t.inline || await rd.bytes(t.off, cnt * sz), dv = new DataView(raw.buffer, raw.byteOffset, raw.length);
+    if (t.type === 2) return new TextDecoder().decode(raw.subarray(0, cnt)).replace(/\0+$/, "");
+    if (t.type === 1 || t.type === 7) return raw.subarray(0, cnt);
+    const out = new Array(cnt);
+    for (let i = 0; i < cnt; i++) out[i] = t.type === 3 ? dv.getUint16(i * 2, le) : t.type === 4 ? dv.getUint32(i * 4, le) : t.type === 16 || t.type === 18 ? Number(dv.getBigUint64(i * 8, le)) : t.type === 5 ? dv.getUint32(i * 8, le) / dv.getUint32(i * 8 + 4, le) : dv.getUint32(i * sz, le);
+    return out;
+  }
+  return { ifds, val, le };
+}
+function lzwDecode(src, outLen) {
+  const out = new Uint8Array(outLen); let op = 0, bitPos = 0, width = 9, dict = [], prev = null;
+  const reset = () => { dict = []; for (let i = 0; i < 256; i++) dict[i] = [i]; dict[256] = null; dict[257] = null; width = 9; };
+  const read = () => { let v = 0; for (let i = 0; i < width; i++) { const byte = src[(bitPos + i) >> 3]; if (byte === undefined) return 257; v = (v << 1) | ((byte >> (7 - ((bitPos + i) & 7))) & 1); } bitPos += width; return v; };
+  reset();
+  while (op < outLen) {
+    const code = read(); if (code === 257) break;
+    if (code === 256) { reset(); prev = null; continue; }
+    let entry = dict[code];
+    if (!entry) { if (!prev || code !== dict.length) break; entry = prev.concat(prev[0]); }
+    for (let i = 0; i < entry.length && op < outLen; i++) out[op++] = entry[i];
+    if (prev) dict.push(prev.concat(entry[0]));
+    prev = entry;
+    if (dict.length + 1 >= (1 << width) && width < 12) width++;
+  }
+  return out;
+}
+async function inflate(u8) { return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream("deflate"))).arrayBuffer()); }
+function jpegWithTables(tables, seg, rgb) {
+  let body = seg;
+  if (tables && tables.length > 4) { const t = tables.subarray(0, tables.length - 2), d = seg.subarray(2), m = new Uint8Array(t.length + d.length); m.set(t); m.set(d, t.length); body = m; }
+  if (!rgb) return body;
+  const app14 = new Uint8Array([0xFF, 0xEE, 0x00, 0x0E, 0x41, 0x64, 0x6F, 0x62, 0x65, 0x00, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00]), m = new Uint8Array(body.length + app14.length); /* Adobe APP14 transform=0: tell the browser the JPEG is RGB, not YCbCr */
+  m.set(body.subarray(0, 2)); m.set(app14, 2); m.set(body.subarray(2), 2 + app14.length); return m;
+}
+async function renderSlide(ref, f) {
+  const rd = tiffReader(ref, f), T = await readTiff(rd), info = [];
+  for (const t of T.ifds) {
+    const w = (await T.val(t[256]) || [0])[0], h = (await T.val(t[257]) || [0])[0], desc = t[270] ? String(await T.val(t[270], 400)) : "", sub = (await T.val(t[254]) || [0])[0];
+    info.push({ t, w, h, desc, sub, tiled: !!t[322] });
+  }
+  const full = info[0];
+  /* Never the label or macro image (they show the slide label / barcode). Text match on ImageDescription, plus a structural rule
+     that doesn't depend on it: only IFD 0, tiled pyramid levels, and untiled images with NewSubfileType 0 (Aperio's thumbnail).
+     Aperio's label (subfile 1) and macro (subfile 9) are untiled with a subfile bit set, so they never qualify. */
+  const ok = info.filter((x, i) => x.w && x.h && !/label|macro|barcode/i.test(x.desc) && !(x.sub & 4) && (i === 0 || x.tiled || x.sub === 0));
+  if (!ok.length) throw new Error("No small level");
+  ok.sort((x, y) => x.w * x.h - y.w * y.h);
+  const pick = ok.find(x => Math.max(x.w, x.h) >= 200) || ok[ok.length - 1];
+  if (pick.w * pick.h > 4096 * 4096) throw new Error("No small level in this file");
+  const t = pick.t, comp = (await T.val(t[259]) || [1])[0], photo = (await T.val(t[262]) || [2])[0], spp = (await T.val(t[277]) || [1])[0], bps = (await T.val(t[258]) || [8])[0], pred = (await T.val(t[317]) || [1])[0], planar = (await T.val(t[284]) || [1])[0];
+  if ([33003, 33004, 33005, 34712].includes(comp)) throw new Error("JPEG 2000 slide (no preview)");
+  if (![1, 5, 7, 8, 32946].includes(comp)) throw new Error("Unsupported TIFF compression " + comp);
+  if (planar === 2) throw new Error("Unsupported planar TIFF");
+  const offs = await T.val(pick.tiled ? t[324] : t[273]), cnts = await T.val(pick.tiled ? t[325] : t[279]);
+  const tw = pick.tiled ? (await T.val(t[322]))[0] : pick.w, th = pick.tiled ? (await T.val(t[323]))[0] : ((await T.val(t[278]) || [pick.h])[0] || pick.h);
+  if (offs.length > 600) throw new Error("No small level (too many tiles)");
+  const total = cnts.reduce((x, y) => x + y, 0); if (total > 16e6) throw new Error("Slice too large");
+  const tables = comp === 7 && t[347] ? await T.val(t[347]) : null;
+  const cv = document.createElement("canvas"); cv.width = pick.w; cv.height = pick.h; const g = cv.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, cv.width, cv.height);
+  const across = Math.ceil(pick.w / tw);
+  /* read the level in one or a few contiguous ranges, then slice out each segment */
+  const lo = Math.min(...offs), hi = Math.max(...offs.map((o, i) => o + cnts[i]));
+  const all = hi - lo <= total * 1.5 + 65536 ? await rd.bytes(lo, hi - lo) : null;
+  for (let i = 0; i < offs.length; i++) {
+    if (!cnts[i]) continue;
+    const seg = all ? all.subarray(offs[i] - lo, offs[i] - lo + cnts[i]) : await rd.bytes(offs[i], cnts[i]);
+    const x = pick.tiled ? (i % across) * tw : 0, y = pick.tiled ? Math.floor(i / across) * th : i * th, segH = pick.tiled ? th : Math.min(th, pick.h - y);
+    if (comp === 7) { const bmp = await createImageBitmap(new Blob([jpegWithTables(tables, seg, photo === 2)], { type: "image/jpeg" })); g.drawImage(bmp, x, y); continue; }
+    if (bps !== 8 || !(spp === 1 || spp === 3 || spp === 4)) throw new Error("Unsupported TIFF sample format");
+    const n = tw * segH * spp, raw = comp === 1 ? seg : comp === 5 ? lzwDecode(seg, n) : await inflate(seg);
+    if (pred === 2) for (let r = 0; r < segH; r++) for (let c = spp; c < tw * spp; c++) raw[r * tw * spp + c] = (raw[r * tw * spp + c] + raw[r * tw * spp + c - spp]) & 255;
+    const im = new ImageData(tw, segH), D = im.data;
+    for (let p = 0; p < tw * segH; p++) { const v = raw.subarray(p * spp, p * spp + spp); D[p * 4] = v[0]; D[p * 4 + 1] = spp > 1 ? v[1] : v[0]; D[p * 4 + 2] = spp > 1 ? v[2] : v[0]; D[p * 4 + 3] = 255; if (spp === 1 && photo === 0) D[p * 4] = D[p * 4 + 1] = D[p * 4 + 2] = 255 - v[0]; }
+    g.putImageData(im, x, y);
+  }
+  return { url: drawScaled(cv, pick.w, pick.h), meta: { kind: "slide", w: pick.w, h: pick.h, full: full && full !== pick ? `${full.w}×${full.h}` : "", reads: rd.calls() } };
+}
+
+/* ---------- NIfTI-1 (.nii / .nii.gz): middle slice of the first volume ----------
+   gzip can't be range-read, so the file comes whole (capped) and is inflated only as far as the middle slice. */
+async function renderNifti(ref, f) {
+  if (f.size > 80e6) throw new Error("File too large for a preview");
+  const blob = await sdk(`SDK getFileBlob ${f.name}`, () => S.ext.getFileBlob(ref));
+  const head = new Uint8Array(await blob.slice(0, 2).arrayBuffer()), gz = head[0] === 0x1f && head[1] === 0x8b;
+  const stream = gz ? blob.stream().pipeThrough(new DecompressionStream("gzip")) : blob.stream(), rdr = stream.getReader();
+  let chunks = [], have = 0, need = 352;
+  const until = async n => { while (have < n) { const { value, done } = await rdr.read(); if (done) break; chunks.push(value); have += value.length; } const u = new Uint8Array(have); let o = 0; for (const c of chunks) { u.set(c, o); o += c.length; } chunks = [u]; return u; };
+  let u = await until(need), dv = new DataView(u.buffer);
+  let le = dv.getInt32(0, true) === 348; if (!le && dv.getInt32(0, false) !== 348) { rdr.cancel(); throw new Error(dv.getInt32(0, true) === 540 ? "NIfTI-2 not supported" : "Not a NIfTI-1 file"); }
+  const dim = [...Array(8)].map((_, i) => dv.getInt16(40 + i * 2, le)), dt = dv.getInt16(70, le), bp = dv.getInt16(72, le) / 8, vox = Math.max(352, Math.round(dv.getFloat32(108, le)));
+  let slope = dv.getFloat32(112, le), icpt = dv.getFloat32(116, le); if (!slope) { slope = 1; icpt = 0; }
+  const nx = dim[1], ny = dim[2], nz = Math.max(1, dim[3]), z = Math.floor(nz / 2), start = vox + z * nx * ny * bp, len = nx * ny * bp;
+  if (!(nx > 0 && ny > 0) || nx * ny > 4096 * 4096) throw new Error("Unsupported NIfTI dimensions");
+  u = await until(start + len); rdr.cancel().catch(() => {});
+  if (u.length < start + len) throw new Error("NIfTI file is truncated");
+  const sl = new DataView(u.buffer, start, len), n = nx * ny, vals = new Float32Array(n);
+  const get = { 2: i => sl.getUint8(i), 256: i => sl.getInt8(i), 4: i => sl.getInt16(i * 2, le), 512: i => sl.getUint16(i * 2, le), 8: i => sl.getInt32(i * 4, le), 768: i => sl.getUint32(i * 4, le), 16: i => sl.getFloat32(i * 4, le), 64: i => sl.getFloat64(i * 8, le) }[dt];
+  if (!get) throw new Error("Unsupported NIfTI datatype " + dt);
+  for (let i = 0; i < n; i++) vals[i] = get(i) * slope + icpt;
+  const smp = []; for (let i = 0; i < n; i += Math.max(1, n >> 12)) if (isFinite(vals[i])) smp.push(vals[i]); smp.sort((x, y) => x - y);
+  const lo = smp[Math.floor(smp.length * .01)] || 0, hi = smp[Math.floor(smp.length * .99)] || 1, ww = Math.max(1e-6, hi - lo);
+  const im = new ImageData(nx, ny), D = im.data;
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { let y = (vals[j * nx + i] - lo) / ww * 255; y = y < 0 ? 0 : y > 255 ? 255 : y; const p = ((ny - 1 - j) * nx + i) * 4; D[p] = D[p + 1] = D[p + 2] = y; D[p + 3] = 255; } /* rows flipped so +j is up (orientation not checked against the qform) */
+  const tmp = document.createElement("canvas"); tmp.width = nx; tmp.height = ny; tmp.getContext("2d").putImageData(im, 0, 0);
+  return { url: drawScaled(tmp, nx, ny), meta: { kind: "nifti", slice1: z + 1, nz } };
 }
 function thumbDone(a) {
   if (S.hover) drawHover(); document.querySelectorAll(`.pane [data-thumb="${CSS.escape(a._id)}"]`).forEach(n => { const t = document.createElement("template"); t.innerHTML = thumbHTML(a, n.dataset.big === "1"); n.replaceWith(t.content.firstElementChild); });
 }
 async function renderDicom(bytes) {
   let ds; try { ds = dicomParser.parseDicom(bytes); } catch (e) { ds = dicomParser.parseDicom(bytes, { TransferSyntaxUID: "1.2.840.10008.1.2" }); }
+  if (/\b(LABEL|OVERVIEW)\b/.test(ds.string("x00080008") || "")) throw new Error("Label image skipped (may show the slide label)");
   const ts = ds.string("x00020010") || "1.2.840.10008.1.2", rows = ds.uint16("x00280010"), cols = ds.uint16("x00280011");
   const px = ds.elements.x7fe00010; if (!px || !rows || !cols) throw new Error("No pixel data");
   const cv = document.createElement("canvas"), sc = Math.min(1, TH * 2 / Math.max(rows, cols)); cv.width = Math.max(1, Math.round(cols * sc)); cv.height = Math.max(1, Math.round(rows * sc));
@@ -1221,8 +1397,8 @@ function drawHover() {
   list.forEach(loadThumb);
   host.innerHTML = `<div class="hov" role="tooltip" style="left:${h.x}px;top:${h.y}px">
     <div class="hov-h"><b>${esc(z ? z.label : "")}</b><span class="src">${esc(h.key.replace(/^(mod|req):/, ""))} · ${all.length} series</span></div>
-    ${list.length ? list.map(a => { const f = dicomFile(a) || (a.files || [])[0], st = S.thumbs[a._id] || {}; return `<div class="hov-r">${thumbHTML(a)}<div class="hov-m"><b>${esc(a.label)}</b><span class="muted">${esc(acqMod(a))} · ${(a.files || []).length} file${(a.files || []).length === 1 ? "" : "s"}${st.meta ? ` · slice ${st.meta.slice}/${st.meta.slices}` : ""}</span>${clsSummary(f) ? `<span class="muted">${esc(clsSummary(f))}</span>` : ""}${(a.tags || []).length ? tagRow("acquisition|" + a._id, a.tags, { ro: true, sm: true }) : ""}</div></div>`; }).join("") : `<div class="muted" style="padding:6px 2px">No series here.</div>`}
-    ${all.length > list.length ? `<div class="src">+${all.length - list.length} more · click for all</div>` : `<div class="src">Middle slice of each series · click the cell for details</div>`}</div>`;
+    ${list.length ? list.map(a => { const f = dicomFile(a) || (a.files || [])[0], st = S.thumbs[a._id] || {}; return `<div class="hov-r">${thumbHTML(a)}<div class="hov-m"><b>${esc(a.label)}</b><span class="muted">${esc(acqMod(a))} · ${(a.files || []).length} file${(a.files || []).length === 1 ? "" : "s"}${thumbCaption(st)}</span>${clsSummary(f) ? `<span class="muted">${esc(clsSummary(f))}</span>` : ""}${(a.tags || []).length ? tagRow("acquisition|" + a._id, a.tags, { ro: true, sm: true }) : ""}</div></div>`; }).join("") : `<div class="muted" style="padding:6px 2px">No series here.</div>`}
+    ${all.length > list.length ? `<div class="src">+${all.length - list.length} more · click for all</div>` : `<div class="src">Preview of each series · click the cell for details</div>`}</div>`;
   const el = host.firstElementChild, r = el.getBoundingClientRect();
   if (r.right > innerWidth - 8) el.style.left = Math.max(8, innerWidth - r.width - 8) + "px";
   if (r.bottom > innerHeight - 8) el.style.top = Math.max(8, h.top - r.height - 6) + "px";
