@@ -602,7 +602,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.8.0";
+const VERSION = "subject-view-harness/0.8.1";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -1067,7 +1067,7 @@ function diagTab() {
   const ok = S.calls.filter(c => c.status === "ok").length, er = S.calls.filter(c => c.status === "error").length;
   return aboutCard() + `<div class="card diag"><div class="card-h"><h3>Diagnostics</h3><span class="src">${VERSION} · ${ok} ok · ${er} failed · newest first · GET + SDK tag/info writes</span></div>
     <div class="card-b" style="font-size:13px;color:var(--ink-2)">Origin <span class="mono">${esc(S.origin || "unknown")}</span> · user <span class="mono">${esc(S.user ? S.user._id : "?")}</span> · opened from <span class="mono">${esc(S.opener ? (S.opener.container_type || "?") + " " + (S.opener._id || "") : "?")}</span> · project <span class="mono">${esc(S.projectId || "?")}</span></div>
-    <div class="card-b" style="font-size:13px;color:var(--ink-2);display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span>Thumbnail cache on this device: <b id="tcStat">${tcOn() ? "on" : "off"}</b> · <span class="mono">${TC.hits} hits · ${TC.misses} misses this session${TC.err ? " · storage " + esc(TC.err) : ""}</span> · <span id="tcN" class="mono"></span></span><button class="ibtn" data-act="tctoggle">${tcOn() ? "Turn off" : "Turn on"}</button><button class="ibtn" data-act="tcclear">Clear thumbnail cache</button><span class="src" style="font-family:var(--font-ui);flex-basis:100%">Rendered middle slices are kept in this browser for 14 days (newest 400) so they appear instantly next launch. They are image pixels from your data: turn this off on shared machines.</span></div>
+    <div class="card-b" style="font-size:13px;color:var(--ink-2);display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span>Thumbnail cache on this device: <b id="tcStat">${tcOn() ? "on" : "off"}</b> · <span class="mono">${TC.hits} hits · ${TC.misses} misses this session${TC.err ? " · storage " + esc(TC.err) : ""}</span> · <span id="tcN" class="mono"></span></span><button class="ibtn" data-act="tctoggle">${tcOn() ? "Turn off" : "Turn on"}</button><button class="ibtn" data-act="tcclear">Clear thumbnails and anatomy maps</button><span class="src" style="font-family:var(--font-ui);flex-basis:100%">Rendered middle slices (newest 400) and anatomy maps built from segmentations (newest 60, ${SC.hits} hits · ${SC.misses} misses this session) are kept in this browser for 14 days so they appear instantly next launch. Both are derived from your data: turn this off on shared machines.</span></div>
     ${schedule().length || (S.project && (S.project.templates || S.project.template)) ? `<div class="card-b"><div class="src" style="font-family:var(--font-ui);margin-bottom:6px">Session templates as read from project.templates (${schedule().length} parsed)</div><pre>${esc(JSON.stringify(S.project.templates || S.project.template, null, 2).slice(0, 4000))}</pre></div>` : `<div class="card-b src" style="font-family:var(--font-ui)">No session templates on this project (project.templates is empty).</div>`}
     ${S.calls.map((c, i) => `<div class="call" data-diag="${i}" title="Show a sample row"><span class="${c.status === "ok" ? "ok" : c.status === "error" ? "er" : ""}">${c.status}</span><code>${c.sdk ? "" : "GET "}${esc(c.path)}${c.params ? " " + esc(JSON.stringify(c.params)) : ""}</code><span class="mono muted">${c.n != null ? c.n + (c.total != null ? "/" + c.total : "") + " rows" : ""}</span><span class="mono muted">${c.ms} ms${c.err ? " · " + esc(c.err) : ""}</span></div>${i === S.diagOpen ? `<pre>${esc(JSON.stringify(c.sample, null, 2))}</pre>` : ""}`).join("")}
     <div class="card-b"><span class="src" style="font-family:var(--font-ui)">Click a call to see one sample row (PHI fields redacted).</span> <button class="ibtn" data-act="copydiag">Copy Diagnostics</button></div></div>`;
@@ -1617,7 +1617,7 @@ function anMap(R, A, sig, vi) {
       <div class="an-maphdr">${ref ? `<div class="an-seg sm">${[["patient", "Patient"], ["schematic", "Schematic"]].map(([k, l]) => `<button class="ibtn ${(A.anat || "patient") === k ? "on" : ""}" data-an="anat:${k}">${l}</button>`).join("")}</div>` : ""}<div class="an-seg sm">${[["organs", "Organs"], ["msk", "Bones & Muscle"]].map(([k, l]) => `<button class="ibtn ${layer === k ? "on" : ""}" data-an="layer:${k}">${l}</button>`).join("")}</div></div></div>
     <div class="card-b an-svgwrap">
       ${usePatient ? `<div class="an-patient"><canvas id="anSeg" role="img" aria-label="Front view of this subject's TotalSegmentator segmentation, patient's right on the left"></canvas><div class="an-sides"><span>R</span><span>L</span></div></div>
-      <div class="src an-segsrc">Patient anatomy · front view of ${esc(SEG_MASK_NAME)} · ${st.dims.join("×")} voxels · orientation check ${st.check === "ok" ? "passed (spleen on patient's left)" : "not possible (no spleen or liver)"}${st.oblique ? " · oblique grid snapped to nearest axes" : ""}</div>` : ""}
+      <div class="src an-segsrc">Patient anatomy · front view of ${esc(SEG_MASK_NAME)} · ${st.dims.join("×")} voxels · orientation check ${st.check === "ok" ? "passed (spleen on patient's left)" : "not possible (no spleen or liver)"}${st.cached ? ` · from this browser's cache (${st.ms} ms)` : st.ms ? ` · built in ${(st.ms / 1000).toFixed(1)} s` : ""}${st.oblique ? " · oblique grid snapped to nearest axes" : ""}</div>` : ""}
       ${ref && st && st.status === "loading" && A.anat !== "schematic" ? `<div class="src an-segsrc">Loading this subject's segmentation…</div>` : ""}
       ${ref && st && st.status === "err" ? `<div class="src an-segsrc">Patient anatomy unavailable (${esc(st.err)}); showing the schematic.</div>` : ""}
       ${usePatient ? "" : `<svg id="anMap" viewBox="40 30 240 600" role="group" aria-label="Body map, patient's right on the left">
@@ -1826,6 +1826,8 @@ async function segLoad(ref) {
   const key = ref._key; if (S.seg[key]) return S.seg[key];
   const st = S.seg[key] = { status: "loading", t0: performance.now() };
   try {
+    const hit = await scGet(ref);
+    if (hit) { Object.assign(st, hit, { status: "ok", cached: true, ms: Math.round(performance.now() - st.t0) }); if (S.tab === "anatomy") render(); return st; }
     const blob = await sdk(`SDK getFileBlob ${SEG_MASK_NAME}`, () => S.ext.getFileBlob(ref));
     st.mb = blob.size / 1048576;
     const nii = niftiParse(await segGunzip(blob)), ax = segAxes(nii.A);
@@ -1836,11 +1838,62 @@ async function segLoad(ref) {
     const cs = P.cu[1], cl = P.cu[5];
     const check = cs != null && cl != null ? (cs > cl ? "ok" : "failed") : "unchecked";
     Object.assign(st, { status: check === "failed" ? "err" : "ok", err: check === "failed" ? "orientation check failed (spleen drawn on the patient's right)" : null, W: P.W, H: P.H, spX, spZ, org: P.org, msk: P.msk, check, oblique: ax.some(a => a.oblique), dims: nii.dims, ms: Math.round(performance.now() - st.t0), axes: ax.map(a => "xyz"[a.w] + (a.sign > 0 ? "+" : "-")).join(" ") });
+    if (st.status === "ok") scPut(ref, st).catch(() => {});
     diag(`Anatomy map ${key.split("@")[0].slice(-8)}: ${nii.dims.join("x")} → ${P.W}x${P.H}, axes ${st.axes}, orientation ${check}, ${st.mb.toFixed(1)} MB, ${st.ms} ms`);
   } catch (e) { Object.assign(st, { status: "err", err: String(e.message || e) }); diag("Anatomy map failed: " + st.err); }
   if (S.tab === "anatomy") render();
   return st;
 }
+/* ---- Browser cache for anatomy maps --------------------------------------------------------------------------------
+   The finished projection (two label rasters + geometry) is gzipped and kept in IndexedDB, under the same on/off switch as
+   the thumbnail cache (it is derived from patient data). Key = site, user, mask file id, modified time, size, format version,
+   so a re-run of TotalSegmentator gets a new map. 14 days, newest 60 kept. Only maps that passed the orientation check are kept. */
+const SC = { open: null, db: null, hits: 0, misses: 0, puts: 0, err: "", TTL: 14 * 864e5, MAX: 60, V: 1 };
+function scDb() {
+  if (SC.open) return SC.open;
+  SC.open = new Promise(res => {
+    try {
+      const rq = indexedDB.open("svh-anatmaps", 1);
+      rq.onupgradeneeded = () => { const os = rq.result.createObjectStore("m", { keyPath: "k" }); os.createIndex("at", "at"); };
+      rq.onsuccess = () => { SC.db = rq.result; res(SC.db); };
+      rq.onerror = () => { SC.err = String(rq.error && rq.error.name || "open failed"); res(null); };
+      rq.onblocked = () => { SC.err = "blocked"; res(null); };
+      setTimeout(() => res(SC.db), 3000);
+    } catch (e) { SC.err = String(e && e.name || e); res(null); }
+  });
+  return SC.open;
+}
+const scReq = (db, mode, fn) => new Promise(res => { try { const tx = db.transaction("m", mode), os = tx.objectStore("m"); const r = fn(os); tx.oncomplete = () => res(r && r.result); tx.onerror = tx.onabort = () => res(undefined); } catch (e) { res(undefined); } });
+const scKey = ref => [S.origin || "?", S.user && S.user._id || "?", ref.file_id || ref._id || ref._key, ref.modified || "", ref.size || 0, "seg" + SC.V].join("|");
+async function scZip(u8) { if (typeof CompressionStream === "undefined") return new Blob([u8]); return await new Response(new Blob([u8]).stream().pipeThrough(new CompressionStream("gzip"))).blob(); }
+async function scGet(ref) {
+  if (!tcOn()) return null; const db = await scDb(); if (!db) return null;
+  const v = await scReq(db, "readonly", os => os.get(scKey(ref)));
+  if (!v || Date.now() - v.made > SC.TTL) { SC.misses++; return null; }
+  try {
+    const buf = new Uint16Array(await segGunzip(v.blob)), n = v.meta.W * v.meta.H;
+    if (buf.length !== 2 * n) throw new Error("size");
+    SC.hits++; v.at = Date.now(); scReq(db, "readwrite", os => os.put(v));
+    return { ...v.meta, org: buf.slice(0, n), msk: buf.slice(n) };
+  } catch (e) { SC.misses++; return null; }
+}
+async function scPut(ref, st) {
+  if (!tcOn()) return; const db = await scDb(); if (!db) return;
+  const n = st.W * st.H, both = new Uint16Array(2 * n); both.set(st.org, 0); both.set(st.msk, n);
+  const meta = { W: st.W, H: st.H, spX: st.spX, spZ: st.spZ, check: st.check, oblique: st.oblique, dims: st.dims, axes: st.axes };
+  const blob = await scZip(new Uint8Array(both.buffer));
+  await scReq(db, "readwrite", os => os.put({ k: scKey(ref), meta, blob, made: Date.now(), at: Date.now() })); SC.puts++;
+  scPrune();
+}
+async function scPrune() {
+  const db = await scDb(); if (!db) return;
+  const all = await scReq(db, "readonly", os => os.index("at").getAll()) || [], now = Date.now();
+  const drop = all.filter(v => now - v.made > SC.TTL).map(v => v.k), live = all.filter(v => now - v.made <= SC.TTL);
+  if (live.length > SC.MAX) drop.push(...live.slice(0, live.length - SC.MAX).map(v => v.k));
+  if (drop.length) await scReq(db, "readwrite", os => { drop.forEach(k => os.delete(k)); });
+}
+async function scCount() { const db = await scDb(); if (!db) return null; return scReq(db, "readonly", os => os.count()); }
+async function scClear() { const db = await scDb(); if (!db) return false; await scReq(db, "readwrite", os => os.clear()); return true; }
 function diag(msg) { try { (S.diag = S.diag || []).push({ t: new Date().toISOString(), msg }); } catch (e) {} }
 function segColorRGB(css) { const c = segColorRGB.ctx || (segColorRGB.ctx = document.createElement("canvas").getContext("2d")); c.fillStyle = "#000"; c.fillStyle = css; const h = c.fillStyle; if (h[0] === "#") return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; const m = h.match(/[\d.]+/g) || [0, 0, 0]; return [+m[0], +m[1], +m[2]]; }
 /* Draw the label raster: fill by the signal colour (or neutral), dark edges between structures, hatch where not comparable,
@@ -2541,8 +2594,8 @@ document.addEventListener("click", async e => {
   if (a === "copyjob") { try { await navigator.clipboard.writeText(S.job); toast("Job ID copied"); } catch (er) { toast("Copy blocked by the frame: " + S.job); } }
   if (a === "dllog") { const J = S.jobData[S.job]; try { const u = URL.createObjectURL(new Blob([(J.lines || []).join("\n")], { type: "text/plain" })); const l = document.createElement("a"); l.href = u; l.download = `job-${S.job}.log`; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); } catch (er) { toast("Download blocked by the frame. Use Open in Jobs Log."); } }
   if (a === "diagnext") { S.diagOpen = 0; render(); }
-  if (a === "tcclear") { const ok = await tcClear(); toast(ok ? "Thumbnail cache cleared" : "Browser storage isn't available in this frame", ok ? "success" : "warning"); render(); return; }
-  if (a === "tctoggle") { const on = !tcOn(); try { localStorage.setItem("svh-thumbcache", on ? "on" : "off"); } catch (e) {} if (!on) await tcClear(); toast(on ? "Thumbnail cache on" : "Thumbnail cache off and cleared"); render(); return; }
+  if (a === "tcclear") { const ok = await tcClear(); await scClear(); toast(ok ? "Thumbnail cache cleared" : "Browser storage isn't available in this frame", ok ? "success" : "warning"); render(); return; }
+  if (a === "tctoggle") { const on = !tcOn(); try { localStorage.setItem("svh-thumbcache", on ? "on" : "off"); } catch (e) {} if (!on) { await tcClear(); await scClear(); } toast(on ? "Thumbnail cache on" : "Thumbnail cache off and cleared"); render(); return; }
   if (a === "copydiag") { const txt = JSON.stringify({ version: VERSION, origin: S.origin, project: S.projectId, calls: S.calls }, null, 2); try { await navigator.clipboard.writeText(txt); toast("Diagnostics copied"); } catch (er) { toast("Copy blocked by the frame. Open Diagnostics and select the text."); } }
 });
 document.addEventListener("input", e => { if (e.target.id === "q") { S.q = e.target.value; renderSide(); } });
