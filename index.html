@@ -567,6 +567,12 @@ select:focus{border-color:var(--primary-base)}
 .an-cut{margin-top:6px;font-size:12px;color:var(--warning-text,#f5b74f)}
 
 .an-coh .cd.nc{fill:none;stroke:currentColor;opacity:.35}
+
+.an-maphdr{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.an-patient{position:relative;padding:4px 6px 0}
+.an-patient canvas{display:block;width:100%;image-rendering:pixelated;background:transparent}
+.an-sides{display:flex;justify-content:space-between;padding:4px 10px 0;font-size:12px;font-weight:600;color:var(--text-secondary,#9aa4b8)}
+.an-segsrc{margin:6px 10px 0;font-family:var(--font-ui)}
 </style>
 
 </head>
@@ -596,7 +602,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.7.5";
+const VERSION = "subject-view-harness/0.8.0";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -1337,7 +1343,7 @@ function ctHeader(a) {
 async function radReal(sid, acqsBySession) {
   const cols = radVisitCols(sid).filter(c => c.z), visits = [];
   const anRef = (f, an) => ({ ...f, file_id: f.file_id || f._id, parent_ref: { type: "analysis", id: an._id }, parents: { ...(an.parents || {}), analysis: an._id } });
-  const kindOf = n => /organ[_-]?radiomics[^/]*\.json$/i.test(n) ? "full" : n === "total_statistics.json" ? "stats" : null;
+  const kindOf = n => /organ[_-]?radiomics[^/]*\.json$/i.test(n) ? "full" : n === "total_statistics.json" ? "stats" : n === SEG_MASK_NAME ? "mask" : null;
   const newest = (xs, k) => xs.filter(x => x.kind === k).sort((p, q) => String(q.created).localeCompare(String(p.created)))[0] || null;
   for (const c of cols) {
     const acqs = acqsBySession[c.z._id] || [], cands = [];
@@ -1356,6 +1362,7 @@ async function radReal(sid, acqsBySession) {
       for (const f of (an.files || [])) { const k = kindOf(f.name); if (k) cands.push({ kind: k, a, f, an, created: an.created, ref: anRef(f, an) }); }
     }
     const best = newest(cands, "full") || newest(cands, "stats"), statsC = newest(cands, "stats");
+    const maskC = newest(cands, "mask"), maskRef = maskC ? { ...maskC.ref, _key: (maskC.ref.file_id || maskC.ref._id || maskC.f.name) + "@" + maskC.an._id } : null;
     if (!best) continue;
     try {
       const j = JSON.parse(await (await sdk(`SDK getFileBlob ${best.f.name}`, () => S.ext.getFileBlob(best.ref))).text());
@@ -1376,11 +1383,11 @@ async function radReal(sid, acqsBySession) {
             if (v && typeof v === "object" && !(+v.volume > 0) && o && o.features && !o.truncated) withhold(o);
           }
         } catch (e) { console.warn("total_statistics read failed", e); }
-        visits.push({ key: c.key, label: c.label, short: c.short, date: c.date, z: c.z, acq: { ...acq, ...(j.acquisition || {}) }, organs: j.organs, ts: j.totalsegmentator || {}, pr: j.pyradiomics || {}, file: best.f.name, kind: "full", truncChecked: !!statsC, cut });
+        visits.push({ key: c.key, label: c.label, short: c.short, date: c.date, z: c.z, acq: { ...acq, ...(j.acquisition || {}) }, organs: j.organs, ts: j.totalsegmentator || {}, pr: j.pyradiomics || {}, file: best.f.name, kind: "full", truncChecked: !!statsC, cut, maskRef });
       } else {
         const organs = {};
         for (const [cls, v] of Object.entries(j || {})) { if (!v || typeof v !== "object") continue; const vol = +v.volume, hu = +v.intensity; if (!(vol > 0)) continue; organs[cls] = { voxels: null, features: { original_shape_VoxelVolume: vol, original_firstorder_Mean: isFinite(hu) ? hu : null } }; }
-        visits.push({ key: c.key, label: c.label, short: c.short, date: c.date, z: c.z, acq, organs, ts: { version: (best.an.gear_info && best.an.gear_info.version) || "", task: "total" }, pr: {}, file: best.f.name, analysis: best.an.label, kind: "stats" });
+        visits.push({ key: c.key, label: c.label, short: c.short, date: c.date, z: c.z, acq, organs, ts: { version: (best.an.gear_info && best.an.gear_info.version) || "", task: "total" }, pr: {}, file: best.f.name, analysis: best.an.label, kind: "stats", maskRef });
       }
     } catch (e) { console.warn("organ radiomics read failed", e); }
   }
@@ -1592,6 +1599,10 @@ function anFoot(R, ts, pr) {
 }
 function anMap(R, A, sig, vi) {
   const layer = A.layer, shapes = MAP_SHAPES[layer], drawn = new Set(shapes.map(x => x[0]));
+  const v = R.visits[vi], ref = R.source !== "sim" && v.maskRef, st = ref ? S.seg[ref._key] : null;
+  if (ref && !st) setTimeout(() => segLoad(ref), 0);
+  const usePatient = A.anat !== "schematic" && st && st.status === "ok";
+  if (usePatient) setTimeout(segDraw, 0);
   const cells = {}; Object.keys(R.visits[vi].organs).forEach(o => { cells[o] = radCell(R, vi, o, sig, A.cmp); });
   const tip = (o, c) => `${orgLabel(o)}: ${radFmt(sig, c.v)}${sig.unit ? " " + sig.unit : ""}${c.base ? " (reference)" : ""}${c.ok === false ? " · not comparable: " + c.why : c.z != null ? ` · ${c.z.toFixed(1)} SD (${c.pct}th percentile of ${c.n})` : c.d != null ? " · " + radDFmt(sig, c) : ""}`;
   const svg = shapes.map(([o, dd, w]) => {
@@ -1599,20 +1610,24 @@ function anMap(R, A, sig, vi) {
     if (w) return `<g data-org="${o}" class="org${sel ? " sel" : ""}" tabindex="0" role="button" aria-label="${esc(tip(o, c))}"><title>${esc(tip(o, c))}</title><path d="${dd}" class="under" stroke-width="${w + 3}"/><path d="${dd}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round"${hatch}/></g>`;
     return `<g data-org="${o}" class="org${sel ? " sel" : ""}" tabindex="0" role="button" aria-label="${esc(tip(o, c))}"><title>${esc(tip(o, c))}</title><path d="${dd}" fill="${col}"${hatch}/>${c.ok === false ? `<path d="${dd}" fill="url(#anHatch)" pointer-events="none"/>` : ""}</g>`;
   }).join("");
-  const others = Object.keys(R.visits[vi].organs).filter(o => !drawn.has(o) && ((ORG[o] && ORG[o].layer !== (layer === "organs" ? "msk" : "organs")) || !ORG[o]));
+  const others = usePatient ? [] : Object.keys(R.visits[vi].organs).filter(o => !drawn.has(o) && ((ORG[o] && ORG[o].layer !== (layer === "organs" ? "msk" : "organs")) || !ORG[o]));
   const sel = cells[A.organ] || {};
   const legend = A.cmp === "cohort" ? ["−3 SD", "cohort mean", "+3 SD"] : sig.d === "pct" ? [`−${sig.span}%`, "no change", `+${sig.span}%`] : [`−${sig.span}${sig.unit === "HU" ? " HU" : ""}`, "no change", `+${sig.span}${sig.unit === "HU" ? " HU" : ""}`];
   return `<div class="card an-map"><div class="card-h"><h3>${esc(sig.label)} · ${esc(R.visits[vi].short)}${A.cmp !== "cohort" && radRef(R.visits, vi, A.cmp) >= 0 && radRef(R.visits, vi, A.cmp) !== vi ? ` vs ${esc(R.visits[radRef(R.visits, vi, A.cmp)].short)}` : A.cmp === "cohort" ? " vs cohort" : ""}</h3>
-      <div class="an-seg sm">${[["organs", "Organs"], ["msk", "Bones & Muscle"]].map(([k, l]) => `<button class="ibtn ${layer === k ? "on" : ""}" data-an="layer:${k}">${l}</button>`).join("")}</div></div>
+      <div class="an-maphdr">${ref ? `<div class="an-seg sm">${[["patient", "Patient"], ["schematic", "Schematic"]].map(([k, l]) => `<button class="ibtn ${(A.anat || "patient") === k ? "on" : ""}" data-an="anat:${k}">${l}</button>`).join("")}</div>` : ""}<div class="an-seg sm">${[["organs", "Organs"], ["msk", "Bones & Muscle"]].map(([k, l]) => `<button class="ibtn ${layer === k ? "on" : ""}" data-an="layer:${k}">${l}</button>`).join("")}</div></div></div>
     <div class="card-b an-svgwrap">
-      <svg id="anMap" viewBox="40 30 240 600" role="group" aria-label="Body map, patient's right on the left">
+      ${usePatient ? `<div class="an-patient"><canvas id="anSeg" role="img" aria-label="Front view of this subject's TotalSegmentator segmentation, patient's right on the left"></canvas><div class="an-sides"><span>R</span><span>L</span></div></div>
+      <div class="src an-segsrc">Patient anatomy · front view of ${esc(SEG_MASK_NAME)} · ${st.dims.join("×")} voxels · orientation check ${st.check === "ok" ? "passed (spleen on patient's left)" : "not possible (no spleen or liver)"}${st.oblique ? " · oblique grid snapped to nearest axes" : ""}</div>` : ""}
+      ${ref && st && st.status === "loading" && A.anat !== "schematic" ? `<div class="src an-segsrc">Loading this subject's segmentation…</div>` : ""}
+      ${ref && st && st.status === "err" ? `<div class="src an-segsrc">Patient anatomy unavailable (${esc(st.err)}); showing the schematic.</div>` : ""}
+      ${usePatient ? "" : `<svg id="anMap" viewBox="40 30 240 600" role="group" aria-label="Body map, patient's right on the left">
         <defs><pattern id="anHatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="currentColor" stroke-width="1.4" opacity=".45"/></pattern></defs>
         <circle cx="160" cy="44" r="25" class="sil"/><path d="${BODY_SIL}" class="sil"/>
         ${layer === "msk" ? THORACIC_DECO : ""}${svg}
         <text x="58" y="618" class="side">R</text><text x="254" y="618" class="side">L</text>
-      </svg>
+      </svg>`}
       <div class="an-legend"><span class="ramp"></span><div class="lbls"><span>${legend[0]}</span><span>${legend[1]}</span><span>${legend[2]}</span></div><div class="lbls sub"><span><i class="nc-sw"></i>not comparable</span><span><i class="nd-sw"></i>no data</span></div></div>
-      ${(() => { const nc = shapes.map(x => cells[x[0]]).filter(c => c && c.ok === false); if (nc.length < 3) return ""; const why = [...new Set(nc.map(c => c.why))]; return `<div class="an-ncnote">${ic("warning")}<span><b>${nc.length} of ${shapes.length}</b> drawn structures can't be compared: ${why.map(esc).join("; ")}. Try another visit, Compare vs Cohort, or a shape signal.</span></div>`; })()}
+      ${(() => { const nc = (usePatient ? Object.keys(cells).filter(o => segLayerOf(o) === (layer === "msk" ? 1 : 0)) : shapes.map(x => x[0])).map(o => cells[o]).filter(c => c && c.ok === false); if (nc.length < 3) return ""; const why = [...new Set(nc.map(c => c.why))]; return `<div class="an-ncnote">${ic("warning")}<span><b>${nc.length}</b> drawn structures can't be compared: ${why.map(esc).join("; ")}. Try another visit, Compare vs Cohort, or a shape signal.</span></div>`; })()}
       <div class="an-read" id="anRead">${anReadout(A.organ, sel, sig)}</div>
       ${others.length ? `<div class="an-others"><div class="src">Also segmented, not drawn (${others.length})</div>${others.map(o => { const c = cells[o]; return `<button class="an-och ${A.organ === o ? "on" : ""}" data-org="${o}" title="${esc(tip(o, c))}"><i style="background:${radColor(c.t, c.ok)}"></i>${esc(orgLabel(o))}</button>`; }).join("")}</div>` : ""}
     </div></div>`;
@@ -1717,7 +1732,7 @@ document.addEventListener("click", e => {
   if (t.dataset.cell) { const [o, i] = t.dataset.cell.split("|"); A.organ = o; A.visit = +i; render(); return; }
   if (t.dataset.org) { A.organ = t.dataset.org; render(); return; }
   const [k, v] = t.dataset.an.split(":");
-  if (k === "view") A.view = v; else if (k === "visit") A.visit = +v; else if (k === "cmp") A.cmp = v; else if (k === "layer") A.layer = v; else if (k === "sig") A.sig = v;
+  if (k === "view") A.view = v; else if (k === "visit") A.visit = +v; else if (k === "cmp") A.cmp = v; else if (k === "layer") A.layer = v; else if (k === "anat") A.anat = v; else if (k === "sig") A.sig = v;
   else if (k === "fclass") A.fclass = v; else if (k === "all") A.showAll = !A.showAll; else if (k === "csv") { radCSV(S.subj); return; }
   render();
 });
@@ -1727,6 +1742,144 @@ document.addEventListener("mouseover", e => {
   const g = e.target.closest && e.target.closest("#anMap [data-org]"); const box = document.getElementById("anRead"); if (!box) return;
   const R = S.rad[S.subj]; if (!R || !R.visits) return; const o = g ? g.dataset.org : S.an.organ, sig = sigOf(S.an.sig);
   box.innerHTML = anReadout(o, radCell(R, S.an.visit, o, sig, S.an.cmp), sig);
+});
+
+/* ---- Patient anatomy map (0.8.0) --------------------------------------------------------------------------------
+   Front (coronal) view built from the subject's own TotalSegmentator `total` label map
+   (high_res_total_combined_seg_output.nii.gz). For every column seen from the front, the front-most label wins, per layer
+   (organs and vessels / bones and muscles), so ribs don't hide the liver. Orientation comes from the NIfTI sform/qform (RAS):
+   the patient's right is drawn on the viewer's left. Every map is checked: the spleen must sit to the patient's left of the
+   liver, or the map is not shown. */
+const SEG_MASK_NAME = "high_res_total_combined_seg_output.nii.gz";
+const TS_TOTAL_NAMES = [null,"spleen","kidney_right","kidney_left","gallbladder","liver","stomach","pancreas","adrenal_gland_right","adrenal_gland_left","lung_upper_lobe_left","lung_lower_lobe_left","lung_upper_lobe_right","lung_middle_lobe_right","lung_lower_lobe_right","esophagus","trachea","thyroid_gland","small_bowel","duodenum","colon","urinary_bladder","prostate","kidney_cyst_left","kidney_cyst_right","sacrum","vertebrae_S1","vertebrae_L5","vertebrae_L4","vertebrae_L3","vertebrae_L2","vertebrae_L1","vertebrae_T12","vertebrae_T11","vertebrae_T10","vertebrae_T9","vertebrae_T8","vertebrae_T7","vertebrae_T6","vertebrae_T5","vertebrae_T4","vertebrae_T3","vertebrae_T2","vertebrae_T1","vertebrae_C7","vertebrae_C6","vertebrae_C5","vertebrae_C4","vertebrae_C3","vertebrae_C2","vertebrae_C1","heart","aorta","pulmonary_vein","brachiocephalic_trunk","subclavian_artery_right","subclavian_artery_left","common_carotid_artery_right","common_carotid_artery_left","brachiocephalic_vein_left","brachiocephalic_vein_right","atrial_appendage_left","superior_vena_cava","inferior_vena_cava","portal_vein_and_splenic_vein","iliac_artery_left","iliac_artery_right","iliac_vena_left","iliac_vena_right","humerus_left","humerus_right","scapula_left","scapula_right","clavicula_left","clavicula_right","femur_left","femur_right","hip_left","hip_right","spinal_cord","gluteus_maximus_left","gluteus_maximus_right","gluteus_medius_left","gluteus_medius_right","gluteus_minimus_left","gluteus_minimus_right","autochthon_left","autochthon_right","iliopsoas_left","iliopsoas_right","brain","skull","rib_left_1","rib_left_2","rib_left_3","rib_left_4","rib_left_5","rib_left_6","rib_left_7","rib_left_8","rib_left_9","rib_left_10","rib_left_11","rib_left_12","rib_right_1","rib_right_2","rib_right_3","rib_right_4","rib_right_5","rib_right_6","rib_right_7","rib_right_8","rib_right_9","rib_right_10","rib_right_11","rib_right_12","sternum","costal_cartilages"]; /* TotalSegmentator 2.18.0 class_map["total"], index = label value */
+const SEG_MSK_RE = /^(vertebrae_|rib_|sternum|costal_cartilages|femur_|humerus_|hip_|sacrum|scapula_|clavicula_|skull|gluteus_|iliopsoas_|autochthon_)/;
+const segLayerOf = n => !n ? 2 : (ORG[n] && ORG[n].layer === "msk") || SEG_MSK_RE.test(n) ? 1 : 0;
+S.seg = S.seg || {}; /* key -> {status:"loading"|"ok"|"err", ...} */
+
+function niftiParse(buf) {
+  const dv = new DataView(buf); let le = true;
+  if (dv.getInt32(0, true) !== 348) { if (dv.getInt32(0, false) === 348) le = false; else throw new Error("Not a NIfTI-1 file"); }
+  const i16 = o => dv.getInt16(o, le), f32 = o => dv.getFloat32(o, le);
+  const dim = [0, 1, 2, 3, 4, 5, 6, 7].map(k => i16(40 + 2 * k));
+  if (dim[0] < 3) throw new Error("Mask is not 3D");
+  const [nx, ny, nz] = [dim[1], dim[2], dim[3]], datatype = i16(70), pixdim = [0, 1, 2, 3, 4, 5, 6, 7].map(k => f32(76 + 4 * k));
+  const voxOffset = Math.max(352, Math.round(f32(108))), sclSlope = f32(112), sclInter = f32(116);
+  const qformCode = i16(252), sformCode = i16(254);
+  let A;
+  if (sformCode > 0) A = [0, 1, 2].map(r => [0, 1, 2, 3].map(c => f32(280 + 16 * r + 4 * c)));
+  else if (qformCode > 0) {
+    const b = f32(256), c = f32(260), d = f32(264), a = Math.sqrt(Math.max(0, 1 - b * b - c * c - d * d)), qfac = pixdim[0] < 0 ? -1 : 1;
+    const R = [[a * a + b * b - c * c - d * d, 2 * (b * c - a * d), 2 * (b * d + a * c)], [2 * (b * c + a * d), a * a + c * c - b * b - d * d, 2 * (c * d - a * b)], [2 * (b * d - a * c), 2 * (c * d + a * b), a * a + d * d - c * c - b * b]];
+    const sp = [pixdim[1], pixdim[2], pixdim[3] * qfac];
+    A = [0, 1, 2].map(r => [R[r][0] * sp[0], R[r][1] * sp[1], R[r][2] * sp[2], f32(268 + 4 * r)]);
+  } else A = [[pixdim[1], 0, 0, 0], [0, pixdim[2], 0, 0], [0, 0, pixdim[3], 0]];
+  const TA = { 2: Uint8Array, 4: Int16Array, 8: Int32Array, 16: Float32Array, 256: Int8Array, 512: Uint16Array, 768: Uint32Array }[datatype];
+  if (!TA) throw new Error("Unsupported NIfTI datatype " + datatype);
+  const n = nx * ny * nz, bytes = n * TA.BYTES_PER_ELEMENT;
+  if (buf.byteLength < voxOffset + bytes) throw new Error("Truncated NIfTI data");
+  let data;
+  if (le === (new Uint8Array(new Uint16Array([1]).buffer)[0] === 1)) data = new TA(buf.slice(voxOffset, voxOffset + bytes));
+  else { data = new TA(n); const g = { 2: "getUint8", 4: "getInt16", 8: "getInt32", 16: "getFloat32", 256: "getInt8", 512: "getUint16", 768: "getUint32" }[datatype]; for (let i = 0; i < n; i++) data[i] = dv[g](voxOffset + i * TA.BYTES_PER_ELEMENT, le); }
+  if (sclSlope && sclSlope !== 1 || sclInter) { /* labels should be raw integers; scaling would be odd but honour it */ const o = new Int32Array(n); for (let i = 0; i < n; i++) o[i] = Math.round(data[i] * (sclSlope || 1) + sclInter); data = o; }
+  return { dims: [nx, ny, nz], A, data };
+}
+/* Which RAS axis each voxel axis runs along, its sign and spacing. Oblique grids snap to the dominant axis. */
+function segAxes(A) {
+  const ax = [0, 1, 2].map(j => { const col = [A[0][j], A[1][j], A[2][j]], w = [0, 1, 2].reduce((m, k) => Math.abs(col[k]) > Math.abs(col[m]) ? k : m, 0), len = Math.hypot(...col); return { w, sign: Math.sign(col[w]) || 1, sp: len || 1, oblique: len ? Math.abs(col[w]) / len < 0.95 : false }; });
+  if (new Set(ax.map(a => a.w)).size !== 3) throw new Error("Mask axes are degenerate");
+  return ax;
+}
+/* The projection itself runs in a worker so a 512x512x300 map doesn't freeze the view. */
+const SEG_WORKER_SRC = `onmessage = e => {
+  const { data, dims, ax, layerOf } = e.data, [nx, ny, nz] = dims;
+  const byW = [0, 1, 2].map(w => ax.findIndex(a => a.w === w)); /* voxel axis that runs along RAS x, y, z */
+  const n = dims, W = n[byW[0]], H = n[byW[2]], D = n[byW[1]];
+  const out = [new Uint16Array(W * H), new Uint16Array(W * H)], rank = [new Int32Array(W * H).fill(-1), new Int32Array(W * H).fill(-1)];
+  /* screen u: patient right (high RAS x) on the left; v: superior on top; rank: higher = more anterior (high RAS y) */
+  const contrib = (axis, fn) => { const len = n[axis], a = new Int32Array(len); for (let i = 0; i < len; i++) a[i] = fn(i); return a; };
+  const cU = [0, 1, 2].map(j => contrib(j, i => ax[j].w === 0 ? (ax[j].sign > 0 ? (n[j] - 1 - i) : i) : 0));
+  const cV = [0, 1, 2].map(j => contrib(j, i => ax[j].w === 2 ? (ax[j].sign > 0 ? (n[j] - 1 - i) * W : i * W) : 0));
+  const cR = [0, 1, 2].map(j => contrib(j, i => ax[j].w === 1 ? (ax[j].sign > 0 ? i : n[j] - 1 - i) : 0));
+  const cnt = new Float64Array(4096), su = new Float64Array(4096);
+  let p = 0;
+  for (let k = 0; k < nz; k++) { const uk = cU[2][k], vk = cV[2][k], rk = cR[2][k];
+    for (let j = 0; j < ny; j++) { const uj = uk + cU[1][j], vj = vk + cV[1][j], rj = rk + cR[1][j];
+      for (let i = 0; i < nx; i++, p++) { const l = data[p]; if (!l) continue; const L = layerOf[l]; if (L === undefined || L > 1) continue;
+        const u = uj + cU[0][i], q = vj + cV[0][i] + u, r = rj + cR[0][i];
+        if (r > rank[L][q]) { rank[L][q] = r; out[L][q] = l; }
+        if (l < 4096) { cnt[l]++; su[l] += u; } } } }
+  const cu = {}; for (let l = 1; l < 4096; l++) if (cnt[l]) cu[l] = su[l] / cnt[l] / W;
+  postMessage({ W, H, D, org: out[0], msk: out[1], cu, counts: Array.from(cnt.slice(0, 256)) }, [out[0].buffer, out[1].buffer]);
+};`;
+let segWorkerUrl = null;
+function segProject(data, dims, ax, layerOf) {
+  segWorkerUrl = segWorkerUrl || URL.createObjectURL(new Blob([SEG_WORKER_SRC], { type: "text/javascript" }));
+  return new Promise((res, rej) => { const w = new Worker(segWorkerUrl); w.onmessage = e => { res(e.data); w.terminate(); }; w.onerror = e => { rej(new Error(e.message || "projection failed")); w.terminate(); }; w.postMessage({ data, dims, ax, layerOf }, [data.buffer]); });
+}
+async function segGunzip(blob) {
+  const head = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
+  if (head[0] !== 0x1f || head[1] !== 0x8b) return await blob.arrayBuffer();
+  if (typeof DecompressionStream === "undefined") throw new Error("This browser can't decompress .nii.gz");
+  return await new Response(blob.stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();
+}
+async function segLoad(ref) {
+  const key = ref._key; if (S.seg[key]) return S.seg[key];
+  const st = S.seg[key] = { status: "loading", t0: performance.now() };
+  try {
+    const blob = await sdk(`SDK getFileBlob ${SEG_MASK_NAME}`, () => S.ext.getFileBlob(ref));
+    st.mb = blob.size / 1048576;
+    const nii = niftiParse(await segGunzip(blob)), ax = segAxes(nii.A);
+    const maxL = 4096, layerOf = new Int8Array(maxL).fill(2); for (let l = 1; l < TS_TOTAL_NAMES.length; l++) layerOf[l] = segLayerOf(TS_TOTAL_NAMES[l]);
+    const P = await segProject(nii.data, nii.dims, ax.map(a => ({ w: a.w, sign: a.sign })), layerOf);
+    const spX = ax.find(a => a.w === 0).sp, spZ = ax.find(a => a.w === 2).sp;
+    /* Orientation check: spleen (1) must be to the patient's left of the liver (5) = further right on screen. */
+    const cs = P.cu[1], cl = P.cu[5];
+    const check = cs != null && cl != null ? (cs > cl ? "ok" : "failed") : "unchecked";
+    Object.assign(st, { status: check === "failed" ? "err" : "ok", err: check === "failed" ? "orientation check failed (spleen drawn on the patient's right)" : null, W: P.W, H: P.H, spX, spZ, org: P.org, msk: P.msk, check, oblique: ax.some(a => a.oblique), dims: nii.dims, ms: Math.round(performance.now() - st.t0), axes: ax.map(a => "xyz"[a.w] + (a.sign > 0 ? "+" : "-")).join(" ") });
+    diag(`Anatomy map ${key.split("@")[0].slice(-8)}: ${nii.dims.join("x")} → ${P.W}x${P.H}, axes ${st.axes}, orientation ${check}, ${st.mb.toFixed(1)} MB, ${st.ms} ms`);
+  } catch (e) { Object.assign(st, { status: "err", err: String(e.message || e) }); diag("Anatomy map failed: " + st.err); }
+  if (S.tab === "anatomy") render();
+  return st;
+}
+function diag(msg) { try { (S.diag = S.diag || []).push({ t: new Date().toISOString(), msg }); } catch (e) {} }
+function segColorRGB(css) { const c = segColorRGB.ctx || (segColorRGB.ctx = document.createElement("canvas").getContext("2d")); c.fillStyle = "#000"; c.fillStyle = css; const h = c.fillStyle; if (h[0] === "#") return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; const m = h.match(/[\d.]+/g) || [0, 0, 0]; return [+m[0], +m[1], +m[2]]; }
+/* Draw the label raster: fill by the signal colour (or neutral), dark edges between structures, hatch where not comparable,
+   white edge on the selected organ. Called after render() puts the canvas in the page. */
+function segDraw() {
+  const cv = document.getElementById("anSeg"); if (!cv) return;
+  const R = S.rad[S.subj], A = S.an, vi = A.visit, v = R && R.visits && R.visits[vi], st = v && v.maskRef && S.seg[v.maskRef._key];
+  if (!st || st.status !== "ok") return;
+  const ras = A.layer === "msk" ? st.msk : st.org, W = st.W, H = st.H, sig = sigOf(A.sig);
+  const img = new ImageData(W, H), d = img.data, cache = new Map(), selL = TS_TOTAL_NAMES.indexOf(A.organ);
+  const look = l => { if (cache.has(l)) return cache.get(l); const name = TS_TOTAL_NAMES[l], c = name && v.organs[name] ? radCell(R, vi, name, sig, A.cmp) : null;
+    const rgb = c && c.v != null ? segColorRGB(radColor(c.t, c.ok)) : [58, 66, 86]; const o = { rgb, nc: !!(c && c.ok === false) }; cache.set(l, o); return o; };
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const q = y * W + x, l = ras[q], p = q * 4; if (!l) continue;
+    const o = look(l); let [r, g, b] = o.rgb, a = 255;
+    const edge = (x > 0 && ras[q - 1] !== l) || (x < W - 1 && ras[q + 1] !== l) || (y > 0 && ras[q - W] !== l) || (y < H - 1 && ras[q + W] !== l);
+    if (edge) { if (l === selL) { r = g = b = 255; } else { r *= .55; g *= .55; b *= .55; } }
+    else if (o.nc && ((x + y) % 6) < 2) { r = r * .5 + 90; g = g * .5 + 90; b = b * .5 + 90; }
+    d[p] = r; d[p + 1] = g; d[p + 2] = b; d[p + 3] = a;
+  }
+  /* thicker white outline for the selected organ */
+  if (selL > 0) for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) { const q = y * W + x; if (ras[q] === selL && (ras[q - 1] !== selL || ras[q + 1] !== selL || ras[q - W] !== selL || ras[q + W] !== selL)) for (const nq of [q - 1, q + 1, q - W, q + W]) if (ras[nq] !== selL) { const p = nq * 4; d[p] = d[p + 1] = d[p + 2] = 255; d[p + 3] = 255; } }
+  const off = document.createElement("canvas"); off.width = W; off.height = H; off.getContext("2d").putImageData(img, 0, 0);
+  const aspect = (H * st.spZ) / (W * st.spX), cssW = cv.clientWidth || 300, scale = Math.max(1, Math.round((window.devicePixelRatio || 1) * 2));
+  cv.width = Math.round(cssW * scale); cv.height = Math.round(cssW * aspect * scale); cv.style.height = Math.round(cssW * aspect) + "px";
+  const g = cv.getContext("2d"); g.imageSmoothingEnabled = false; g.clearRect(0, 0, cv.width, cv.height); g.drawImage(off, 0, 0, cv.width, cv.height);
+  cv._seg = { ras, W, H };
+}
+function segPick(e) {
+  const cv = e.target.closest && e.target.closest("#anSeg"); if (!cv || !cv._seg) return null;
+  const r = cv.getBoundingClientRect(), { ras, W, H } = cv._seg, x = Math.floor((e.clientX - r.left) / r.width * W), y = Math.floor((e.clientY - r.top) / r.height * H);
+  if (x < 0 || y < 0 || x >= W || y >= H) return null; const l = ras[y * W + x]; return l ? TS_TOTAL_NAMES[l] || null : null;
+}
+document.addEventListener("click", e => { const n = segPick(e); if (n) { S.an.organ = n; render(); } });
+document.addEventListener("mousemove", e => {
+  const cv = e.target.closest && e.target.closest("#anSeg"), box = document.getElementById("anRead"); if (!cv || !box) return;
+  const R = S.rad[S.subj]; if (!R || !R.visits) return; const n = segPick(e) || S.an.organ, sig = sigOf(S.an.sig);
+  cv.style.cursor = segPick(e) ? "pointer" : "default";
+  box.innerHTML = R.visits[S.an.visit].organs[n] ? anReadout(n, radCell(R, S.an.visit, n, sig, S.an.cmp), sig) : `<b>${esc(orgLabel(n))}</b> <span class="muted">segmented, no features</span>`;
 });
 
 function render() {
