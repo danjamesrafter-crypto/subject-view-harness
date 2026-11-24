@@ -563,6 +563,8 @@ select:focus{border-color:var(--primary-base)}
 .an-ncnote{width:100%;display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--orange-base);background:var(--orange-hover);border-radius:8px;padding:8px 10px}
 .an-ncnote span{color:var(--typography-muted)}
 .an-tile.off{opacity:.5;cursor:default}
+
+.an-cut{margin-top:6px;font-size:12px;color:var(--warning-text,#f5b74f)}
 </style>
 
 </head>
@@ -592,7 +594,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.7.2";
+const VERSION = "subject-view-harness/0.7.3";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -1332,34 +1334,26 @@ function ctHeader(a) {
 }
 async function radReal(sid, acqsBySession) {
   const cols = radVisitCols(sid).filter(c => c.z), visits = [];
+  const anRef = (f, an) => ({ ...f, file_id: f.file_id || f._id, parent_ref: { type: "analysis", id: an._id }, parents: { ...(an.parents || {}), analysis: an._id } });
+  const kindOf = n => /organ[_-]?radiomics[^/]*\.json$/i.test(n) ? "full" : n === "total_statistics.json" ? "stats" : null;
+  const newest = (xs, k) => xs.filter(x => x.kind === k).sort((p, q) => String(q.created).localeCompare(String(p.created)))[0] || null;
   for (const c of cols) {
-    const acqs = acqsBySession[c.z._id] || []; let best = null;
+    const acqs = acqsBySession[c.z._id] || [], cands = [];
     for (const a of acqs) {
-      for (const f of (a.files || [])) if (/organ[_-]?radiomics[^/]*\.json$/i.test(f.name)) best = { kind: "full", a, f, ref: fileRef(f, a), created: f.created };
-      if (best && best.kind === "full") break;
+      for (const f of (a.files || [])) if (kindOf(f.name) === "full") cands.push({ kind: "full", a, f, ref: fileRef(f, a), created: f.created });
       if (!/^ct$/i.test(acqMod(a)) && !(a.files || []).some(f => /dicom/.test(f.type || ""))) continue;
-      const ans = listOf(await api(`/api/acquisitions/${a._id}/analyses`, null, { soft: true }));
-      for (const an of ans) for (const f of (an.files || [])) {
-        const full = /organ[_-]?radiomics[^/]*\.json$/i.test(f.name), st = f.name === "total_statistics.json";
-        if (!full && !st) continue;
-        const cand = { kind: full ? "full" : "stats", a, f, an, created: an.created, ref: { ...f, file_id: f.file_id || f._id, parent_ref: { type: "analysis", id: an._id }, parents: { ...(an.parents || {}), analysis: an._id } } };
-        if (!best || (cand.kind === "full" && best.kind !== "full") || (cand.kind === best.kind && String(cand.created) > String(best.created))) best = cand;
-      }
+      for (const an of listOf(await api(`/api/acquisitions/${a._id}/analyses`, null, { soft: true })))
+        for (const f of (an.files || [])) { const k = kindOf(f.name); if (k) cands.push({ kind: k, a, f, an, created: an.created, ref: anRef(f, an) }); }
     }
-    /* Analyses launched from the session (Run Analysis Gear) sit on the session, not the acquisition (seen on r6nvg8 11-24).
-       Use them when the acquisitions had nothing; tie them to the CT acquisition that holds the analysis input file. */
-    if (!best || best.kind !== "full") {
-      const sans = listOf(await api(`/api/sessions/${c.z._id}/analyses`, null, { soft: true }));
-      for (const an of sans) for (const f of (an.files || [])) {
-        const full = /organ[_-]?radiomics[^/]*\.json$/i.test(f.name), st = f.name === "total_statistics.json";
-        if (!full && !st) continue;
-        const inNames = (an.inputs || []).map(x => x.name);
-        const a = acqs.find(x => (x.files || []).some(g => inNames.includes(g.name))) || acqs.find(x => /^ct$/i.test(acqMod(x))) || acqs[0];
-        if (!a) continue;
-        const cand = { kind: full ? "full" : "stats", a, f, an, created: an.created, ref: { ...f, file_id: f.file_id || f._id, parent_ref: { type: "analysis", id: an._id }, parents: { ...(an.parents || {}), analysis: an._id } } };
-        if (!best || (cand.kind === "full" && best.kind !== "full") || (cand.kind === best.kind && String(cand.created) > String(best.created))) best = cand;
-      }
+    /* Analyses launched from the session (Run Analysis Gear) sit on the session, not the acquisition (seen on r6nvg8 11-24);
+       tie them to the CT acquisition that holds the analysis input file. */
+    for (const an of listOf(await api(`/api/sessions/${c.z._id}/analyses`, null, { soft: true }))) {
+      const inNames = (an.inputs || []).map(x => x.name);
+      const a = acqs.find(x => (x.files || []).some(g => inNames.includes(g.name))) || acqs.find(x => /^ct$/i.test(acqMod(x))) || acqs[0];
+      if (!a) continue;
+      for (const f of (an.files || [])) { const k = kindOf(f.name); if (k) cands.push({ kind: k, a, f, an, created: an.created, ref: anRef(f, an) }); }
     }
+    const best = newest(cands, "full") || newest(cands, "stats"), statsC = newest(cands, "stats");
     if (!best) continue;
     try {
       const j = JSON.parse(await (await sdk(`SDK getFileBlob ${best.f.name}`, () => S.ext.getFileBlob(best.ref))).text());
@@ -1367,7 +1361,21 @@ async function radReal(sid, acqsBySession) {
       const full = await api(`/api/acquisitions/${best.a._id}`, null, { soft: true }); if (full) acq = ctHeader(full);
       if (best.kind === "full") {
         if (j.schema !== RAD_SCHEMA || !j.organs) throw new Error("Unexpected schema " + (j.schema || "none"));
-        visits.push({ key: c.key, label: c.label, short: c.short, date: c.date, z: c.z, acq: { ...acq, ...(j.acquisition || {}) }, organs: j.organs, ts: j.totalsegmentator || {}, pr: j.pyradiomics || {}, file: best.f.name, kind: "full" });
+        /* Organs cut off by the scan edge: TotalSegmentator's statistics report them as 0 (include-incomplete off), but PyRadiomics
+           measures whatever part is inside the scan. Withhold volume and shape for those; density and texture stay. */
+        let cut = 0;
+        if (statsC) try {
+          const st = JSON.parse(await (await sdk(`SDK getFileBlob ${statsC.f.name}`, () => S.ext.getFileBlob(statsC.ref))).text());
+          for (const [cls, o] of Object.entries(j.organs)) {
+            const v = st && st[cls];
+            if (v && typeof v === "object" && !(+v.volume > 0) && o && o.features) {
+              o.truncated = true; cut++;
+              o.partial_shape = Object.fromEntries(Object.entries(o.features).filter(([k]) => k.startsWith("original_shape_")));
+              for (const k of Object.keys(o.partial_shape)) delete o.features[k];
+            }
+          }
+        } catch (e) { console.warn("total_statistics read failed", e); }
+        visits.push({ key: c.key, label: c.label, short: c.short, date: c.date, z: c.z, acq: { ...acq, ...(j.acquisition || {}) }, organs: j.organs, ts: j.totalsegmentator || {}, pr: j.pyradiomics || {}, file: best.f.name, kind: "full", truncChecked: !!statsC, cut });
       } else {
         const organs = {};
         for (const [cls, v] of Object.entries(j || {})) { if (!v || typeof v !== "object") continue; const vol = +v.volume, hu = +v.intensity; if (!(vol > 0)) continue; organs[cls] = { voxels: null, features: { original_shape_VoxelVolume: vol, original_firstorder_Mean: isFinite(hu) ? hu : null } }; }
@@ -1632,7 +1640,7 @@ function anOrgan(R, A, sig, vi) {
       const vals = V.map(x => x.organs[o] ? x.organs[o].features[f.key] : null), v = vals[vi], r = ri >= 0 && ri !== vi ? vals[ri] : null, c = ri >= 0 && ri !== vi ? radComp(f.cls, o, V[vi].acq, V[ri].acq, f.key) : { ok: true }, hu = HU_ABS.test(f.key), sg = SIGNED_ABS.test(f.key), dd = v == null || r == null ? null : hu || sg ? v - r : r ? (v - r) / Math.abs(r) * 100 : null;
       return `<tr><td class="muted">${RAD_CLASS_LABEL[f.cls]}</td><td class="mono">${esc(f.name)}</td>${vals.map((x, i) => `<td class="num mono ${i === vi ? "cur" : ""}">${radFeatFmt(x)}</td>`).join("")}<td class="num ${c.ok ? "" : "ncell"}" title="${c.ok ? "" : esc(c.why)}">${dd == null ? "—" : !c.ok ? "n/c" : (dd >= 0 ? "+" : "−") + (hu ? Math.round(Math.abs(dd)) + " HU" : sg ? Math.abs(dd).toFixed(2) : Math.abs(dd).toFixed(Math.abs(dd) >= 10 ? 0 : 1) + "%")}</td></tr>`;
     }).join("")}</tbody></table></div>` : "";
-  return `<div class="card"><div class="card-h"><div><h3>${esc(orgLabel(o))} <span class="muted" style="font-weight:400">· ${esc(orgSys(o))}</span></h3><div class="src mono">${esc(o)}${cur.voxels ? " · " + cur.voxels.toLocaleString() + " voxels" : ""}${vol != null ? " · " + radFmt(sigOf("vol"), vol) + " mL" : ""}</div></div>
+  return `<div class="card"><div class="card-h"><div><h3>${esc(orgLabel(o))} <span class="muted" style="font-weight:400">· ${esc(orgSys(o))}</span></h3><div class="src mono">${esc(o)}${cur.voxels ? " · " + cur.voxels.toLocaleString() + " voxels" : ""}${vol != null ? " · " + radFmt(sigOf("vol"), vol) + " mL" : ""}</div>${cur && cur.truncated ? `<div class="an-cut">Cut off by the scan edge (TotalSegmentator reports it as incomplete): volume and shape are withheld; density and texture describe the part inside the scan.</div>` : ""}</div>
       <div class="an-cmps">${strip}</div></div>
     <div class="card-b an-acq"><span><b>${esc(V[vi].short)}</b> ${acqTxt(V[vi].acq)}</span>${ri >= 0 && ri !== vi ? `<span class="muted">Reference <b>${esc(V[ri].short)}</b> ${acqTxt(V[ri].acq)}</span>` : ""}</div>
     <div class="card-b an-tiles">${tiles}</div>
