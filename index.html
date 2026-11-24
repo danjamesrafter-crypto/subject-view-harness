@@ -565,6 +565,8 @@ select:focus{border-color:var(--primary-base)}
 .an-tile.off{opacity:.5;cursor:default}
 
 .an-cut{margin-top:6px;font-size:12px;color:var(--warning-text,#f5b74f)}
+
+.an-coh .cd.nc{fill:none;stroke:currentColor;opacity:.35}
 </style>
 
 </head>
@@ -594,7 +596,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.7.3";
+const VERSION = "subject-view-harness/0.7.4";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -1493,16 +1495,21 @@ function radVal(V, vi, org, sig) {
   const v = V[vi] && V[vi].organs[org] && V[vi].organs[org].features[sig.f];
   return v == null || !isFinite(v) ? null : v * (sig.scale || 1);
 }
+/* Contrast as a state, not an agent name: "contrast (Omnipaque)" and "contrast (OR 320)" are both enhanced. Phase (arterial vs
+   portal venous) is not in the DICOM header reliably, so enhanced-vs-enhanced still mixes phases. */
+function conState(a) { const c = a && a.contrast; return c == null ? "unknown" : /^none$/i.test(c) ? "none" : "enhanced"; }
 function radComp(cls, org, a, b, key) {
   if (!a || !b) return { ok: true };
   const ta = +a.slice_thickness, tb = +b.slice_thickness, o = ORG[org];
   if (cls === "shape") return Math.abs(ta - tb) > 2 ? { ok: false, why: `slice thickness ${ta} vs ${tb} mm` } : { ok: true };
-  if (cls === "firstorder") { if (o && o.enh && (a.contrast || "") !== (b.contrast || "")) return { ok: false, why: `contrast ${a.contrast || "?"} vs ${b.contrast || "?"}` }; if (key && !/_(Mean|Median|RootMeanSquared)$/.test(key) && Math.abs(ta - tb) > 2) return { ok: false, why: `slice thickness ${ta} vs ${tb} mm (histogram shape)` }; return { ok: true }; }
+  if (cls === "firstorder") { if (o && o.enh && conState(a) !== conState(b)) return { ok: false, why: `contrast ${a.contrast || "unknown"} vs ${b.contrast || "unknown"}` }; if (key && !/_(Mean|Median|RootMeanSquared)$/.test(key) && Math.abs(ta - tb) > 2) return { ok: false, why: `slice thickness ${ta} vs ${tb} mm (histogram shape)` }; return { ok: true }; }
   const w = [];
   if (Math.abs(ta - tb) > .5) w.push(`slice thickness ${ta} vs ${tb} mm`);
   if ((a.kernel || "") !== (b.kernel || "")) w.push(`kernel ${a.kernel || "?"} vs ${b.kernel || "?"}`);
   return w.length ? { ok: false, why: w.join(", ") } : { ok: true };
 }
+/* A cohort scan counts only if it passes the same acquisition rules as a within-subject comparison (thickness, kernel, contrast state). */
+function cohortOk(c, i, V, org, sig) { const a = c.visits[i] && c.visits[i].acq, b = V[i] && V[i].acq; return !a || !b ? true : radComp(radCls(sig.f), org, b, a, sig.f).ok !== false; }
 const radDelta = (sig, v, r) => v == null || r == null ? null : sig.d === "pct" ? (r ? (v - r) / Math.abs(r) * 100 : null) : v - r;
 function radRef(V, vi, cmp) { return cmp === "prev" ? vi - 1 : cmp === "bl" ? 0 : -1; }
 /* One cell = one organ x signal at one visit, against the chosen reference. */
@@ -1510,11 +1517,12 @@ function radCell(R, vi, org, sig, cmp) {
   const V = R.visits, v = radVal(V, vi, org, sig);
   if (v == null) return { v: null };
   if (cmp === "cohort") {
-    const xs = radCohort(V.length).filter(c => c.id !== S.subj).map(c => radVal(c.visits, vi, org, sig)).filter(x => x != null);
-    if (xs.length < 5) return { v, t: null, why: "cohort too small" };
+    const pool = radCohort(V.length).filter(c => c.id !== S.subj && radVal(c.visits, vi, org, sig) != null);
+    const xs = pool.filter(c => cohortOk(c, vi, V, org, sig)).map(c => radVal(c.visits, vi, org, sig));
+    if (xs.length < 5) return { v, t: null, why: `only ${xs.length} of ${pool.length} cohort scans comparable`, ncoh: xs.length, npool: pool.length };
     const m = xs.reduce((a, b) => a + b, 0) / xs.length, sd = Math.sqrt(xs.reduce((a, b) => a + (b - m) ** 2, 0) / (xs.length - 1)) || 1, z = (v - m) / sd;
     const pct = Math.round(xs.filter(x => x <= v).length / xs.length * 100);
-    return { v, z, pct, n: xs.length, t: Math.max(-1, Math.min(1, z / 3)), ok: true };
+    return { v, z, pct, n: xs.length, ncoh: xs.length, npool: pool.length, t: Math.max(-1, Math.min(1, z / 3)), ok: true };
   }
   const ri = radRef(V, vi, cmp);
   if (ri < 0 || ri === vi) return { v, ref: null, t: null, base: true };
@@ -1670,10 +1678,10 @@ function anCohort(R, A, sig, vi) {
   const lo = all[Math.floor(all.length * .01)], hi = all[Math.ceil(all.length * .99) - 1], pad = (hi - lo) * .08 || 1, y0 = lo - pad, y1 = hi + pad;
   const X = i => L + (i + .5) * ((W - L - 10) / V.length), Y = v => T + (1 - (Math.max(y0, Math.min(y1, v)) - y0) / (y1 - y0)) * (H - T - B);
   const ticks = [y0 + (y1 - y0) * .1, (y0 + y1) / 2, y1 - (y1 - y0) * .1];
-  let dots = ""; C.forEach(c => { if (c.id === S.subj) return; c.visits.forEach((_, i) => { const v = radVal(c.visits, i, o, sig); if (v == null) return; const j = ((radHash(c.id + i) % 1000) / 1000 - .5) * ((W - L - 10) / V.length) * .62; dots += `<circle cx="${(X(i) + j).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="2.6" class="cd${c.ref ? " ref" : ""}"/>`; }); });
+  let dots = ""; C.forEach(c => { if (c.id === S.subj) return; c.visits.forEach((_, i) => { const v = radVal(c.visits, i, o, sig); if (v == null) return; const j = ((radHash(c.id + i) % 1000) / 1000 - .5) * ((W - L - 10) / V.length) * .62; const okc = R.source === "sim" || cohortOk(c, i, V, o, sig); dots += `<circle cx="${(X(i) + j).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="2.6" class="cd${c.ref ? " ref" : ""}${okc ? "" : " nc"}"/>`; }); });
   const me = V.map((_, i) => radVal(V, i, o, sig)), path = me.map((v, i) => v == null ? "" : `${i && me[i - 1] != null ? "L" : "M"}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join("");
   const cc = radCell(R, vi, o, sig, "cohort"), nRef = C.filter(c => c.ref).length, nReal = C.filter(c => c.real).length;
-  return `<div class="card"><div class="card-h"><h3>${esc(orgLabel(o))} · ${esc(sig.label)} across the cohort</h3><span class="src">${R.source === "sim" ? `${C.length} subjects${nRef ? ` (${nRef} simulated reference)` : ""}` : `${C.length} subjects with output${S.radCohortRun && S.radCohortRun.done < S.radCohortRun.n ? ` · loading ${S.radCohortRun.done}/${S.radCohortRun.n}` : ""}`} · this subject ${cc.pct != null ? `at the ${cc.pct}th percentile at ${esc(V[vi].short)}` : ""}</span></div>
+  return `<div class="card"><div class="card-h"><h3>${esc(orgLabel(o))} · ${esc(sig.label)} across the cohort</h3><span class="src">${R.source === "sim" ? `${C.length} subjects${nRef ? ` (${nRef} simulated reference)` : ""}` : `${C.length} subjects with output${S.radCohortRun && S.radCohortRun.done < S.radCohortRun.n ? ` · loading ${S.radCohortRun.done}/${S.radCohortRun.n}` : ""}`}${R.source !== "sim" && cc.npool != null ? ` · ${cc.ncoh} comparable at ${esc(V[vi].short)}` : ""} · this subject ${cc.pct != null ? `at the ${cc.pct}th percentile` : cc.why ? `not ranked (${esc(cc.why)})` : ""}</span></div>
     <div class="card-b"><svg class="an-coh" viewBox="0 0 ${W} ${H}" role="img" aria-label="Cohort dot plot">
       ${ticks.map(t => `<line x1="${L}" x2="${W - 6}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}" class="gl"/><text x="${L - 8}" y="${(Y(t) + 4).toFixed(1)}" class="ax" text-anchor="end">${radFmt(sig, t)}</text>`).join("")}
       ${V.map((x, i) => `<rect x="${(X(i) - (W - L - 10) / V.length / 2 + 4).toFixed(1)}" y="${T - 6}" width="${((W - L - 10) / V.length - 8).toFixed(1)}" height="${H - T - B + 10}" rx="6" class="col ${i === vi ? "cur" : ""}"/><text x="${X(i).toFixed(1)}" y="${H - 12}" class="ax ${i === vi ? "cur" : ""}" text-anchor="middle">${esc(x.short)}</text>`).join("")}
