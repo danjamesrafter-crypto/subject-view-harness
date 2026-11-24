@@ -592,7 +592,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.7.1";
+const VERSION = "subject-view-harness/0.7.2";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -1346,6 +1346,20 @@ async function radReal(sid, acqsBySession) {
         if (!best || (cand.kind === "full" && best.kind !== "full") || (cand.kind === best.kind && String(cand.created) > String(best.created))) best = cand;
       }
     }
+    /* Analyses launched from the session (Run Analysis Gear) sit on the session, not the acquisition (seen on r6nvg8 11-24).
+       Use them when the acquisitions had nothing; tie them to the CT acquisition that holds the analysis input file. */
+    if (!best || best.kind !== "full") {
+      const sans = listOf(await api(`/api/sessions/${c.z._id}/analyses`, null, { soft: true }));
+      for (const an of sans) for (const f of (an.files || [])) {
+        const full = /organ[_-]?radiomics[^/]*\.json$/i.test(f.name), st = f.name === "total_statistics.json";
+        if (!full && !st) continue;
+        const inNames = (an.inputs || []).map(x => x.name);
+        const a = acqs.find(x => (x.files || []).some(g => inNames.includes(g.name))) || acqs.find(x => /^ct$/i.test(acqMod(x))) || acqs[0];
+        if (!a) continue;
+        const cand = { kind: full ? "full" : "stats", a, f, an, created: an.created, ref: { ...f, file_id: f.file_id || f._id, parent_ref: { type: "analysis", id: an._id }, parents: { ...(an.parents || {}), analysis: an._id } } };
+        if (!best || (cand.kind === "full" && best.kind !== "full") || (cand.kind === best.kind && String(cand.created) > String(best.created))) best = cand;
+      }
+    }
     if (!best) continue;
     try {
       const j = JSON.parse(await (await sdk(`SDK getFileBlob ${best.f.name}`, () => S.ext.getFileBlob(best.ref))).text());
@@ -1678,7 +1692,7 @@ function aboutCard() {
     ["PyRadiomics", (pr.version || RAD_ASSUMED.pr) + (src ? "" : " · assumed"), "Features per organ (Anatomy tab)", "https://pyradiomics.readthedocs.io/en/latest/features.html"]
   ];
   return `<div class="card"><div class="card-h"><h3>About</h3><span class="src">Versions and sources${src ? "" : " · Anatomy values are simulated until a gear writes organ_radiomics.json"}</span></div><div class="card-b"><table class="an-tbl about"><thead><tr><th>Component</th><th>Version</th><th>Used for</th><th>Source</th></tr></thead><tbody>${rows.map(r => `<tr><td>${esc(r[0])}</td><td class="mono">${esc(r[1])}</td><td class="muted">${esc(r[2])}</td><td><a href="${r[3]}" target="_blank" rel="noopener">${esc(r[3].replace(/^https:\/\//, "").replace(/\/$/, ""))}</a></td></tr>`).join("")}</tbody></table>
-    <div class="src" style="font-family:var(--font-ui);margin-top:8px">Data contract read by the Anatomy tab: <span class="mono">${RAD_SCHEMA}</span>, one <span class="mono">*.organ_radiomics.json</span> per CT acquisition (proposed; no gear writes it yet).</div></div></div>`;
+    <div class="src" style="font-family:var(--font-ui);margin-top:8px">Data contract read by the Anatomy tab: <span class="mono">${RAD_SCHEMA}</span>, one <span class="mono">*.organ_radiomics.json</span> per CT acquisition, on the acquisition or as an analysis on its session. Written by the <span class="mono">pyradiomics-multilabel</span> gear; TotalSegmentator <span class="mono">total_statistics.json</span> gives volume and mean HU only.</div></div></div>`;
 }
 
 /* ---------- events ---------- */
