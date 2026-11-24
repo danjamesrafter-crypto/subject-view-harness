@@ -450,6 +450,118 @@ select:focus{border-color:var(--primary-base)}
   .wrap{padding:16px 16px 40px}
   .side .me{display:none}
 }
+/* v0.7 Anatomy tab */
+.an-ctl{margin-bottom:16px}
+.an-bar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:10px 16px}
+.an-seg{display:inline-flex;gap:4px;padding:3px;border:1px solid var(--separations-base);border-radius:10px}
+.an-seg .ibtn{height:30px;border-color:transparent}
+.an-seg.sm .ibtn{height:26px;font-size:12px;padding:4px 8px}
+.an-lab{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--typography-light)}
+.an-chips{display:inline-flex;gap:6px;flex-wrap:wrap}
+.an-chips .fchip[disabled]{opacity:.4;pointer-events:none}
+.ansel{height:32px;border-radius:8px;border:1px solid var(--separations-divider);background:var(--card-background);color:var(--typography-base);font:inherit;font-size:13px;padding:0 8px;min-width:190px}
+.pill.an-sim{height:22px;padding:0 8px;font-size:11px;background:var(--orange-hover);color:var(--orange-base)}
+.pill.an-real{height:22px;padding:0 8px;font-size:11px;background:var(--green-hover);color:var(--green-base)}
+.an-note{padding:8px 16px 12px;font-size:12px;color:var(--typography-muted);border-top:1px solid var(--separations-base)}
+.an-grid{display:grid;grid-template-columns:minmax(300px,360px) minmax(0,1fr);gap:16px;align-items:start}
+.an-right{display:flex;flex-direction:column;gap:16px;min-width:0}
+.an-right>.card{margin:0}
+.an-map{position:sticky;top:12px;margin:0}
+.an-svgwrap{display:flex;flex-direction:column;align-items:center;gap:10px}
+#anMap{width:100%;max-width:300px;height:auto;color:var(--typography-light)}
+#anMap .sil{fill:var(--slate-hover);stroke:var(--separations-border);stroke-width:1}
+#anMap .deco{fill:none;stroke:var(--separations-border);stroke-width:1;opacity:.7}
+#anMap .org{cursor:pointer;outline:none}
+#anMap .org>path:not(.under){stroke:var(--card-background);stroke-width:1}
+#anMap .org>path[fill="none"]{stroke-width:inherit}
+#anMap .org .under{fill:none;stroke:var(--card-background);stroke-linecap:round}
+#anMap .org:hover>path:first-of-type:not(.under),#anMap .org:focus-visible>path:first-of-type:not(.under){stroke:var(--typography-base);stroke-width:1.5}
+#anMap .org.sel>path:first-of-type:not(.under){stroke:var(--typography-base);stroke-width:2.2}
+#anMap .org.sel .under{stroke:var(--typography-base)}
+#anMap .side{font-size:13px;font-weight:600;fill:var(--typography-light)}
+.an-legend{width:100%;max-width:300px}
+.an-legend .ramp{display:block;height:8px;border-radius:4px;background:linear-gradient(90deg,rgb(74,141,246),var(--an-mid,rgb(52,57,70)),rgb(241,87,87))}
+.vision-light .an-legend .ramp{--an-mid:rgb(222,226,233)}
+.an-legend .lbls{display:flex;justify-content:space-between;font-size:11px;color:var(--typography-light);margin-top:4px}
+.an-legend .lbls.sub{justify-content:flex-start;gap:14px}
+.an-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px;border:1px solid var(--separations-border)}
+.an-legend .nc-sw{background:repeating-linear-gradient(45deg,var(--slate-hover),var(--slate-hover) 2px,var(--typography-light) 2px,var(--typography-light) 3px)}
+.an-legend .nd-sw{background:var(--slate-hover)}
+.an-read{width:100%;min-height:40px;font-size:13px;padding:8px 10px;border-radius:8px;background:var(--card-header);border:1px solid var(--separations-base);display:flex;flex-wrap:wrap;gap:6px;align-items:baseline}
+.an-d{font-weight:600;font-size:12px}
+.an-nc{font-size:11px;color:var(--typography-light);background:var(--slate-hover);border-radius:4px;padding:1px 5px}
+.an-others{width:100%;display:flex;flex-wrap:wrap;gap:6px}
+.an-others .src{width:100%}
+.an-och{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:12px;padding:3px 8px;border-radius:14px;border:1px solid var(--separations-base);background:transparent;color:var(--typography-muted);cursor:pointer}
+.an-och.on{border-color:var(--typography-base);color:var(--typography-base)}
+.an-och i{width:10px;height:10px;border-radius:50%}
+.an-cmps{display:flex;gap:6px;flex-wrap:wrap}
+.an-cmp{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 8px;border-radius:12px}
+.an-cmp .vi{font-size:12px}
+.an-cmp.ok{background:var(--green-hover);color:var(--green-base)}
+.an-cmp.no{background:var(--orange-hover);color:var(--orange-base)}
+.an-acq{display:flex;gap:20px;flex-wrap:wrap;font-size:12px;color:var(--typography-muted);padding-top:8px;padding-bottom:0}
+.an-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px}
+.an-tile{text-align:left;font:inherit;background:var(--card-header);border:1px solid var(--separations-base);border-radius:10px;padding:10px 12px 6px;cursor:pointer;color:var(--typography-base);display:flex;flex-direction:column;gap:2px}
+.an-tile:hover{border-color:var(--separations-border)}
+.an-tile.on{border-color:var(--primary-base);box-shadow:0 0 0 1px var(--primary-base) inset}
+.an-tile .tl{font-size:12px;color:var(--typography-light)}
+.an-tile .tv{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.an-tile .tv .mono{font-size:17px;color:var(--typography-base)}
+.an-tile .tu{font-size:11px;color:var(--typography-light)}
+.an-tile .an-d{margin-left:auto}
+.spk{width:100%;height:34px;display:block}
+.spk .sl{fill:none;stroke:var(--typography-light);stroke-width:1.4}
+.spk .pt{fill:var(--typography-muted)}
+.spk .pt.cur{fill:var(--primary-base)}
+.spk .pt.nc{fill:var(--card-background);stroke:var(--orange-base);stroke-width:1.4}
+.an-tfoot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--separations-base)}
+.an-fbar{display:flex;gap:6px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--separations-base)}
+.an-tblwrap{max-height:520px;overflow:auto;border-top:1px solid var(--separations-base)}
+.an-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.an-tbl th{position:sticky;top:0;background:var(--card-header);text-align:left;font-weight:500;color:var(--typography-light);padding:6px 10px;border-bottom:1px solid var(--separations-base);white-space:nowrap}
+.an-tbl td{padding:5px 10px;border-bottom:1px solid var(--separations-base);color:var(--typography-base)}
+.an-tbl .num{text-align:right}
+.an-tbl .cur{background:var(--primary-hover)}
+.an-tbl .ncell{color:var(--orange-base)}
+.an-tbl.about td,.an-tbl.about th{position:static}
+.an-rank{display:flex;flex-direction:column;gap:2px;max-height:330px;overflow:auto}
+.an-rrow{display:grid;grid-template-columns:170px minmax(0,1fr) 72px;gap:10px;align-items:center;font:inherit;font-size:12px;background:transparent;border:0;border-radius:6px;padding:4px 6px;color:var(--typography-base);cursor:pointer;text-align:left}
+.an-rrow:hover{background:var(--slate-hover)}.an-rrow.on{background:var(--primary-hover)}
+.an-rrow .vv{text-align:right;font-family:var(--font-mono);font-size:12px}
+.an-bar-t{position:relative;height:12px;display:block}
+.an-bar-t .mid{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--separations-border)}
+.an-bar-t .b{position:absolute;top:1px;height:10px;border-radius:3px}
+.an-bar-t .hb{position:absolute;left:35%;right:35%;top:4px;height:4px;border-radius:2px;background:repeating-linear-gradient(90deg,var(--slate-hover),var(--slate-hover) 3px,transparent 3px,transparent 6px)}
+.an-heatwrap{overflow:auto;max-height:560px;padding:0}
+.an-heat{border-collapse:separate;border-spacing:3px;font-size:11px;min-width:100%}
+.an-heat th{position:sticky;top:0;background:var(--card-background);font-weight:500;color:var(--typography-light);padding:6px 4px;text-align:center;z-index:1;min-width:76px}
+.an-heat th.cur{color:var(--primary-base)}
+.an-heat th .src{font-size:10px}
+.an-heat tr.sys td{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--typography-light);padding:10px 4px 2px}
+.an-heat td.nm{white-space:nowrap;padding-right:8px}
+.an-heat tr.on td.nm .linkbtn{color:var(--primary-base);font-weight:600}
+.an-heat .hc{width:100%;height:24px;border:0;border-radius:4px;font:inherit;font-size:11px;font-family:var(--font-mono);color:var(--typography-base);cursor:pointer}
+.an-heat .hc.cur{outline:2px solid var(--primary-base);outline-offset:-2px}
+.an-heat .hc.nc{background-image:repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(128,128,140,.35) 3px,rgba(128,128,140,.35) 4px)!important;color:var(--typography-light)}
+.linkbtn{background:none;border:0;padding:0;font:inherit;color:var(--typography-base);cursor:pointer;text-align:left}
+.linkbtn:hover{color:var(--primary-base);text-decoration:underline}
+.an-foot .linkbtn{color:var(--primary-base)}
+.an-coh{width:100%;height:auto;display:block}
+.an-coh .gl{stroke:var(--separations-base);stroke-width:1}
+.an-coh .ax{font-size:11px;fill:var(--typography-light)}
+.an-coh .ax.cur{fill:var(--primary-base);font-weight:600}
+.an-coh .col{fill:transparent}.an-coh .col.cur{fill:var(--primary-hover)}
+.an-coh .cd{fill:var(--typography-light);opacity:.55}.an-coh .cd.ref{opacity:.3}
+.an-coh .me{fill:none;stroke:var(--primary-base);stroke-width:2}
+.an-coh .mp{fill:var(--primary-base);stroke:var(--card-background);stroke-width:2}
+.an-foot{margin-top:12px;font-size:11px;color:var(--typography-light);line-height:1.6}
+.an-seed{color:var(--orange-base)}
+@media (max-width:1100px){.an-grid{grid-template-columns:minmax(0,1fr)}.an-map{position:static}#anMap{max-width:260px}}
+.an-d.up{color:var(--red-base)}.an-d.dn{color:var(--primary-base)}.an-d.flat{color:var(--typography-light);font-weight:500}
+#anMap{max-height:560px}
+.an-ncnote{width:100%;display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--orange-base);background:var(--orange-hover);border-radius:8px;padding:8px 10px}
+.an-ncnote span{color:var(--typography-muted)}
 </style>
 
 </head>
@@ -479,9 +591,9 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.6.4";
+const VERSION = "subject-view-harness/0.7.0";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {} };
+const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, rad: {}, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
 
 const stLabel = v => ({ todo: "To Do", in_progress: "In Progress", complete: "Complete", completed: "Completed", failed: "Failed", pending: "Pending", running: "Running", cancelled: "Cancelled", blocked: "Blocked" })[v] || String(v || "").replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
@@ -864,7 +976,7 @@ function header(s, d) {
     </div></div></section>
     <section class="kpis">${tiles.map(([l, v, sub, tone]) => `<div class="kpi ${tone}"><span class="kl">${esc(l)}</span><span class="kv2">${esc(String(v))}</span><span class="ks">${esc(sub)}</span></div>`).join("")}</section>`;
 }
-const TABS = [["overview", "Overview"], ["tasks", "Tasks & Jobs"], ["queries", "Queries"], ["clinical", "Custom Info"], ["diagnostics", "Diagnostics"]];
+const TABS = [["overview", "Overview"], ["anatomy", "Anatomy"], ["tasks", "Tasks & Jobs"], ["queries", "Queries"], ["clinical", "Custom Info"], ["diagnostics", "Diagnostics"]];
 function tabs() { return `<div class="tabsbar"><nav class="tabs">${TABS.map(([k, l]) => `<button class="tab ${S.tab === k ? "on" : ""}" data-tab="${k}">${l}${k === "queries" ? (n => n ? ` <span class="fl info">${n}</span>` : "")(qOf(S.subj).filter(x => x.status === "open").length) : ""}</button>`).join("")}</nav></div>`; }
 
 function matrix(s, d) {
@@ -942,7 +1054,7 @@ function infoTab(s, d) {
 function diagTab() {
   setTimeout(() => tcCount().then(n => { const e = document.getElementById("tcN"); if (e) e.textContent = n == null ? "storage unavailable" : n + " stored"; }), 0);
   const ok = S.calls.filter(c => c.status === "ok").length, er = S.calls.filter(c => c.status === "error").length;
-  return `<div class="card diag"><div class="card-h"><h3>Diagnostics</h3><span class="src">${VERSION} · ${ok} ok · ${er} failed · newest first · GET + SDK tag/info writes</span></div>
+  return aboutCard() + `<div class="card diag"><div class="card-h"><h3>Diagnostics</h3><span class="src">${VERSION} · ${ok} ok · ${er} failed · newest first · GET + SDK tag/info writes</span></div>
     <div class="card-b" style="font-size:13px;color:var(--ink-2)">Origin <span class="mono">${esc(S.origin || "unknown")}</span> · user <span class="mono">${esc(S.user ? S.user._id : "?")}</span> · opened from <span class="mono">${esc(S.opener ? (S.opener.container_type || "?") + " " + (S.opener._id || "") : "?")}</span> · project <span class="mono">${esc(S.projectId || "?")}</span></div>
     <div class="card-b" style="font-size:13px;color:var(--ink-2);display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span>Thumbnail cache on this device: <b id="tcStat">${tcOn() ? "on" : "off"}</b> · <span class="mono">${TC.hits} hits · ${TC.misses} misses this session${TC.err ? " · storage " + esc(TC.err) : ""}</span> · <span id="tcN" class="mono"></span></span><button class="ibtn" data-act="tctoggle">${tcOn() ? "Turn off" : "Turn on"}</button><button class="ibtn" data-act="tcclear">Clear thumbnail cache</button><span class="src" style="font-family:var(--font-ui);flex-basis:100%">Rendered middle slices are kept in this browser for 14 days (newest 400) so they appear instantly next launch. They are image pixels from your data: turn this off on shared machines.</span></div>
     ${schedule().length || (S.project && (S.project.templates || S.project.template)) ? `<div class="card-b"><div class="src" style="font-family:var(--font-ui);margin-bottom:6px">Session templates as read from project.templates (${schedule().length} parsed)</div><pre>${esc(JSON.stringify(S.project.templates || S.project.template, null, 2).slice(0, 4000))}</pre></div>` : `<div class="card-b src" style="font-family:var(--font-ui)">No session templates on this project (project.templates is empty).</div>`}
@@ -1012,6 +1124,522 @@ function drawFermi() {
   const changed = sig !== fermiSig; fermiSig = sig;
   remount(document.getElementById("fermiHost"), "fermi", drawFermiRaw, { input: "#fermiQ", keepScrollIf: !changed });
 }
+/* =====================================================================
+   v0.7 — Anatomy: TotalSegmentator organs x PyRadiomics signals
+   Data contract (per CT acquisition, written by a gear; PROPOSED):
+     file  <name>.organ_radiomics.json   on the acquisition
+     { "schema": "fw.organ-radiomics/1",
+       "totalsegmentator": { "version": "2.x", "task": "total" },
+       "pyradiomics": { "version": "3.x", "settings": { "binWidth": 25, "resampledPixelSpacing": [1,1,1] } },
+       "acquisition": { "slice_thickness": 1.0, "kernel": "B30f", "contrast": "portal venous", "kvp": 120 },
+       "organs": { "liver": { "voxels": 1543210, "features": { "original_shape_VoxelVolume": 1.54e6, ... } }, ... } }
+   If no such file is found the tab shows a deterministic simulation in the same shape, labelled as such.
+   ===================================================================== */
+const RAD_SCHEMA = "fw.organ-radiomics/1";
+const RAD_ASSUMED = { ts: "2.x (task total, 117 classes)", pr: "3.1.0" };
+const RAD_CLASSES = {
+  shape: ["Elongation", "Flatness", "LeastAxisLength", "MajorAxisLength", "Maximum2DDiameterColumn", "Maximum2DDiameterRow", "Maximum2DDiameterSlice", "Maximum3DDiameter", "MeshVolume", "MinorAxisLength", "Sphericity", "SurfaceArea", "SurfaceVolumeRatio", "VoxelVolume"],
+  firstorder: ["10Percentile", "90Percentile", "Energy", "Entropy", "InterquartileRange", "Kurtosis", "Maximum", "MeanAbsoluteDeviation", "Mean", "Median", "Minimum", "Range", "RobustMeanAbsoluteDeviation", "RootMeanSquared", "Skewness", "TotalEnergy", "Uniformity", "Variance"],
+  glcm: ["Autocorrelation", "ClusterProminence", "ClusterShade", "ClusterTendency", "Contrast", "Correlation", "DifferenceAverage", "DifferenceEntropy", "DifferenceVariance", "Id", "Idm", "Idmn", "Idn", "Imc1", "Imc2", "InverseVariance", "JointAverage", "JointEnergy", "JointEntropy", "MCC", "MaximumProbability", "SumAverage", "SumEntropy", "SumSquares"],
+  glrlm: ["GrayLevelNonUniformity", "GrayLevelNonUniformityNormalized", "GrayLevelVariance", "HighGrayLevelRunEmphasis", "LongRunEmphasis", "LongRunHighGrayLevelEmphasis", "LongRunLowGrayLevelEmphasis", "LowGrayLevelRunEmphasis", "RunEntropy", "RunLengthNonUniformity", "RunLengthNonUniformityNormalized", "RunPercentage", "RunVariance", "ShortRunEmphasis", "ShortRunHighGrayLevelEmphasis", "ShortRunLowGrayLevelEmphasis"],
+  glszm: ["GrayLevelNonUniformity", "GrayLevelNonUniformityNormalized", "GrayLevelVariance", "HighGrayLevelZoneEmphasis", "LargeAreaEmphasis", "LargeAreaHighGrayLevelEmphasis", "LargeAreaLowGrayLevelEmphasis", "LowGrayLevelZoneEmphasis", "SizeZoneNonUniformity", "SizeZoneNonUniformityNormalized", "SmallAreaEmphasis", "SmallAreaHighGrayLevelEmphasis", "SmallAreaLowGrayLevelEmphasis", "ZoneEntropy", "ZonePercentage", "ZoneVariance"],
+  gldm: ["DependenceEntropy", "DependenceNonUniformity", "DependenceNonUniformityNormalized", "DependenceVariance", "GrayLevelNonUniformity", "GrayLevelVariance", "HighGrayLevelEmphasis", "LargeDependenceEmphasis", "LargeDependenceHighGrayLevelEmphasis", "LargeDependenceLowGrayLevelEmphasis", "LowGrayLevelEmphasis", "SmallDependenceEmphasis", "SmallDependenceHighGrayLevelEmphasis", "SmallDependenceLowGrayLevelEmphasis"],
+  ngtdm: ["Busyness", "Coarseness", "Complexity", "Contrast", "Strength"]
+};
+const RAD_CLASS_LABEL = { shape: "Shape", firstorder: "First order", glcm: "GLCM", glrlm: "GLRLM", glszm: "GLSZM", gldm: "GLDM", ngtdm: "NGTDM" };
+const RAD_FEATURES = Object.entries(RAD_CLASSES).flatMap(([c, ns]) => ns.map(n => ({ key: `original_${c}_${n}`, cls: c, name: n })));
+const radCls = key => (key.match(/^original_([a-z]+)_/) || [, ""])[1];
+const TEXTURE = new Set(["glcm", "glrlm", "glszm", "gldm", "ngtdm"]);
+
+/* Curated signals shown as tiles and on the map. d: how change is expressed (pct of reference, or absolute difference). */
+const SIGNALS = [
+  { k: "vol", f: "original_shape_VoxelVolume", label: "Volume", unit: "mL", scale: 1e-3, d: "pct", span: 30, grp: "Shape" },
+  { k: "sph", f: "original_shape_Sphericity", label: "Sphericity", unit: "", d: "abs", span: 0.08, grp: "Shape" },
+  { k: "svr", f: "original_shape_SurfaceVolumeRatio", label: "Surface / volume", unit: "1/mm", d: "pct", span: 20, grp: "Shape" },
+  { k: "mean", f: "original_firstorder_Mean", label: "Mean density", unit: "HU", d: "abs", span: 40, grp: "Density" },
+  { k: "med", f: "original_firstorder_Median", label: "Median density", unit: "HU", d: "abs", span: 40, grp: "Density" },
+  { k: "p10", f: "original_firstorder_10Percentile", label: "10th percentile", unit: "HU", d: "abs", span: 40, grp: "Density" },
+  { k: "p90", f: "original_firstorder_90Percentile", label: "90th percentile", unit: "HU", d: "abs", span: 40, grp: "Density" },
+  { k: "skew", f: "original_firstorder_Skewness", label: "Skewness", unit: "", d: "abs", span: 0.6, grp: "Density" },
+  { k: "kurt", f: "original_firstorder_Kurtosis", label: "Kurtosis", unit: "", d: "pct", span: 30, grp: "Density" },
+  { k: "ent", f: "original_firstorder_Entropy", label: "Entropy", unit: "bits", d: "pct", span: 15, grp: "Density" },
+  { k: "glcmc", f: "original_glcm_Contrast", label: "GLCM contrast", unit: "", d: "pct", span: 40, grp: "Texture" },
+  { k: "glcmr", f: "original_glcm_Correlation", label: "GLCM correlation", unit: "", d: "abs", span: 0.15, grp: "Texture" },
+  { k: "lre", f: "original_glrlm_LongRunEmphasis", label: "Long run emphasis", unit: "", d: "pct", span: 30, grp: "Texture" },
+  { k: "zent", f: "original_glszm_ZoneEntropy", label: "Zone entropy", unit: "bits", d: "pct", span: 15, grp: "Texture" },
+  { k: "coarse", f: "original_ngtdm_Coarseness", label: "Coarseness", unit: "", d: "pct", span: 40, grp: "Texture" }
+];
+const sigOf = k => SIGNALS.find(x => x.k === k) || SIGNALS[0];
+
+/* Organ catalogue: TotalSegmentator "total" class names. layer: which body-map layer draws it (null = listed only).
+   vol mL, hu (non-contrast), huc (portal venous), sd HU, sph sphericity, enh = density depends on contrast phase. */
+const ORGANS = [
+  ["lung_upper_lobe_right", "Right upper lobe", "Thorax", "organs", 1050, -860, -850, 90, .55, 0],
+  ["lung_middle_lobe_right", "Right middle lobe", "Thorax", "organs", 480, -860, -850, 90, .45, 0],
+  ["lung_lower_lobe_right", "Right lower lobe", "Thorax", "organs", 1350, -840, -830, 95, .55, 0],
+  ["lung_upper_lobe_left", "Left upper lobe", "Thorax", "organs", 1150, -860, -850, 90, .5, 0],
+  ["lung_lower_lobe_left", "Left lower lobe", "Thorax", "organs", 1200, -840, -830, 95, .55, 0],
+  ["heart", "Heart", "Thorax", "organs", 620, 40, 120, 45, .8, 1],
+  ["trachea", "Trachea", "Thorax", "organs", 35, -900, -900, 120, .25, 0],
+  ["esophagus", "Esophagus", "Thorax", "organs", 30, 35, 55, 40, .2, 1],
+  ["thyroid_gland", "Thyroid", "Thorax", "organs", 18, 100, 160, 40, .5, 1],
+  ["aorta", "Aorta", "Vessels", "organs", 140, 42, 170, 40, .25, 1],
+  ["inferior_vena_cava", "Inferior vena cava", "Vessels", "organs", 55, 38, 150, 40, .3, 1],
+  ["portal_vein_and_splenic_vein", "Portal and splenic vein", "Vessels", null, 25, 40, 170, 45, .2, 1],
+  ["liver", "Liver", "Abdomen", "organs", 1550, 58, 105, 22, .6, 1],
+  ["gallbladder", "Gallbladder", "Abdomen", "organs", 30, 8, 10, 15, .75, 0],
+  ["stomach", "Stomach", "Abdomen", "organs", 320, 30, 60, 60, .4, 1],
+  ["spleen", "Spleen", "Abdomen", "organs", 210, 48, 110, 20, .65, 1],
+  ["pancreas", "Pancreas", "Abdomen", "organs", 80, 40, 90, 30, .35, 1],
+  ["kidney_right", "Right kidney", "Abdomen", "organs", 160, 32, 160, 45, .72, 1],
+  ["kidney_left", "Left kidney", "Abdomen", "organs", 165, 32, 160, 45, .72, 1],
+  ["adrenal_gland_right", "Right adrenal", "Abdomen", "organs", 5, 15, 50, 30, .3, 1],
+  ["adrenal_gland_left", "Left adrenal", "Abdomen", "organs", 6, 15, 50, 30, .3, 1],
+  ["duodenum", "Duodenum", "Abdomen", "organs", 60, 30, 70, 50, .25, 1],
+  ["small_bowel", "Small bowel", "Abdomen", "organs", 650, 25, 65, 60, .2, 1],
+  ["colon", "Colon", "Abdomen", "organs", 520, -10, 20, 140, .15, 1],
+  ["urinary_bladder", "Urinary bladder", "Pelvis", "organs", 180, 8, 12, 12, .85, 0],
+  ["vertebrae_T12", "T12", "Bones", "msk", 38, 230, 240, 120, .5, 0],
+  ["vertebrae_L1", "L1", "Bones", "msk", 42, 225, 235, 120, .5, 0],
+  ["vertebrae_L2", "L2", "Bones", "msk", 45, 220, 230, 120, .5, 0],
+  ["vertebrae_L3", "L3", "Bones", "msk", 48, 215, 225, 120, .5, 0],
+  ["vertebrae_L4", "L4", "Bones", "msk", 50, 210, 220, 120, .5, 0],
+  ["vertebrae_L5", "L5", "Bones", "msk", 50, 205, 215, 125, .5, 0],
+  ["sacrum", "Sacrum", "Bones", "msk", 120, 260, 270, 150, .4, 0],
+  ["hip_right", "Right hip", "Bones", "msk", 260, 300, 305, 220, .3, 0],
+  ["hip_left", "Left hip", "Bones", "msk", 255, 300, 305, 220, .3, 0],
+  ["femur_right", "Right femur", "Bones", "msk", 330, 420, 425, 330, .25, 0],
+  ["femur_left", "Left femur", "Bones", "msk", 325, 420, 425, 330, .25, 0],
+  ["sternum", "Sternum", "Bones", "msk", 45, 280, 285, 160, .2, 0],
+  ["clavicula_right", "Right clavicle", "Bones", "msk", 20, 420, 425, 260, .15, 0],
+  ["clavicula_left", "Left clavicle", "Bones", "msk", 20, 420, 425, 260, .15, 0],
+  ["humerus_right", "Right humerus", "Bones", "msk", 150, 450, 455, 330, .2, 0],
+  ["humerus_left", "Left humerus", "Bones", "msk", 150, 450, 455, 330, .2, 0],
+  ["iliopsoas_right", "Right iliopsoas", "Muscle", "msk", 260, 48, 55, 25, .3, 0],
+  ["iliopsoas_left", "Left iliopsoas", "Muscle", "msk", 255, 48, 55, 25, .3, 0],
+  ["autochthon_right", "Right paraspinal", "Muscle", "msk", 480, 45, 52, 28, .25, 0],
+  ["autochthon_left", "Left paraspinal", "Muscle", "msk", 475, 45, 52, 28, .25, 0],
+  ["gluteus_maximus_right", "Right gluteus maximus", "Muscle", "msk", 520, 42, 48, 30, .4, 0],
+  ["gluteus_maximus_left", "Left gluteus maximus", "Muscle", "msk", 515, 42, 48, 30, .4, 0],
+  ["vertebrae_T6", "T6", "Bones", null, 28, 240, 250, 120, .5, 0],
+  ["rib_left_7", "Left rib 7", "Bones", null, 12, 380, 385, 260, .1, 0],
+  ["rib_right_7", "Right rib 7", "Bones", null, 12, 380, 385, 260, .1, 0]
+].map(([id, label, sys, layer, vol, hu, huc, sd, sph, enh]) => ({ id, label, sys, layer, vol, hu, huc, sd, sph, enh: !!enh }));
+const ORG = Object.fromEntries(ORGANS.map(o => [o.id, o]));
+const orgLabel = id => (ORG[id] && ORG[id].label) || id.replace(/_/g, " ");
+const SYSTEMS = ["Thorax", "Vessels", "Abdomen", "Pelvis", "Bones", "Muscle", "Other"];
+const orgSys = id => (ORG[id] && ORG[id].sys) || "Other";
+
+/* ---------- deterministic simulator (same shape as the gear output) ---------- */
+function radHash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function radRng(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const gauss = r => { let u = 0, v = 0; while (!u) u = r(); while (!v) v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+/* Immune-related patterns a PD-1 trial might show; each subject gets 0-2, growing with visit index. */
+const RAD_EFFECTS = {
+  hepatitis: { label: "Liver: density falls, volume and heterogeneity rise", o: { liver: { vol: .05, hu: -9, tex: .1, ent: .03 } } },
+  pneumonitis: { label: "Lower lobes: density and entropy rise", o: { lung_lower_lobe_right: { hu: 40, tex: .18, ent: .05, vol: -.03 }, lung_lower_lobe_left: { hu: 22, tex: .1, ent: .03, vol: -.02 }, lung_middle_lobe_right: { hu: 18, tex: .08, ent: .02 } } },
+  cachexia: { label: "Muscle: volume and density fall", o: { iliopsoas_right: { vol: -.06, hu: -4 }, iliopsoas_left: { vol: -.06, hu: -4 }, autochthon_right: { vol: -.05, hu: -5 }, autochthon_left: { vol: -.05, hu: -5 }, gluteus_maximus_right: { vol: -.04, hu: -3 }, gluteus_maximus_left: { vol: -.04, hu: -3 } } },
+  splenomegaly: { label: "Spleen: volume rises", o: { spleen: { vol: .14, tex: .04 } } },
+  thyroiditis: { label: "Thyroid: density and volume fall", o: { thyroid_gland: { hu: -25, vol: -.1, tex: .12 } } },
+  bone: { label: "Vertebrae: density falls", o: { vertebrae_L1: { hu: -9 }, vertebrae_L2: { hu: -9 }, vertebrae_L3: { hu: -8 }, vertebrae_L4: { hu: -8 }, vertebrae_T12: { hu: -9 } } }
+};
+function simAcq(r, k, n) {
+  const a = { slice_thickness: 1.0, kernel: "B30f", contrast: "portal venous", kvp: 120 };
+  if (k > 0 && r() < .22) a.slice_thickness = 3.0;
+  if (k > 0 && r() < .12) a.kernel = "B70f";
+  if (k > 0 && k < n - 1 && r() < .07) a.contrast = "none";
+  if (k === n - 1 && n >= 3 && r() < .3) a.slice_thickness = 3.0;
+  return a;
+}
+function simFeature(f, o, base, acq, eff, r) {
+  const thinF = acq.slice_thickness > 2 ? .72 : 1, sharpF = /70|80|B6|sharp|lung/i.test(acq.kernel) ? 1.45 : 1, n = 1 + .03 * gauss(r);
+  const texF = thinF * sharpF * (1 + (eff.tex || 0)) * n;
+  const sd = base.sd * (1 + (eff.tex || 0) * .6), v = base.vol * 1000, sph = Math.min(.95, base.sph * (1 + .01 * gauss(r)));
+  switch (f.key) {
+    case "original_shape_VoxelVolume": return v;
+    case "original_shape_MeshVolume": return v * .985;
+    case "original_shape_Sphericity": return sph;
+    case "original_shape_SurfaceArea": return Math.cbrt(36 * Math.PI * v * v) / sph;
+    case "original_shape_SurfaceVolumeRatio": return Math.cbrt(36 * Math.PI * v * v) / sph / v;
+    case "original_shape_Maximum3DDiameter": return Math.cbrt(v) * 1.9 / Math.sqrt(sph);
+    case "original_shape_MajorAxisLength": return Math.cbrt(v) * 1.6 / Math.sqrt(sph);
+    case "original_shape_MinorAxisLength": return Math.cbrt(v) * 1.1;
+    case "original_shape_LeastAxisLength": return Math.cbrt(v) * .8 * sph;
+    case "original_shape_Elongation": return .55 + .3 * sph;
+    case "original_shape_Flatness": return .35 + .3 * sph;
+    case "original_firstorder_Mean": return base.hu;
+    case "original_firstorder_Median": return base.hu + .02 * sd;
+    case "original_firstorder_10Percentile": return base.hu - 1.28 * sd;
+    case "original_firstorder_90Percentile": return base.hu + 1.28 * sd;
+    case "original_firstorder_Minimum": return base.hu - 3.6 * sd;
+    case "original_firstorder_Maximum": return base.hu + 4.2 * sd;
+    case "original_firstorder_Range": return 7.8 * sd;
+    case "original_firstorder_InterquartileRange": return 1.35 * sd;
+    case "original_firstorder_Variance": return sd * sd;
+    case "original_firstorder_MeanAbsoluteDeviation": return .8 * sd;
+    case "original_firstorder_RobustMeanAbsoluteDeviation": return .55 * sd;
+    case "original_firstorder_Skewness": return (o.hu < -500 ? 1.6 : o.hu > 150 ? .6 : -.25) + .08 * gauss(r) + (eff.tex || 0) * .8;
+    case "original_firstorder_Kurtosis": return (o.hu < -500 ? 7 : 4) * (1 + (eff.tex || 0)) * n;
+    case "original_firstorder_Entropy": return (2.3 + Math.log2(Math.max(4, sd)) * .55) * (1 + (eff.ent || 0)) * (thinF < 1 ? .96 : 1) * (1 + .01 * gauss(r));
+    case "original_firstorder_Uniformity": return .2 / (1 + (eff.ent || 0) * 3) * n;
+    case "original_firstorder_RootMeanSquared": return Math.sqrt(base.hu * base.hu + sd * sd);
+    case "original_firstorder_Energy": case "original_firstorder_TotalEnergy": return (base.hu * base.hu + sd * sd) * v * (f.name === "TotalEnergy" ? 1 : .98);
+    case "original_glcm_Contrast": return (sd / 25) * (sd / 25) * 6 * texF;
+    case "original_glcm_Correlation": return Math.min(.95, .55 + .1 * gauss(r) * .3 + (thinF < 1 ? .12 : 0) - (sharpF > 1 ? .1 : 0) - (eff.tex || 0) * .4);
+    case "original_glrlm_LongRunEmphasis": return 1.6 / texF;
+    case "original_glszm_ZoneEntropy": return (5 + Math.log2(Math.max(4, sd)) * .4) * (1 + (eff.ent || 0) * 1.2) * (thinF < 1 ? .95 : 1) * (1 + .01 * gauss(r));
+    case "original_ngtdm_Coarseness": return .004 * (1000 / Math.max(5, base.vol)) ** .3 / texF;
+  }
+  const h = radHash(f.key + o.id), mag = Math.pow(10, (h % 7) - 3) * (1 + (h % 97) / 50);
+  return mag * (TEXTURE.has(f.cls) ? texF : n) * (f.cls === "firstorder" ? sd / 40 : 1);
+}
+function simSubject(sid, visits, cohort) {
+  const r = radRng(radHash("rad:" + sid)), n = visits.length;
+  const body = .85 + .35 * r(), effs = Object.keys(RAD_EFFECTS).filter(() => r() < (cohort ? .22 : .32));
+  if (!cohort && !effs.length) effs.push(["hepatitis", "pneumonitis", "cachexia"][radHash(sid) % 3]);
+  const out = { source: "sim", effects: effs, visits: [] };
+  const org0 = {}; ORGANS.forEach(o => { org0[o.id] = { vol: o.vol * body * (1 + .1 * gauss(r)), hu: o.hu + .06 * Math.abs(o.hu || 30) * gauss(r), huc: o.huc + .06 * Math.abs(o.huc || 30) * gauss(r), sd: o.sd * (1 + .08 * gauss(r)), sph: o.sph }; });
+  visits.forEach((vis, k) => {
+    const acq = simAcq(r, k, n), organs = {};
+    ORGANS.forEach(o => {
+      const eff = {}; effs.forEach(e => { const d = RAD_EFFECTS[e].o[o.id]; if (d) for (const [kk, vv] of Object.entries(d)) eff[kk] = (eff[kk] || 0) + vv * k; });
+      const b = org0[o.id], hu = (acq.contrast !== "none" && o.enh ? b.huc : b.hu) + (eff.hu || 0) + 2.5 * gauss(r);
+      const base = { vol: b.vol * (1 + (eff.vol || 0)) * (1 + .025 * gauss(r)), hu, sd: b.sd, sph: b.sph };
+      const feats = {};
+      (cohort ? SIGNALS.map(s => RAD_FEATURES.find(f => f.key === s.f)) : RAD_FEATURES).forEach(f => { feats[f.key] = simFeature(f, o, base, acq, eff, r); });
+      organs[o.id] = { voxels: Math.round(base.vol * 1000 / (acq.slice_thickness * .78 * .78)), features: feats };
+    });
+    out.visits.push({ ...vis, acq, organs, ts: { version: RAD_ASSUMED.ts, task: "total" }, pr: { version: RAD_ASSUMED.pr } });
+  });
+  return out;
+}
+
+/* ---------- loading: real gear output first, simulation otherwise ---------- */
+function radVisitCols(sid) {
+  const cols = visitsFor(sid).filter(c => c.z);
+  if (cols.length) return cols.map((c, i) => ({ key: c.z._id, label: c.v ? c.v.label : c.z.label, short: c.v ? c.v.label : c.z.label, date: c.z.timestamp || c.z.created, z: c.z, i }));
+  return ["Baseline", "Week 12", "Week 24"].map((l, i) => ({ key: "sim" + i, label: l, short: l, date: null, z: null, i }));
+}
+async function loadRad(sid) {
+  const d = S.detail[sid]; if (!d || !d.ok) return;
+  S.rad[sid] = { loading: true }; const cols = radVisitCols(sid), found = [];
+  for (const c of cols) {
+    const acqs = c.z ? (d.acqs[c.z._id] || []) : [];
+    for (const a of acqs) for (const f of (a.files || [])) if (/organ[_-]?radiomics[^/]*\.json$/i.test(f.name)) found.push({ c, a, f });
+  }
+  if (found.length) {
+    const visits = [];
+    for (const { c, a, f } of found) {
+      try {
+        const blob = await sdk(`SDK getFileBlob ${f.name}`, () => S.ext.getFileBlob(fileRef(f, a)));
+        const j = JSON.parse(await blob.text());
+        if (j.schema !== RAD_SCHEMA || !j.organs) throw new Error("Unexpected schema " + (j.schema || "none"));
+        if (visits.some(v => v.key === c.key)) continue;
+        visits.push({ key: c.key, label: c.label, short: c.short, date: c.date, z: c.z, acq: j.acquisition || {}, organs: j.organs, ts: j.totalsegmentator || {}, pr: j.pyradiomics || {}, file: f.name, acqLabel: a.label });
+      } catch (e) { S.rad[sid] = { err: `${f.name}: ${e.message || e}` }; render(); return; }
+    }
+    visits.sort((x, y) => cols.findIndex(c => c.key === x.key) - cols.findIndex(c => c.key === y.key));
+    S.rad[sid] = { source: "file", visits, effects: [] };
+  } else S.rad[sid] = simSubject(sid, cols, false);
+  render();
+}
+/* Cohort for the dot strip: every project subject at the same visit index (simulated unless real data loaded); padded to 24 reference subjects. */
+function radCohort(nv) {
+  const key = S.subjects.length + ":" + nv; if (S.radCohort && S.radCohort.key === key) return S.radCohort.rows;
+  const ids = S.subjects.map(s => s._id); let pad = 0; while (ids.length < 24) ids.push("ref-" + (pad++));
+  const rows = ids.map(id => {
+    const real = S.rad[id] && S.rad[id].source === "file" ? S.rad[id] : null;
+    const vis = real ? real.visits : simSubject(id, Array.from({ length: nv }, (_, i) => ({ key: "c" + i, label: "V" + (i + 1) })), true).visits;
+    return { id, ref: id.startsWith("ref-"), real: !!real, visits: vis };
+  });
+  S.radCohort = { key, rows }; return rows;
+}
+
+/* ---------- body map: schematic front view, patient's right on the viewer's left ---------- */
+const BODY_SIL = "M147,68 L147,86 C130,92 100,94 82,104 C70,110 64,124 62,140 L52,250 C48,300 46,340 50,380 L60,386 L66,330 L74,250 L80,180 L86,330 C84,360 80,390 82,420 C84,470 92,540 96,630 L150,630 L156,450 L164,450 L170,630 L224,630 C228,540 236,470 238,420 C240,390 236,360 234,330 L240,180 L246,250 L254,330 L260,386 L270,380 C274,340 272,300 268,250 L258,140 C256,124 250,110 238,104 C220,94 190,92 173,86 L173,68 Z";
+const MAP_SHAPES = {
+  organs: [
+    ["esophagus", "M164,92 L170,92 L170,252 L164,252 Z"],
+    ["trachea", "M155,86 L165,86 L165,158 L155,158 Z"],
+    ["lung_upper_lobe_right", "M152,118 C140,112 116,118 106,140 C100,155 98,170 98,188 L152,176 Z"],
+    ["lung_middle_lobe_right", "M98,188 L152,176 L150,222 C128,224 110,220 100,214 Z"],
+    ["lung_lower_lobe_right", "M100,214 C110,220 128,224 150,222 L150,262 C132,272 108,276 96,270 C94,250 95,230 100,214 Z"],
+    ["lung_upper_lobe_left", "M168,118 C180,112 204,118 214,140 C220,156 222,176 220,196 L190,206 C180,196 172,188 168,180 Z"],
+    ["lung_lower_lobe_left", "M220,196 C222,230 224,255 222,270 C206,276 184,272 170,262 L170,232 C178,224 186,214 190,206 Z"],
+    ["colon", "M116,440 C108,420 108,390 112,372 C114,362 120,356 132,356 L196,352 C210,350 218,356 220,370 L222,420 C222,440 206,448 186,446 C176,445 170,452 168,462", 11],
+    ["small_bowel", "M128,382 C140,368 190,366 200,382 C210,400 204,428 184,434 C164,440 138,436 130,420 C124,406 124,394 128,382 Z"],
+    ["urinary_bladder", "M140,470 C140,456 180,456 180,470 C180,486 140,486 140,470 Z"],
+    ["aorta", "M158,192 C156,160 168,146 180,150 C190,154 188,168 182,184 L172,290 L168,398", 8],
+    ["inferior_vena_cava", "M150,262 L151,398", 7],
+    ["heart", "M150,190 C140,205 142,240 160,256 C176,268 204,262 210,240 C214,222 204,200 186,194 C174,186 160,184 150,190 Z"],
+    ["liver", "M100,262 C120,272 150,268 196,262 C204,264 206,272 196,282 C178,296 150,306 128,322 C114,330 104,322 100,308 C96,292 96,276 100,262 Z"],
+    ["stomach", "M188,272 C206,268 224,276 222,296 C220,318 204,330 186,328 C176,326 170,318 176,310 C186,304 196,300 192,290 C190,282 184,278 188,272 Z"],
+    ["spleen", "M224,276 C236,282 240,306 232,318 C226,324 216,318 216,306 C216,292 216,278 224,276 Z"],
+    ["kidney_right", "M128,326 C140,326 144,340 142,352 C140,364 134,372 126,372 C116,372 114,358 115,348 C116,336 120,326 128,326 Z"],
+    ["kidney_left", "M194,318 C206,318 208,332 207,344 C206,356 200,364 192,364 C182,364 180,350 181,340 C182,328 186,318 194,318 Z"],
+    ["adrenal_gland_right", "M122,322 L130,308 L138,322 Z"],
+    ["adrenal_gland_left", "M186,314 L194,300 L202,314 Z"],
+    ["pancreas", "M146,328 C164,320 190,318 212,312 C220,312 222,320 214,324 C192,332 168,336 150,340 C142,342 138,332 146,328 Z"],
+    ["duodenum", "M146,330 C136,334 134,348 140,358 C146,366 162,366 170,358", 7],
+    ["gallbladder", "M128,312 C136,306 142,314 140,324 C138,332 130,334 127,326 C125,320 124,316 128,312 Z"],
+    ["thyroid_gland", "M147,101 C147,94 173,94 173,101 C173,108 147,108 147,101 Z"]
+  ],
+  msk: [
+    ["gluteus_maximus_right", "M96,446 C96,428 148,428 148,446 C148,466 96,466 96,446 Z"],
+    ["gluteus_maximus_left", "M172,446 C172,428 224,428 224,446 C224,466 172,466 172,446 Z"],
+    ["autochthon_right", "M136,156 C136,150 148,150 148,156 L148,404 C148,410 136,410 136,404 Z"],
+    ["autochthon_left", "M172,156 C172,150 184,150 184,156 L184,404 C184,410 172,410 172,404 Z"],
+    ["vertebrae_T12", "M151,300 L169,300 L169,316 L151,316 Z"],
+    ["vertebrae_L1", "M151,318 L169,318 L169,336 L151,336 Z"],
+    ["vertebrae_L2", "M151,338 L169,338 L169,356 L151,356 Z"],
+    ["vertebrae_L3", "M151,358 L169,358 L169,376 L151,376 Z"],
+    ["vertebrae_L4", "M151,378 L169,378 L169,396 L151,396 Z"],
+    ["vertebrae_L5", "M151,398 L169,398 L169,416 L151,416 Z"],
+    ["sacrum", "M146,420 L174,420 L168,452 L160,462 L152,452 Z"],
+    ["hip_right", "M146,424 C130,410 104,404 98,420 C94,438 108,452 124,456 C134,458 142,450 146,440 Z"],
+    ["hip_left", "M174,424 C190,410 216,404 222,420 C226,438 212,452 196,456 C186,458 178,450 174,440 Z"],
+    ["femur_right", "M118,456 C126,452 136,456 136,466 L134,600 L120,600 L118,470 Z"],
+    ["femur_left", "M202,456 C194,452 184,456 184,466 L186,600 L200,600 L202,470 Z"],
+    ["iliopsoas_right", "M150,306 C146,350 136,400 126,440 C124,452 132,458 136,452 C146,410 154,360 156,306 Z"],
+    ["iliopsoas_left", "M170,306 C174,350 184,400 194,440 C196,452 188,458 184,452 C174,410 166,360 164,306 Z"],
+    ["sternum", "M155,140 L165,140 L165,212 L155,212 Z"],
+    ["clavicula_right", "M156,102 C140,99 120,101 96,110", 7],
+    ["clavicula_left", "M164,102 C180,99 200,101 224,110", 7],
+    ["humerus_right", "M70,120 C64,140 60,200 58,250 L66,252 C70,200 74,140 80,122 Z"],
+    ["humerus_left", "M250,120 C256,140 260,200 262,250 L254,252 C250,200 246,140 240,122 Z"]
+  ]
+};
+const THORACIC_DECO = Array.from({ length: 11 }, (_, i) => `<rect x="152" y="${110 + i * 17}" width="16" height="15" rx="3" class="deco"/>`).join("");
+
+/* ---------- maths ---------- */
+function radVal(V, vi, org, sig) {
+  const v = V[vi] && V[vi].organs[org] && V[vi].organs[org].features[sig.f];
+  return v == null || !isFinite(v) ? null : v * (sig.scale || 1);
+}
+function radComp(cls, org, a, b, key) {
+  if (!a || !b) return { ok: true };
+  const ta = +a.slice_thickness, tb = +b.slice_thickness, o = ORG[org];
+  if (cls === "shape") return Math.abs(ta - tb) > 2 ? { ok: false, why: `slice thickness ${ta} vs ${tb} mm` } : { ok: true };
+  if (cls === "firstorder") { if (o && o.enh && (a.contrast || "") !== (b.contrast || "")) return { ok: false, why: `contrast ${a.contrast || "?"} vs ${b.contrast || "?"}` }; if (key && !/_(Mean|Median|RootMeanSquared)$/.test(key) && Math.abs(ta - tb) > 2) return { ok: false, why: `slice thickness ${ta} vs ${tb} mm (histogram shape)` }; return { ok: true }; }
+  const w = [];
+  if (Math.abs(ta - tb) > .5) w.push(`slice thickness ${ta} vs ${tb} mm`);
+  if ((a.kernel || "") !== (b.kernel || "")) w.push(`kernel ${a.kernel || "?"} vs ${b.kernel || "?"}`);
+  return w.length ? { ok: false, why: w.join(", ") } : { ok: true };
+}
+const radDelta = (sig, v, r) => v == null || r == null ? null : sig.d === "pct" ? (r ? (v - r) / Math.abs(r) * 100 : null) : v - r;
+function radRef(V, vi, cmp) { return cmp === "prev" ? vi - 1 : cmp === "bl" ? 0 : -1; }
+/* One cell = one organ x signal at one visit, against the chosen reference. */
+function radCell(R, vi, org, sig, cmp) {
+  const V = R.visits, v = radVal(V, vi, org, sig);
+  if (v == null) return { v: null };
+  if (cmp === "cohort") {
+    const xs = radCohort(V.length).filter(c => c.id !== S.subj).map(c => radVal(c.visits, vi, org, sig)).filter(x => x != null);
+    if (xs.length < 5) return { v, t: null, why: "cohort too small" };
+    const m = xs.reduce((a, b) => a + b, 0) / xs.length, sd = Math.sqrt(xs.reduce((a, b) => a + (b - m) ** 2, 0) / (xs.length - 1)) || 1, z = (v - m) / sd;
+    const pct = Math.round(xs.filter(x => x <= v).length / xs.length * 100);
+    return { v, z, pct, n: xs.length, t: Math.max(-1, Math.min(1, z / 3)), ok: true };
+  }
+  const ri = radRef(V, vi, cmp);
+  if (ri < 0 || ri === vi) return { v, ref: null, t: null, base: true };
+  const r = radVal(V, ri, org, sig), c = radComp(radCls(sig.f), org, V[vi].acq, V[ri].acq, sig.f), d = radDelta(sig, v, r);
+  return { v, r, d, ok: c.ok, why: c.why, t: d == null ? null : Math.max(-1, Math.min(1, d / sig.span)), ri };
+}
+function radColor(t, ok) {
+  const dark = document.body.classList.contains("vision-dark"), mid = dark ? [52, 57, 70] : [222, 226, 233];
+  if (t == null || ok === false) return dark ? "#2a2d36" : "#eceef2";
+  const end = t < 0 ? [74, 141, 246] : [241, 87, 87], a = Math.min(1, Math.abs(t));
+  return `rgb(${mid.map((m, i) => Math.round(m + (end[i] - m) * a)).join(",")})`;
+}
+const HU_ABS = /_firstorder_(Mean|Median|10Percentile|90Percentile|Minimum|Maximum|Range|InterquartileRange|MeanAbsoluteDeviation|RobustMeanAbsoluteDeviation|RootMeanSquared)$/, SIGNED_ABS = /_(Skewness|Correlation|Imc1|Imc2|ClusterShade|MCC)$/;
+const dCls = c => c.t == null || Math.abs(c.t) < .08 ? "flat" : c.t > 0 ? "up" : "dn";
+function radFmt(sig, v) {
+  if (v == null) return "—";
+  if (sig.unit === "mL") return v >= 100 ? Math.round(v).toLocaleString() : v.toFixed(1);
+  if (sig.unit === "HU") return Math.round(v).toString();
+  const a = Math.abs(v); return a >= 100 ? v.toFixed(0) : a >= 10 ? v.toFixed(1) : a >= 1 ? v.toFixed(2) : v.toPrecision(2);
+}
+function radDFmt(sig, c) {
+  if (!c) return "";
+  if (c.z != null) return (c.z >= 0 ? "+" : "") + c.z.toFixed(1) + " SD";
+  if (c.d == null) return "";
+  const s = c.d >= 0 ? "+" : "−", a = Math.abs(c.d);
+  if ((sig.d === "pct" && a < .05) || (sig.d !== "pct" && sig.unit !== "HU" && a < .005) || (sig.unit === "HU" && a < .5)) return sig.d === "pct" ? "0%" : sig.unit === "HU" ? "0 HU" : "0.00";
+  return sig.d === "pct" ? `${s}${a.toFixed(a >= 10 ? 0 : 1)}%` : `${s}${sig.unit === "HU" ? Math.round(a) + " HU" : a < 1 ? a.toFixed(2) : a.toFixed(1)}`;
+}
+const radFeatFmt = v => v == null || !isFinite(v) ? "—" : Math.abs(v) >= 1e5 || (Math.abs(v) < 1e-3 && v !== 0) ? v.toExponential(2) : Math.abs(v) >= 100 ? v.toFixed(0) : v.toPrecision(3);
+
+/* ---------- view ---------- */
+function anState(R) {
+  const A = S.an; const n = R.visits.length;
+  if (A.visit == null || A.visit >= n) A.visit = n - 1;
+  if (A.cmp === "prev" && A.visit === 0 && n > 1) A.visit = n - 1;
+  if (!R.visits[0].organs[A.organ]) A.organ = Object.keys(R.visits[0].organs)[0];
+  return A;
+}
+function anatomyTab(s, d) {
+  if (!d || !d.ok) return `<div class="card"><div class="loading"><span class="spin"></span>Loading subject…</div></div>`;
+  const R = S.rad[s._id];
+  if (!R) { setTimeout(() => loadRad(s._id), 0); return `<div class="card"><div class="loading"><span class="spin"></span>Looking for organ radiomics…</div></div>`; }
+  if (R.loading) return `<div class="card"><div class="loading"><span class="spin"></span>Looking for organ radiomics…</div></div>`;
+  if (R.err) return `<div class="card"><div class="empty-big"><b style="color:var(--ink)">Couldn't read organ radiomics</b><span>${esc(R.err)}</span></div></div>`;
+  if (!R.visits.length) return `<div class="card"><div class="empty-big">No visits with organ radiomics.</div></div>`;
+  const A = anState(R), V = R.visits, sig = sigOf(A.sig), vi = A.visit, sim = R.source === "sim";
+  const v0 = V[vi], ts = v0.ts || {}, pr = v0.pr || {};
+  const cmpOpts = [["bl", "vs Baseline"], ["prev", "vs Previous"], ["cohort", "vs Cohort"]];
+  const sigSel = `<select id="anSig" class="ansel" aria-label="Signal">${["Shape", "Density", "Texture"].map(g => `<optgroup label="${g}">${SIGNALS.filter(x => x.grp === g).map(x => `<option value="${x.k}" ${x.k === sig.k ? "selected" : ""}>${x.label}${x.unit ? " (" + x.unit + ")" : ""}</option>`).join("")}</optgroup>`).join("")}</select>`;
+  const head = `<div class="card an-ctl"><div class="an-bar">
+      <div class="an-seg" role="tablist">${[["organ", "By Organ"], ["signal", "By Signal"]].map(([k, l]) => `<button class="ibtn ${A.view === k ? "on" : ""}" data-an="view:${k}">${l}</button>`).join("")}</div>
+      <label class="an-lab">Signal ${sigSel}</label>
+      <span class="an-lab">Visit <span class="an-chips">${V.map((x, i) => `<button class="fchip ${i === vi ? "on" : ""}" data-an="visit:${i}" title="${esc(x.label)}${x.date ? " · " + esc(dt(x.date).slice(0, 10)) : ""}">${esc(x.short)}</button>`).join("")}</span></span>
+      <span class="an-lab">Compare <span class="an-chips">${cmpOpts.map(([k, l]) => `<button class="fchip ${A.cmp === k ? "on" : ""}" data-an="cmp:${k}" ${k === "prev" && V.length < 2 ? "disabled" : ""}>${l}</button>`).join("")}</span></span>
+      <span style="flex:1"></span>
+      ${sim ? `<span class="pill an-sim" title="No organ_radiomics.json on this subject's acquisitions. Values are synthetic, seeded per subject, for layout and workflow review only.">Simulated data</span>` : `<span class="pill an-real" title="${esc(v0.file || "")}">${esc(v0.file || "organ_radiomics.json")}</span>`}
+    </div>
+    ${sim ? `<div class="an-note">No <span class="mono">organ_radiomics.json</span> was found on this subject's acquisitions, so this tab shows a deterministic simulation in the same format (TotalSegmentator classes × PyRadiomics features). Nothing here is a measurement.</div>` : ""}
+  </div>`;
+  return head + `<div class="an-grid">${anMap(R, A, sig, vi)}<div class="an-right">${A.view === "organ" ? anOrgan(R, A, sig, vi) : anSignal(R, A, sig, vi)}</div></div>` + anFoot(R, ts, pr);
+}
+function anFoot(R, ts, pr) {
+  return `<div class="an-foot">TotalSegmentator ${esc(ts.version || RAD_ASSUMED.ts)}${ts.task ? " · task " + esc(ts.task) : ""} · PyRadiomics ${esc(pr.version || RAD_ASSUMED.pr)}${pr.settings && pr.settings.binWidth ? " · binWidth " + pr.settings.binWidth : ""} · ${R.source === "sim" ? "simulated" : "from gear output"} · Red = higher, blue = lower than the reference; grey = no data or not comparable. <button class="linkbtn" data-tab="diagnostics">About and versions</button>${R.source === "sim" && R.effects.length ? `<span class="an-seed"> · Simulation seeded with: ${R.effects.map(e => esc(RAD_EFFECTS[e].label)).join("; ")}</span>` : ""}</div>`;
+}
+function anMap(R, A, sig, vi) {
+  const layer = A.layer, shapes = MAP_SHAPES[layer], drawn = new Set(shapes.map(x => x[0]));
+  const cells = {}; Object.keys(R.visits[vi].organs).forEach(o => { cells[o] = radCell(R, vi, o, sig, A.cmp); });
+  const tip = (o, c) => `${orgLabel(o)}: ${radFmt(sig, c.v)}${sig.unit ? " " + sig.unit : ""}${c.base ? " (reference)" : ""}${c.ok === false ? " · not comparable: " + c.why : c.z != null ? ` · ${c.z.toFixed(1)} SD (${c.pct}th percentile of ${c.n})` : c.d != null ? " · " + radDFmt(sig, c) : ""}`;
+  const svg = shapes.map(([o, dd, w]) => {
+    const c = cells[o] || { v: null }, col = radColor(c.t, c.ok), sel = A.organ === o, hatch = c.ok === false ? ` class="nc"` : "";
+    if (w) return `<g data-org="${o}" class="org${sel ? " sel" : ""}" tabindex="0" role="button" aria-label="${esc(tip(o, c))}"><title>${esc(tip(o, c))}</title><path d="${dd}" class="under" stroke-width="${w + 3}"/><path d="${dd}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round"${hatch}/></g>`;
+    return `<g data-org="${o}" class="org${sel ? " sel" : ""}" tabindex="0" role="button" aria-label="${esc(tip(o, c))}"><title>${esc(tip(o, c))}</title><path d="${dd}" fill="${col}"${hatch}/>${c.ok === false ? `<path d="${dd}" fill="url(#anHatch)" pointer-events="none"/>` : ""}</g>`;
+  }).join("");
+  const others = Object.keys(R.visits[vi].organs).filter(o => !drawn.has(o) && ((ORG[o] && ORG[o].layer !== (layer === "organs" ? "msk" : "organs")) || !ORG[o]));
+  const sel = cells[A.organ] || {};
+  const legend = A.cmp === "cohort" ? ["−3 SD", "cohort mean", "+3 SD"] : sig.d === "pct" ? [`−${sig.span}%`, "no change", `+${sig.span}%`] : [`−${sig.span}${sig.unit === "HU" ? " HU" : ""}`, "no change", `+${sig.span}${sig.unit === "HU" ? " HU" : ""}`];
+  return `<div class="card an-map"><div class="card-h"><h3>${esc(sig.label)} · ${esc(R.visits[vi].short)}${A.cmp !== "cohort" && radRef(R.visits, vi, A.cmp) >= 0 && radRef(R.visits, vi, A.cmp) !== vi ? ` vs ${esc(R.visits[radRef(R.visits, vi, A.cmp)].short)}` : A.cmp === "cohort" ? " vs cohort" : ""}</h3>
+      <div class="an-seg sm">${[["organs", "Organs"], ["msk", "Bones & Muscle"]].map(([k, l]) => `<button class="ibtn ${layer === k ? "on" : ""}" data-an="layer:${k}">${l}</button>`).join("")}</div></div>
+    <div class="card-b an-svgwrap">
+      <svg id="anMap" viewBox="40 30 240 600" role="group" aria-label="Body map, patient's right on the left">
+        <defs><pattern id="anHatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="currentColor" stroke-width="1.4" opacity=".45"/></pattern></defs>
+        <circle cx="160" cy="44" r="25" class="sil"/><path d="${BODY_SIL}" class="sil"/>
+        ${layer === "msk" ? THORACIC_DECO : ""}${svg}
+        <text x="58" y="618" class="side">R</text><text x="254" y="618" class="side">L</text>
+      </svg>
+      <div class="an-legend"><span class="ramp"></span><div class="lbls"><span>${legend[0]}</span><span>${legend[1]}</span><span>${legend[2]}</span></div><div class="lbls sub"><span><i class="nc-sw"></i>not comparable</span><span><i class="nd-sw"></i>no data</span></div></div>
+      ${(() => { const nc = shapes.map(x => cells[x[0]]).filter(c => c && c.ok === false); if (nc.length < 3) return ""; const why = [...new Set(nc.map(c => c.why))]; return `<div class="an-ncnote">${ic("warning")}<span><b>${nc.length} of ${shapes.length}</b> drawn structures can't be compared: ${why.map(esc).join("; ")}. Try another visit, Compare vs Cohort, or a shape signal.</span></div>`; })()}
+      <div class="an-read" id="anRead">${anReadout(A.organ, sel, sig)}</div>
+      ${others.length ? `<div class="an-others"><div class="src">Also segmented, not drawn (${others.length})</div>${others.map(o => { const c = cells[o]; return `<button class="an-och ${A.organ === o ? "on" : ""}" data-org="${o}" title="${esc(tip(o, c))}"><i style="background:${radColor(c.t, c.ok)}"></i>${esc(orgLabel(o))}</button>`; }).join("")}</div>` : ""}
+    </div></div>`;
+}
+function anReadout(o, c, sig) {
+  if (!c || c.v == null) return `<b>${esc(orgLabel(o))}</b> <span class="muted">no data</span>`;
+  return `<b>${esc(orgLabel(o))}</b> <span class="mono">${radFmt(sig, c.v)}${sig.unit ? " " + sig.unit : ""}</span> ${c.ok === false ? `<span class="an-nc">not comparable: ${esc(c.why)}</span>` : c.base ? `<span class="muted">reference visit</span>` : `<span class="an-d ${dCls(c)}">${radDFmt(sig, c)}</span>`}${c.pct != null ? ` <span class="muted">${c.pct}th percentile of ${c.n}</span>` : ""}`;
+}
+function spark(R, o, sig, vi, cmp) {
+  const V = R.visits, xs = V.map((_, i) => radVal(V, i, o, sig)), ok = xs.filter(x => x != null);
+  if (ok.length < 2) return `<svg class="spk" viewBox="0 0 120 34"></svg>`;
+  const lo = Math.min(...ok), hi = Math.max(...ok), rg = hi - lo || Math.abs(hi) * .05 || 1, X = i => 6 + i * (108 / Math.max(1, V.length - 1)), Y = v => 28 - (v - lo) / rg * 22;
+  const pts = xs.map((v, i) => v == null ? null : [X(i), Y(v)]);
+  const line = pts.filter(Boolean).map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + "," + p[1].toFixed(1)).join("");
+  const ref = 0;
+  return `<svg class="spk" viewBox="0 0 120 34" aria-hidden="true"><path d="${line}" class="sl"/>${pts.map((p, i) => { if (!p) return ""; const c = i === ref ? { ok: true } : radComp(radCls(sig.f), o, V[i].acq, V[ref].acq, sig.f); return `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${i === vi ? 3.6 : 2.4}" class="${c.ok ? "pt" : "pt nc"}${i === vi ? " cur" : ""}"><title>${esc(V[i].short)}: ${radFmt(sig, xs[i])}${c.ok ? "" : " · not comparable with " + esc(V[ref].short) + ": " + esc(c.why)}</title></circle>`; }).join("")}</svg>`;
+}
+function anOrgan(R, A, sig, vi) {
+  const o = A.organ, V = R.visits, cur = V[vi].organs[o], ri = radRef(V, vi, A.cmp === "cohort" ? "bl" : A.cmp);
+  if (!cur) return `<div class="card"><div class="empty-big">No data for ${esc(orgLabel(o))} at ${esc(V[vi].short)}.</div></div>`;
+  const vol = radVal(V, vi, o, sigOf("vol"));
+  const strip = ri >= 0 && ri !== vi ? ["shape", "firstorder", "glcm"].map(cls => { const c = radComp(cls, o, V[vi].acq, V[ri].acq); return `<span class="an-cmp ${c.ok ? "ok" : "no"}" title="${c.ok ? "Comparable" : esc(c.why)}">${ic(c.ok ? "done-check" : "close")}${cls === "glcm" ? "Texture" : RAD_CLASS_LABEL[cls]}${c.ok ? "" : " · " + esc(c.why)}</span>`; }).join("") : `<span class="muted">${esc(V[vi].short)} is the reference visit</span>`;
+  const acqTxt = a => a ? `${a.slice_thickness} mm · ${esc(a.kernel || "?")} · ${esc(a.contrast || "?")}${a.kvp ? " · " + a.kvp + " kVp" : ""}` : "—";
+  const tiles = SIGNALS.map(s2 => {
+    const c = radCell(R, vi, o, s2, A.cmp);
+    return `<button class="an-tile ${s2.k === sig.k ? "on" : ""}" data-an="sig:${s2.k}" title="Colour the map by ${esc(s2.label)}"><div class="tl">${esc(s2.label)}</div><div class="tv"><span class="mono">${radFmt(s2, c.v)}</span><span class="tu">${esc(s2.unit)}</span>${c.ok === false ? `<span class="an-nc" title="${esc(c.why)}">n/c</span>` : `<span class="an-d ${dCls(c)}">${radDFmt(s2, c)}</span>`}</div>${spark(R, o, s2, vi)}</button>`;
+  }).join("");
+  const fc = A.fclass, feats = RAD_FEATURES.filter(f => fc === "all" || f.cls === fc);
+  const table = A.showAll ? `<div class="an-fbar">${["all", ...Object.keys(RAD_CLASSES)].map(c => `<button class="fchip ${fc === c ? "on" : ""}" data-an="fclass:${c}">${c === "all" ? "All" : RAD_CLASS_LABEL[c]} <span class="muted">${c === "all" ? RAD_FEATURES.length : RAD_CLASSES[c].length}</span></button>`).join("")}</div>
+    <div class="an-tblwrap"><table class="an-tbl"><thead><tr><th>Class</th><th>Feature</th>${V.map((x, i) => `<th class="num ${i === vi ? "cur" : ""}">${esc(x.short)}</th>`).join("")}<th class="num">Change</th></tr></thead><tbody>${feats.map(f => {
+      const vals = V.map(x => x.organs[o] ? x.organs[o].features[f.key] : null), v = vals[vi], r = ri >= 0 && ri !== vi ? vals[ri] : null, c = ri >= 0 && ri !== vi ? radComp(f.cls, o, V[vi].acq, V[ri].acq, f.key) : { ok: true }, hu = HU_ABS.test(f.key), sg = SIGNED_ABS.test(f.key), dd = v == null || r == null ? null : hu || sg ? v - r : r ? (v - r) / Math.abs(r) * 100 : null;
+      return `<tr><td class="muted">${RAD_CLASS_LABEL[f.cls]}</td><td class="mono">${esc(f.name)}</td>${vals.map((x, i) => `<td class="num mono ${i === vi ? "cur" : ""}">${radFeatFmt(x)}</td>`).join("")}<td class="num ${c.ok ? "" : "ncell"}" title="${c.ok ? "" : esc(c.why)}">${dd == null ? "—" : !c.ok ? "n/c" : (dd >= 0 ? "+" : "−") + (hu ? Math.round(Math.abs(dd)) + " HU" : sg ? Math.abs(dd).toFixed(2) : Math.abs(dd).toFixed(Math.abs(dd) >= 10 ? 0 : 1) + "%")}</td></tr>`;
+    }).join("")}</tbody></table></div>` : "";
+  return `<div class="card"><div class="card-h"><div><h3>${esc(orgLabel(o))} <span class="muted" style="font-weight:400">· ${esc(orgSys(o))}</span></h3><div class="src mono">${esc(o)} · ${(cur.voxels || 0).toLocaleString()} voxels${vol != null ? " · " + radFmt(sigOf("vol"), vol) + " mL" : ""}</div></div>
+      <div class="an-cmps">${strip}</div></div>
+    <div class="card-b an-acq"><span><b>${esc(V[vi].short)}</b> ${acqTxt(V[vi].acq)}</span>${ri >= 0 && ri !== vi ? `<span class="muted">Reference <b>${esc(V[ri].short)}</b> ${acqTxt(V[ri].acq)}</span>` : ""}</div>
+    <div class="card-b an-tiles">${tiles}</div>
+    <div class="card-b an-tfoot"><button class="ibtn" data-an="all">${A.showAll ? "Hide" : "Show"} all ${RAD_FEATURES.length} PyRadiomics features</button><button class="ibtn" data-an="csv">Export CSV</button><span class="src">Change is relative to ${ri >= 0 && ri !== vi ? esc(V[ri].short) : "—"}${A.cmp === "cohort" ? " (the table always compares to baseline)" : ""}. n/c = not comparable.</span></div>
+    ${table}</div>`;
+}
+function anSignal(R, A, sig, vi) {
+  const V = R.visits, orgs = Object.keys(V[vi].organs);
+  const rows = orgs.map(o => ({ o, c: radCell(R, vi, o, sig, A.cmp) })).filter(x => x.c.v != null);
+  const key = x => x.c.ok === false || x.c.t == null ? -1e9 : A.cmp === "cohort" ? Math.abs(x.c.z) : Math.abs(x.c.d / sig.span);
+  rows.sort((a, b) => key(b) - key(a));
+  const bar = x => { const t = x.c.ok === false ? 0 : x.c.t || 0, w = Math.abs(t) * 50; return `<span class="an-bar-t"><span class="mid"></span>${x.c.ok === false ? `<span class="hb"></span>` : `<span class="b" style="${t < 0 ? `right:50%` : `left:50%`};width:${w}%;background:${radColor(t, true)}"></span>`}</span>`; };
+  const ranked = `<div class="card"><div class="card-h"><h3>${esc(sig.label)}: change by organ</h3><span class="src">${esc(V[vi].short)} ${A.cmp === "cohort" ? "vs cohort (SD)" : radRef(V, vi, A.cmp) >= 0 && radRef(V, vi, A.cmp) !== vi ? "vs " + esc(V[radRef(V, vi, A.cmp)].short) : "(reference visit)"} · largest first</span></div>
+    <div class="card-b an-rank">${rows.map(x => `<button class="an-rrow ${A.organ === x.o ? "on" : ""}" data-org="${x.o}"><span class="nm">${esc(orgLabel(x.o))}</span>${bar(x)}<span class="vv ${x.c.ok === false ? "an-nc" : ""}" title="${esc(x.c.why || "")}">${x.c.ok === false ? "n/c" : x.c.base ? "ref" : radDFmt(sig, x.c)}</span></button>`).join("")}</div></div>`;
+  /* heatmap: organs (grouped by system) x visits, change vs baseline (or z vs cohort) */
+  const hcmp = A.cmp === "cohort" ? "cohort" : "bl";
+  const bySys = SYSTEMS.map(sy => [sy, orgs.filter(o => orgSys(o) === sy)]).filter(x => x[1].length);
+  const heat = `<div class="card"><div class="card-h"><h3>${esc(sig.label)} by organ and visit</h3><span class="src">${hcmp === "cohort" ? "SD from cohort at each visit" : "change from " + esc(V[0].short)} · click a cell to open that organ and visit</span></div>
+    <div class="card-b an-heatwrap"><table class="an-heat"><thead><tr><th></th>${V.map((x, i) => `<th class="${i === vi ? "cur" : ""}">${esc(x.short)}<div class="src">${x.acq ? esc(x.acq.slice_thickness + " mm " + (x.acq.kernel || "")) + (x.acq.contrast === "none" ? " NC" : "") : ""}</div></th>`).join("")}</tr></thead><tbody>${bySys.map(([sy, os]) => `<tr class="sys"><td colspan="${V.length + 1}">${sy}</td></tr>` + os.map(o => `<tr class="${A.organ === o ? "on" : ""}"><td class="nm"><button class="linkbtn" data-org="${o}">${esc(orgLabel(o))}</button></td>${V.map((_, i) => { const c = radCell(R, i, o, sig, hcmp); return `<td><button class="hc ${i === vi ? "cur" : ""} ${c.ok === false ? "nc" : ""}" data-cell="${o}|${i}" style="background:${radColor(c.t, c.ok)}" title="${esc(orgLabel(o))} · ${esc(V[i].short)}: ${radFmt(sig, c.v)}${sig.unit ? " " + sig.unit : ""}${c.ok === false ? " · not comparable: " + esc(c.why) : c.base ? " · baseline" : " · " + radDFmt(sig, c)}">${c.ok === false ? "n/c" : c.base ? "" : radDFmt(sig, c)}</button></td>`; }).join("")}</tr>`).join("")).join("")}</tbody></table></div></div>`;
+  return anCohort(R, A, sig, vi) + ranked + heat;
+}
+function anCohort(R, A, sig, vi) {
+  const o = A.organ, V = R.visits, C = radCohort(V.length), W = 640, H = 230, L = 56, T = 14, B = 34;
+  const all = []; C.forEach(c => c.visits.forEach((_, i) => { const v = radVal(c.visits, i, o, sig); if (v != null) all.push(v); })); V.forEach((_, i) => { const v = radVal(V, i, o, sig); if (v != null) all.push(v); });
+  if (all.length < 3) return "";
+  all.sort((a, b) => a - b);
+  const lo = all[Math.floor(all.length * .01)], hi = all[Math.ceil(all.length * .99) - 1], pad = (hi - lo) * .08 || 1, y0 = lo - pad, y1 = hi + pad;
+  const X = i => L + (i + .5) * ((W - L - 10) / V.length), Y = v => T + (1 - (Math.max(y0, Math.min(y1, v)) - y0) / (y1 - y0)) * (H - T - B);
+  const ticks = [y0 + (y1 - y0) * .1, (y0 + y1) / 2, y1 - (y1 - y0) * .1];
+  let dots = ""; C.forEach(c => { if (c.id === S.subj) return; c.visits.forEach((_, i) => { const v = radVal(c.visits, i, o, sig); if (v == null) return; const j = ((radHash(c.id + i) % 1000) / 1000 - .5) * ((W - L - 10) / V.length) * .62; dots += `<circle cx="${(X(i) + j).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="2.6" class="cd${c.ref ? " ref" : ""}"/>`; }); });
+  const me = V.map((_, i) => radVal(V, i, o, sig)), path = me.map((v, i) => v == null ? "" : `${i && me[i - 1] != null ? "L" : "M"}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join("");
+  const cc = radCell(R, vi, o, sig, "cohort"), nRef = C.filter(c => c.ref).length, nReal = C.filter(c => c.real).length;
+  return `<div class="card"><div class="card-h"><h3>${esc(orgLabel(o))} · ${esc(sig.label)} across the cohort</h3><span class="src">${C.length} subjects${nRef ? ` (${nRef} simulated reference)` : ""}${nReal ? ` · ${nReal} from gear output` : ""} · this subject ${cc.pct != null ? `at the ${cc.pct}th percentile at ${esc(V[vi].short)}` : ""}</span></div>
+    <div class="card-b"><svg class="an-coh" viewBox="0 0 ${W} ${H}" role="img" aria-label="Cohort dot plot">
+      ${ticks.map(t => `<line x1="${L}" x2="${W - 6}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}" class="gl"/><text x="${L - 8}" y="${(Y(t) + 4).toFixed(1)}" class="ax" text-anchor="end">${radFmt(sig, t)}</text>`).join("")}
+      ${V.map((x, i) => `<rect x="${(X(i) - (W - L - 10) / V.length / 2 + 4).toFixed(1)}" y="${T - 6}" width="${((W - L - 10) / V.length - 8).toFixed(1)}" height="${H - T - B + 10}" rx="6" class="col ${i === vi ? "cur" : ""}"/><text x="${X(i).toFixed(1)}" y="${H - 12}" class="ax ${i === vi ? "cur" : ""}" text-anchor="middle">${esc(x.short)}</text>`).join("")}
+      ${dots}<path d="${path}" class="me"/>${me.map((v, i) => v == null ? "" : `<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="${i === vi ? 6 : 4.5}" class="mp"><title>${esc(V[i].short)}: ${radFmt(sig, v)}${sig.unit ? " " + sig.unit : ""}</title></circle>`).join("")}
+      <text x="${L}" y="10" class="ax">${esc(sig.unit || sig.label)}</text>
+    </svg></div></div>`;
+}
+function radCSV(sid) {
+  const R = S.rad[sid]; if (!R || !R.visits) return;
+  const s = S.subjects.find(x => x._id === sid) || {}, rows = [["subject", "visit", "visit_date", "slice_thickness_mm", "kernel", "contrast", "organ", "feature_class", "feature", "value", "source"]];
+  R.visits.forEach(v => Object.entries(v.organs).forEach(([o, od]) => Object.entries(od.features).forEach(([k, val]) => rows.push([s.label || sid, v.label, v.date ? dt(v.date).slice(0, 10) : "", v.acq && v.acq.slice_thickness, v.acq && v.acq.kernel, v.acq && v.acq.contrast, o, radCls(k), k, val, R.source === "sim" ? "SIMULATED" : v.file || ""]))));
+  const csv = rows.map(r => r.map(x => { const t = String(x == null ? "" : x); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; }).join(",")).join("\n");
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = `${(s.label || sid).replace(/[^\w.-]+/g, "_")}_organ_radiomics${R.source === "sim" ? "_SIMULATED" : ""}.csv`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  toast(`Exported ${(rows.length - 1).toLocaleString()} rows${R.source === "sim" ? " (simulated)" : ""}`);
+}
+function aboutCard() {
+  const R = S.rad[S.subj], v = R && R.visits && R.visits[0], ts = (v && v.ts) || {}, pr = (v && v.pr) || {}, src = R && R.source === "file";
+  const rows = [
+    ["Subject View", VERSION.split("/")[1], "This app", "https://github.com/danjamesrafter-crypto/subject-view-harness"],
+    ["Flywheel Extension SDK", "0.14.9", "Host connection, file reads, tags", "https://cdn.flywheel.io/"],
+    ["Flywheel Vision Design System", "vision-react tokens + icon font", "UI", "https://claude.ai/artifact/VWFDvStzgRxSSJzChTnXt9"],
+    ["dicom-parser", "1.8.21", "Series thumbnails", "https://github.com/cornerstonejs/dicomParser"],
+    ["TotalSegmentator", (ts.version || RAD_ASSUMED.ts) + (src ? "" : " · assumed"), "Organ masks (Anatomy tab)", "https://github.com/wasserth/TotalSegmentator"],
+    ["PyRadiomics", (pr.version || RAD_ASSUMED.pr) + (src ? "" : " · assumed"), "Features per organ (Anatomy tab)", "https://pyradiomics.readthedocs.io/en/latest/features.html"]
+  ];
+  return `<div class="card"><div class="card-h"><h3>About</h3><span class="src">Versions and sources${src ? "" : " · Anatomy values are simulated until a gear writes organ_radiomics.json"}</span></div><div class="card-b"><table class="an-tbl about"><thead><tr><th>Component</th><th>Version</th><th>Used for</th><th>Source</th></tr></thead><tbody>${rows.map(r => `<tr><td>${esc(r[0])}</td><td class="mono">${esc(r[1])}</td><td class="muted">${esc(r[2])}</td><td><a href="${r[3]}" target="_blank" rel="noopener">${esc(r[3].replace(/^https:\/\//, "").replace(/\/$/, ""))}</a></td></tr>`).join("")}</tbody></table>
+    <div class="src" style="font-family:var(--font-ui);margin-top:8px">Data contract read by the Anatomy tab: <span class="mono">${RAD_SCHEMA}</span>, one <span class="mono">*.organ_radiomics.json</span> per CT acquisition (proposed; no gear writes it yet).</div></div></div>`;
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-an],[data-org],[data-cell]"); if (!t || !document.getElementById("view").contains(t)) return;
+  const A = S.an;
+  if (t.dataset.cell) { const [o, i] = t.dataset.cell.split("|"); A.organ = o; A.visit = +i; render(); return; }
+  if (t.dataset.org) { A.organ = t.dataset.org; render(); return; }
+  const [k, v] = t.dataset.an.split(":");
+  if (k === "view") A.view = v; else if (k === "visit") A.visit = +v; else if (k === "cmp") A.cmp = v; else if (k === "layer") A.layer = v; else if (k === "sig") A.sig = v;
+  else if (k === "fclass") A.fclass = v; else if (k === "all") A.showAll = !A.showAll; else if (k === "csv") { radCSV(S.subj); return; }
+  render();
+});
+document.addEventListener("change", e => { if (e.target && e.target.id === "anSig") { S.an.sig = e.target.value; render(); } });
+document.addEventListener("keydown", e => { const g = e.target.closest && e.target.closest("#anMap [data-org]"); if (g && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); S.an.organ = g.dataset.org; render(); } });
+document.addEventListener("mouseover", e => {
+  const g = e.target.closest && e.target.closest("#anMap [data-org]"); const box = document.getElementById("anRead"); if (!box) return;
+  const R = S.rad[S.subj]; if (!R || !R.visits) return; const o = g ? g.dataset.org : S.an.organ, sig = sigOf(S.an.sig);
+  box.innerHTML = anReadout(o, radCell(R, S.an.visit, o, sig, S.an.cmp), sig);
+});
+
 function render() {
   renderSide();
   const v = document.getElementById("view");
@@ -1020,7 +1648,7 @@ function render() {
   const s = S.subjects.find(x => x._id === S.subj);
   if (!s) { v.innerHTML = `<div class="card"><div class="empty-big">${S.subjects.length ? "Pick a subject." : "This project has no subjects yet."}</div></div>${S.tab === "diagnostics" ? diagTab() : ""}`; pane(); return; }
   const d = S.detail[s._id];
-  const body = { overview: () => matrix(s, d), tasks: () => tasksTab(s, d), queries: () => queriesTab(s, d), clinical: () => infoTab(s, d), diagnostics: diagTab }[S.tab]();
+  const body = { overview: () => matrix(s, d), anatomy: () => anatomyTab(s, d), tasks: () => tasksTab(s, d), queries: () => queriesTab(s, d), clinical: () => infoTab(s, d), diagnostics: diagTab }[S.tab]();
   v.innerHTML = header(s, d) + tabs() + body;
   const dl = document.getElementById("tagList"); if (dl && S.tagEdit) dl.innerHTML = knownTags().map(t => `<option value="${esc(t)}">`).join("");
   if (S.tagEdit) { const i = document.querySelector(`[data-tagin="${CSS.escape(S.tagEdit)}"]`); if (i && document.activeElement !== i) i.focus(); }
@@ -1664,7 +2292,7 @@ document.addEventListener("click", async e => {
   if (t.dataset.diag != null) { S.diagOpen = S.diagOpen === +t.dataset.diag ? -1 : +t.dataset.diag; render(); return; }
   const a = t.dataset.act;
   if (a === "phi") { S.phi = !S.phi; render(); }
-  if (a === "refresh") { if (!S.project) { S.detail = {}; S.error = null; loadAll(); return; } Object.keys(S.detail).forEach(k => { if (k !== S.subj) delete S.detail[k]; }); S.error = null; lastRefresh = Date.now(); loadAll(true).then(() => toast(S.stale ? "Refresh failed. Showing the last good data." : "Up to date", S.stale ? "error" : "info")); }
+  if (a === "refresh") { S.rad = {}; S.radCohort = null; if (!S.project) { S.detail = {}; S.error = null; loadAll(); return; } Object.keys(S.detail).forEach(k => { if (k !== S.subj) delete S.detail[k]; }); S.error = null; lastRefresh = Date.now(); loadAll(true).then(() => toast(S.stale ? "Refresh failed. Showing the last good data." : "Up to date", S.stale ? "error" : "info")); }
   if (a === "closePane") { S.pane = null; render(); }
   if (a === "closeJob") { S.job = null; render(); }
   if (a === "fulllog") { S.fullLog = !S.fullLog; render(); }
