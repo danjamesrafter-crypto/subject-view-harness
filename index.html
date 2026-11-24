@@ -562,6 +562,7 @@ select:focus{border-color:var(--primary-base)}
 #anMap{max-height:560px}
 .an-ncnote{width:100%;display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--orange-base);background:var(--orange-hover);border-radius:8px;padding:8px 10px}
 .an-ncnote span{color:var(--typography-muted)}
+.an-tile.off{opacity:.5;cursor:default}
 </style>
 
 </head>
@@ -591,9 +592,9 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.7.0";
+const VERSION = "subject-view-harness/0.7.1";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, rad: {}, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
+const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
 
 const stLabel = v => ({ todo: "To Do", in_progress: "In Progress", complete: "Complete", completed: "Completed", failed: "Failed", pending: "Pending", running: "Running", cancelled: "Cancelled", blocked: "Blocked" })[v] || String(v || "").replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
@@ -1320,31 +1321,85 @@ function radVisitCols(sid) {
   if (cols.length) return cols.map((c, i) => ({ key: c.z._id, label: c.v ? c.v.label : c.z.label, short: c.v ? c.v.label : c.z.label, date: c.z.timestamp || c.z.created, z: c.z, i }));
   return ["Baseline", "Week 12", "Week 24"].map((l, i) => ({ key: "sim" + i, label: l, short: l, date: null, z: null, i }));
 }
+/* Stage 1 (real): TotalSegmentator `total` with compute-statistics writes total_statistics.json to an analysis on the CT
+   acquisition: { "<class>": { "volume": mm3, "intensity": mean HU } }. Incomplete structures (touching the scan edge) are 0/0
+   unless include-incomplete is set; those are treated as no data. Only volume and mean density are real in this mode. */
+const STATS_FEATS = ["original_shape_VoxelVolume", "original_firstorder_Mean"];
+function ctHeader(a) {
+  const f = (a.files || []).find(x => /^ct$/i.test(x.modality || "") || /dicom/.test(x.type || "")) || {}, info = f.info || {}, h = (info.header && info.header.dicom) || info;
+  const k = h.ConvolutionKernel, thk = +h.SliceThickness;
+  return { slice_thickness: isFinite(thk) && thk > 0 ? thk : null, kernel: Array.isArray(k) ? k.join("\\") : (k || null), contrast: h.ContrastBolusAgent ? "contrast (" + h.ContrastBolusAgent + ")" : (h.ContrastBolusAgent === undefined ? null : "none"), kvp: +h.KVP || null, series: h.SeriesDescription || f.name };
+}
+async function radReal(sid, acqsBySession) {
+  const cols = radVisitCols(sid).filter(c => c.z), visits = [];
+  for (const c of cols) {
+    const acqs = acqsBySession[c.z._id] || []; let best = null;
+    for (const a of acqs) {
+      for (const f of (a.files || [])) if (/organ[_-]?radiomics[^/]*\.json$/i.test(f.name)) best = { kind: "full", a, f, ref: fileRef(f, a), created: f.created };
+      if (best && best.kind === "full") break;
+      if (!/^ct$/i.test(acqMod(a)) && !(a.files || []).some(f => /dicom/.test(f.type || ""))) continue;
+      const ans = listOf(await api(`/api/acquisitions/${a._id}/analyses`, null, { soft: true }));
+      for (const an of ans) for (const f of (an.files || [])) {
+        const full = /organ[_-]?radiomics[^/]*\.json$/i.test(f.name), st = f.name === "total_statistics.json";
+        if (!full && !st) continue;
+        const cand = { kind: full ? "full" : "stats", a, f, an, created: an.created, ref: { ...f, file_id: f.file_id || f._id, parent_ref: { type: "analysis", id: an._id }, parents: { ...(an.parents || {}), analysis: an._id } } };
+        if (!best || (cand.kind === "full" && best.kind !== "full") || (cand.kind === best.kind && String(cand.created) > String(best.created))) best = cand;
+      }
+    }
+    if (!best) continue;
+    try {
+      const j = JSON.parse(await (await sdk(`SDK getFileBlob ${best.f.name}`, () => S.ext.getFileBlob(best.ref))).text());
+      let acq = { slice_thickness: null, kernel: null, contrast: null };
+      const full = await api(`/api/acquisitions/${best.a._id}`, null, { soft: true }); if (full) acq = ctHeader(full);
+      if (best.kind === "full") {
+        if (j.schema !== RAD_SCHEMA || !j.organs) throw new Error("Unexpected schema " + (j.schema || "none"));
+        visits.push({ key: c.key, label: c.label, short: c.short, date: c.date, z: c.z, acq: { ...acq, ...(j.acquisition || {}) }, organs: j.organs, ts: j.totalsegmentator || {}, pr: j.pyradiomics || {}, file: best.f.name, kind: "full" });
+      } else {
+        const organs = {};
+        for (const [cls, v] of Object.entries(j || {})) { if (!v || typeof v !== "object") continue; const vol = +v.volume, hu = +v.intensity; if (!(vol > 0)) continue; organs[cls] = { voxels: null, features: { original_shape_VoxelVolume: vol, original_firstorder_Mean: isFinite(hu) ? hu : null } }; }
+        visits.push({ key: c.key, label: c.label, short: c.short, date: c.date, z: c.z, acq, organs, ts: { version: (best.an.gear_info && best.an.gear_info.version) || "", task: "total" }, pr: {}, file: best.f.name, analysis: best.an.label, kind: "stats" });
+      }
+    } catch (e) { console.warn("organ radiomics read failed", e); }
+  }
+  if (!visits.length) return null;
+  const allFull = visits.every(v => v.kind === "full");
+  return { source: allFull ? "file" : "stats", visits, effects: [] };
+}
 async function loadRad(sid) {
   const d = S.detail[sid]; if (!d || !d.ok) return;
-  S.rad[sid] = { loading: true }; const cols = radVisitCols(sid), found = [];
-  for (const c of cols) {
-    const acqs = c.z ? (d.acqs[c.z._id] || []) : [];
-    for (const a of acqs) for (const f of (a.files || [])) if (/organ[_-]?radiomics[^/]*\.json$/i.test(f.name)) found.push({ c, a, f });
-  }
-  if (found.length) {
-    const visits = [];
-    for (const { c, a, f } of found) {
-      try {
-        const blob = await sdk(`SDK getFileBlob ${f.name}`, () => S.ext.getFileBlob(fileRef(f, a)));
-        const j = JSON.parse(await blob.text());
-        if (j.schema !== RAD_SCHEMA || !j.organs) throw new Error("Unexpected schema " + (j.schema || "none"));
-        if (visits.some(v => v.key === c.key)) continue;
-        visits.push({ key: c.key, label: c.label, short: c.short, date: c.date, z: c.z, acq: j.acquisition || {}, organs: j.organs, ts: j.totalsegmentator || {}, pr: j.pyradiomics || {}, file: f.name, acqLabel: a.label });
-      } catch (e) { S.rad[sid] = { err: `${f.name}: ${e.message || e}` }; render(); return; }
-    }
-    visits.sort((x, y) => cols.findIndex(c => c.key === x.key) - cols.findIndex(c => c.key === y.key));
-    S.rad[sid] = { source: "file", visits, effects: [] };
-  } else S.rad[sid] = simSubject(sid, cols, false);
+  S.rad[sid] = { loading: true };
+  let R = S.radReal[sid];
+  if (R === undefined) { try { R = await radReal(sid, d.acqs); } catch (e) { R = null; } S.radReal[sid] = R; }
+  S.rad[sid] = R || simSubject(sid, radVisitCols(sid), false);
   render();
+}
+/* Real cohort: read every other subject's stage-1/2 output in the background (4 at a time), never mixing in simulated values. */
+async function loadCohortReal() {
+  if (S.radCohortRun) return; S.radCohortRun = { done: 0, n: S.subjects.length };
+  const ids = S.subjects.map(s => s._id).filter(id => S.radReal[id] === undefined);
+  S.radCohortRun.done = S.subjects.length - ids.length;
+  let k = 0, last = 0;
+  await Promise.all(Array.from({ length: 4 }, async () => {
+    while (k < ids.length) {
+      const id = ids[k++];
+      try {
+        const sess = subjSessions(id), acqs = {};
+        for (const z of sess) acqs[z._id] = listOf(await api(`/api/sessions/${z._id}/acquisitions`, null, { soft: true }));
+        S.radReal[id] = await radReal(id, acqs);
+      } catch (e) { S.radReal[id] = null; }
+      S.radCohortRun.done++;
+      if (Date.now() - last > 1500 && S.tab === "anatomy") { last = Date.now(); render(); }
+    }
+  }));
+  if (S.tab === "anatomy") render();
 }
 /* Cohort for the dot strip: every project subject at the same visit index (simulated unless real data loaded); padded to 24 reference subjects. */
 function radCohort(nv) {
+  const me = S.rad[S.subj];
+  if (me && me.source !== "sim") {
+    if (!S.radCohortRun) setTimeout(loadCohortReal, 0);
+    return Object.entries(S.radReal).filter(([, r]) => r && r.visits).map(([id, r]) => ({ id, ref: false, real: true, visits: r.visits }));
+  }
   const key = S.subjects.length + ":" + nv; if (S.radCohort && S.radCohort.key === key) return S.radCohort.rows;
   const ids = S.subjects.map(s => s._id); let pad = 0; while (ids.length < 24) ids.push("ref-" + (pad++));
   const rows = ids.map(id => {
@@ -1468,12 +1523,15 @@ function radDFmt(sig, c) {
 }
 const radFeatFmt = v => v == null || !isFinite(v) ? "—" : Math.abs(v) >= 1e5 || (Math.abs(v) < 1e-3 && v !== 0) ? v.toExponential(2) : Math.abs(v) >= 100 ? v.toFixed(0) : v.toPrecision(3);
 
+const sigAvail = (R, s) => !R || R.source !== "stats" || STATS_FEATS.includes(s.f);
 /* ---------- view ---------- */
+const vi0 = R => Math.min(S.an.visit == null ? R.visits.length - 1 : S.an.visit, R.visits.length - 1);
 function anState(R) {
   const A = S.an; const n = R.visits.length;
   if (A.visit == null || A.visit >= n) A.visit = n - 1;
   if (A.cmp === "prev" && A.visit === 0 && n > 1) A.visit = n - 1;
-  if (!R.visits[0].organs[A.organ]) A.organ = Object.keys(R.visits[0].organs)[0];
+  if (!sigAvail(R, sigOf(A.sig))) A.sig = "vol";
+  if (!R.visits[vi0(R)].organs[A.organ]) A.organ = R.visits[vi0(R)].organs.liver ? "liver" : Object.keys(R.visits[vi0(R)].organs)[0];
   return A;
 }
 function anatomyTab(s, d) {
@@ -1486,21 +1544,22 @@ function anatomyTab(s, d) {
   const A = anState(R), V = R.visits, sig = sigOf(A.sig), vi = A.visit, sim = R.source === "sim";
   const v0 = V[vi], ts = v0.ts || {}, pr = v0.pr || {};
   const cmpOpts = [["bl", "vs Baseline"], ["prev", "vs Previous"], ["cohort", "vs Cohort"]];
-  const sigSel = `<select id="anSig" class="ansel" aria-label="Signal">${["Shape", "Density", "Texture"].map(g => `<optgroup label="${g}">${SIGNALS.filter(x => x.grp === g).map(x => `<option value="${x.k}" ${x.k === sig.k ? "selected" : ""}>${x.label}${x.unit ? " (" + x.unit + ")" : ""}</option>`).join("")}</optgroup>`).join("")}</select>`;
+  const sigSel = `<select id="anSig" class="ansel" aria-label="Signal">${["Shape", "Density", "Texture"].map(g => `<optgroup label="${g}">${SIGNALS.filter(x => x.grp === g).map(x => `<option value="${x.k}" ${x.k === sig.k ? "selected" : ""} ${sigAvail(R, x) ? "" : "disabled"}>${x.label}${x.unit ? " (" + x.unit + ")" : ""}${sigAvail(R, x) ? "" : " · needs PyRadiomics"}</option>`).join("")}</optgroup>`).join("")}</select>`;
   const head = `<div class="card an-ctl"><div class="an-bar">
       <div class="an-seg" role="tablist">${[["organ", "By Organ"], ["signal", "By Signal"]].map(([k, l]) => `<button class="ibtn ${A.view === k ? "on" : ""}" data-an="view:${k}">${l}</button>`).join("")}</div>
       <label class="an-lab">Signal ${sigSel}</label>
       <span class="an-lab">Visit <span class="an-chips">${V.map((x, i) => `<button class="fchip ${i === vi ? "on" : ""}" data-an="visit:${i}" title="${esc(x.label)}${x.date ? " · " + esc(dt(x.date).slice(0, 10)) : ""}">${esc(x.short)}</button>`).join("")}</span></span>
       <span class="an-lab">Compare <span class="an-chips">${cmpOpts.map(([k, l]) => `<button class="fchip ${A.cmp === k ? "on" : ""}" data-an="cmp:${k}" ${k === "prev" && V.length < 2 ? "disabled" : ""}>${l}</button>`).join("")}</span></span>
       <span style="flex:1"></span>
-      ${sim ? `<span class="pill an-sim" title="No organ_radiomics.json on this subject's acquisitions. Values are synthetic, seeded per subject, for layout and workflow review only.">Simulated data</span>` : `<span class="pill an-real" title="${esc(v0.file || "")}">${esc(v0.file || "organ_radiomics.json")}</span>`}
+      ${sim ? `<span class="pill an-sim" title="No organ_radiomics.json on this subject's acquisitions. Values are synthetic, seeded per subject, for layout and workflow review only.">Simulated data</span>` : R.source === "stats" ? `<span class="pill an-real" title="${esc(v0.analysis || "")} · ${esc(v0.file || "")}">TotalSegmentator statistics · ${V.length} visit${V.length === 1 ? "" : "s"}</span>` : `<span class="pill an-real" title="${esc(v0.file || "")}">${esc(v0.file || "organ_radiomics.json")}</span>`}
     </div>
+    ${R.source === "stats" ? `<div class="an-note">Real per-organ <b>volume</b> and <b>mean density</b> from TotalSegmentator <span class="mono">total</span> (<span class="mono">total_statistics.json</span>). Shape, texture and the other first-order signals need the PyRadiomics step, which hasn't run yet; they are disabled here rather than simulated. Structures cut off by the scan edge are reported as 0 by TotalSegmentator and shown as no data.${V.length < radVisitCols(s._id).filter(c => c.z).length ? ` ${radVisitCols(s._id).filter(c => c.z).length - V.length} of this subject's visits have no output yet.` : ""}</div>` : ""}
     ${sim ? `<div class="an-note">No <span class="mono">organ_radiomics.json</span> was found on this subject's acquisitions, so this tab shows a deterministic simulation in the same format (TotalSegmentator classes × PyRadiomics features). Nothing here is a measurement.</div>` : ""}
   </div>`;
   return head + `<div class="an-grid">${anMap(R, A, sig, vi)}<div class="an-right">${A.view === "organ" ? anOrgan(R, A, sig, vi) : anSignal(R, A, sig, vi)}</div></div>` + anFoot(R, ts, pr);
 }
 function anFoot(R, ts, pr) {
-  return `<div class="an-foot">TotalSegmentator ${esc(ts.version || RAD_ASSUMED.ts)}${ts.task ? " · task " + esc(ts.task) : ""} · PyRadiomics ${esc(pr.version || RAD_ASSUMED.pr)}${pr.settings && pr.settings.binWidth ? " · binWidth " + pr.settings.binWidth : ""} · ${R.source === "sim" ? "simulated" : "from gear output"} · Red = higher, blue = lower than the reference; grey = no data or not comparable. <button class="linkbtn" data-tab="diagnostics">About and versions</button>${R.source === "sim" && R.effects.length ? `<span class="an-seed"> · Simulation seeded with: ${R.effects.map(e => esc(RAD_EFFECTS[e].label)).join("; ")}</span>` : ""}</div>`;
+  return `<div class="an-foot">TotalSegmentator ${esc(ts.version || RAD_ASSUMED.ts)}${ts.task ? " · task " + esc(ts.task) : ""} · ${R.source === "stats" ? "PyRadiomics not run" : "PyRadiomics " + esc(pr.version || RAD_ASSUMED.pr)}${pr.settings && pr.settings.binWidth ? " · binWidth " + pr.settings.binWidth : ""} · ${R.source === "sim" ? "simulated" : R.source === "stats" ? "TotalSegmentator statistics (volume, mean HU only)" : "from gear output"} · Red = higher, blue = lower than the reference; grey = no data or not comparable. <button class="linkbtn" data-tab="diagnostics">About and versions</button>${R.source === "sim" && R.effects.length ? `<span class="an-seed"> · Simulation seeded with: ${R.effects.map(e => esc(RAD_EFFECTS[e].label)).join("; ")}</span>` : ""}</div>`;
 }
 function anMap(R, A, sig, vi) {
   const layer = A.layer, shapes = MAP_SHAPES[layer], drawn = new Set(shapes.map(x => x[0]));
@@ -1549,10 +1608,11 @@ function anOrgan(R, A, sig, vi) {
   const strip = ri >= 0 && ri !== vi ? ["shape", "firstorder", "glcm"].map(cls => { const c = radComp(cls, o, V[vi].acq, V[ri].acq); return `<span class="an-cmp ${c.ok ? "ok" : "no"}" title="${c.ok ? "Comparable" : esc(c.why)}">${ic(c.ok ? "done-check" : "close")}${cls === "glcm" ? "Texture" : RAD_CLASS_LABEL[cls]}${c.ok ? "" : " · " + esc(c.why)}</span>`; }).join("") : `<span class="muted">${esc(V[vi].short)} is the reference visit</span>`;
   const acqTxt = a => a ? `${a.slice_thickness} mm · ${esc(a.kernel || "?")} · ${esc(a.contrast || "?")}${a.kvp ? " · " + a.kvp + " kVp" : ""}` : "—";
   const tiles = SIGNALS.map(s2 => {
+    if (!sigAvail(R, s2)) return `<div class="an-tile off" title="Needs the PyRadiomics step"><div class="tl">${esc(s2.label)}</div><div class="tv"><span class="muted" style="font-size:12px">Needs PyRadiomics</span></div></div>`;
     const c = radCell(R, vi, o, s2, A.cmp);
     return `<button class="an-tile ${s2.k === sig.k ? "on" : ""}" data-an="sig:${s2.k}" title="Colour the map by ${esc(s2.label)}"><div class="tl">${esc(s2.label)}</div><div class="tv"><span class="mono">${radFmt(s2, c.v)}</span><span class="tu">${esc(s2.unit)}</span>${c.ok === false ? `<span class="an-nc" title="${esc(c.why)}">n/c</span>` : `<span class="an-d ${dCls(c)}">${radDFmt(s2, c)}</span>`}</div>${spark(R, o, s2, vi)}</button>`;
   }).join("");
-  const fc = A.fclass, feats = RAD_FEATURES.filter(f => fc === "all" || f.cls === fc);
+  const fc = A.fclass, feats = RAD_FEATURES.filter(f => (fc === "all" || f.cls === fc) && V.some(x => x.organs[o] && x.organs[o].features[f.key] != null));
   const table = A.showAll ? `<div class="an-fbar">${["all", ...Object.keys(RAD_CLASSES)].map(c => `<button class="fchip ${fc === c ? "on" : ""}" data-an="fclass:${c}">${c === "all" ? "All" : RAD_CLASS_LABEL[c]} <span class="muted">${c === "all" ? RAD_FEATURES.length : RAD_CLASSES[c].length}</span></button>`).join("")}</div>
     <div class="an-tblwrap"><table class="an-tbl"><thead><tr><th>Class</th><th>Feature</th>${V.map((x, i) => `<th class="num ${i === vi ? "cur" : ""}">${esc(x.short)}</th>`).join("")}<th class="num">Change</th></tr></thead><tbody>${feats.map(f => {
       const vals = V.map(x => x.organs[o] ? x.organs[o].features[f.key] : null), v = vals[vi], r = ri >= 0 && ri !== vi ? vals[ri] : null, c = ri >= 0 && ri !== vi ? radComp(f.cls, o, V[vi].acq, V[ri].acq, f.key) : { ok: true }, hu = HU_ABS.test(f.key), sg = SIGNED_ABS.test(f.key), dd = v == null || r == null ? null : hu || sg ? v - r : r ? (v - r) / Math.abs(r) * 100 : null;
@@ -1562,7 +1622,7 @@ function anOrgan(R, A, sig, vi) {
       <div class="an-cmps">${strip}</div></div>
     <div class="card-b an-acq"><span><b>${esc(V[vi].short)}</b> ${acqTxt(V[vi].acq)}</span>${ri >= 0 && ri !== vi ? `<span class="muted">Reference <b>${esc(V[ri].short)}</b> ${acqTxt(V[ri].acq)}</span>` : ""}</div>
     <div class="card-b an-tiles">${tiles}</div>
-    <div class="card-b an-tfoot"><button class="ibtn" data-an="all">${A.showAll ? "Hide" : "Show"} all ${RAD_FEATURES.length} PyRadiomics features</button><button class="ibtn" data-an="csv">Export CSV</button><span class="src">Change is relative to ${ri >= 0 && ri !== vi ? esc(V[ri].short) : "—"}${A.cmp === "cohort" ? " (the table always compares to baseline)" : ""}. n/c = not comparable.</span></div>
+    <div class="card-b an-tfoot"><button class="ibtn" data-an="all">${A.showAll ? "Hide" : "Show"} ${R.source === "stats" ? "measured" : "all " + RAD_FEATURES.length + " PyRadiomics"} features</button><button class="ibtn" data-an="csv">Export CSV</button><span class="src">Change is relative to ${ri >= 0 && ri !== vi ? esc(V[ri].short) : "—"}${A.cmp === "cohort" ? " (the table always compares to baseline)" : ""}. n/c = not comparable.</span></div>
     ${table}</div>`;
 }
 function anSignal(R, A, sig, vi) {
@@ -1591,7 +1651,7 @@ function anCohort(R, A, sig, vi) {
   let dots = ""; C.forEach(c => { if (c.id === S.subj) return; c.visits.forEach((_, i) => { const v = radVal(c.visits, i, o, sig); if (v == null) return; const j = ((radHash(c.id + i) % 1000) / 1000 - .5) * ((W - L - 10) / V.length) * .62; dots += `<circle cx="${(X(i) + j).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="2.6" class="cd${c.ref ? " ref" : ""}"/>`; }); });
   const me = V.map((_, i) => radVal(V, i, o, sig)), path = me.map((v, i) => v == null ? "" : `${i && me[i - 1] != null ? "L" : "M"}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join("");
   const cc = radCell(R, vi, o, sig, "cohort"), nRef = C.filter(c => c.ref).length, nReal = C.filter(c => c.real).length;
-  return `<div class="card"><div class="card-h"><h3>${esc(orgLabel(o))} · ${esc(sig.label)} across the cohort</h3><span class="src">${C.length} subjects${nRef ? ` (${nRef} simulated reference)` : ""}${nReal ? ` · ${nReal} from gear output` : ""} · this subject ${cc.pct != null ? `at the ${cc.pct}th percentile at ${esc(V[vi].short)}` : ""}</span></div>
+  return `<div class="card"><div class="card-h"><h3>${esc(orgLabel(o))} · ${esc(sig.label)} across the cohort</h3><span class="src">${R.source === "sim" ? `${C.length} subjects${nRef ? ` (${nRef} simulated reference)` : ""}` : `${C.length} subjects with output${S.radCohortRun && S.radCohortRun.done < S.radCohortRun.n ? ` · loading ${S.radCohortRun.done}/${S.radCohortRun.n}` : ""}`} · this subject ${cc.pct != null ? `at the ${cc.pct}th percentile at ${esc(V[vi].short)}` : ""}</span></div>
     <div class="card-b"><svg class="an-coh" viewBox="0 0 ${W} ${H}" role="img" aria-label="Cohort dot plot">
       ${ticks.map(t => `<line x1="${L}" x2="${W - 6}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}" class="gl"/><text x="${L - 8}" y="${(Y(t) + 4).toFixed(1)}" class="ax" text-anchor="end">${radFmt(sig, t)}</text>`).join("")}
       ${V.map((x, i) => `<rect x="${(X(i) - (W - L - 10) / V.length / 2 + 4).toFixed(1)}" y="${T - 6}" width="${((W - L - 10) / V.length - 8).toFixed(1)}" height="${H - T - B + 10}" rx="6" class="col ${i === vi ? "cur" : ""}"/><text x="${X(i).toFixed(1)}" y="${H - 12}" class="ax ${i === vi ? "cur" : ""}" text-anchor="middle">${esc(x.short)}</text>`).join("")}
@@ -1608,7 +1668,7 @@ function radCSV(sid) {
   toast(`Exported ${(rows.length - 1).toLocaleString()} rows${R.source === "sim" ? " (simulated)" : ""}`);
 }
 function aboutCard() {
-  const R = S.rad[S.subj], v = R && R.visits && R.visits[0], ts = (v && v.ts) || {}, pr = (v && v.pr) || {}, src = R && R.source === "file";
+  const R = S.rad[S.subj], v = R && R.visits && R.visits[0], ts = (v && v.ts) || {}, pr = (v && v.pr) || {}, src = R && (R.source === "file" || R.source === "stats");
   const rows = [
     ["Subject View", VERSION.split("/")[1], "This app", "https://github.com/danjamesrafter-crypto/subject-view-harness"],
     ["Flywheel Extension SDK", "0.14.9", "Host connection, file reads, tags", "https://cdn.flywheel.io/"],
@@ -2292,7 +2352,7 @@ document.addEventListener("click", async e => {
   if (t.dataset.diag != null) { S.diagOpen = S.diagOpen === +t.dataset.diag ? -1 : +t.dataset.diag; render(); return; }
   const a = t.dataset.act;
   if (a === "phi") { S.phi = !S.phi; render(); }
-  if (a === "refresh") { S.rad = {}; S.radCohort = null; if (!S.project) { S.detail = {}; S.error = null; loadAll(); return; } Object.keys(S.detail).forEach(k => { if (k !== S.subj) delete S.detail[k]; }); S.error = null; lastRefresh = Date.now(); loadAll(true).then(() => toast(S.stale ? "Refresh failed. Showing the last good data." : "Up to date", S.stale ? "error" : "info")); }
+  if (a === "refresh") { S.rad = {}; S.radReal = {}; S.radCohortRun = null; S.radCohort = null; if (!S.project) { S.detail = {}; S.error = null; loadAll(); return; } Object.keys(S.detail).forEach(k => { if (k !== S.subj) delete S.detail[k]; }); S.error = null; lastRefresh = Date.now(); loadAll(true).then(() => toast(S.stale ? "Refresh failed. Showing the last good data." : "Up to date", S.stale ? "error" : "info")); }
   if (a === "closePane") { S.pane = null; render(); }
   if (a === "closeJob") { S.job = null; render(); }
   if (a === "fulllog") { S.fullLog = !S.fullLog; render(); }
