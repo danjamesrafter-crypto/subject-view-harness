@@ -670,6 +670,50 @@ select:focus{border-color:var(--primary-base)}
 .tl-dl.low{top:28px}.tl-dl.low::before{content:"";position:absolute;top:-30px;left:50%;height:26px;border-left:1px dotted var(--line-strong)}
 .tl-axrow.stag .tl-trk{height:88px}
 .tl-ev.c{min-width:18px;padding:0 4px;text-align:center}
+/* 0.9.2: date-anchored cards */
+.tl.nogut .tl-row{grid-template-columns:0 1fr}
+.tl.nogut .tl-gut{padding:0}
+.tl-top .tl-trk{height:214px}
+.tl-cards{inset:10px 0 auto 0;height:180px}
+.tl-card{width:128px;padding:8px 6px 7px;gap:5px}
+.tl-cl b{display:inline-flex;align-items:center;gap:5px;max-width:116px}
+.tl-cl b .vd{flex:none}
+.tl-cl small{font-size:11px;color:var(--ink-3)}
+.tl-cl small em{font-style:normal;font-weight:600;color:var(--ink-2)}
+.tl-card.on .tl-cl small em{color:var(--primary-base)}
+.tl-chips{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;margin-top:1px}
+.tl-mc{font-size:10px;font-weight:700;padding:0 4px;border-radius:4px;line-height:15px;color:var(--c);background:color-mix(in srgb,var(--c) 20%,transparent)}
+.tl-sc{font-size:10px;font-weight:600;padding:0 5px;border-radius:8px;line-height:14px;border:1px solid}
+.tl-sc.ok{color:var(--ok-t);border-color:var(--ok-border)}.tl-sc.warn{color:var(--warn-t);border-color:var(--warn-border)}.tl-sc.bad{color:var(--bad-t);border-color:var(--bad-border);background:var(--bad-wash)}
+.tl-leads{height:26px;bottom:-2px}
+.tl-leads path{fill:none;stroke:var(--line-strong);stroke-width:1}
+.tl-leads path.on{stroke:var(--primary-base);stroke-width:2}.tl-leads path.pr{stroke:var(--orange-base);stroke-width:2}
+.tl-axrow .tl-trk{height:40px}
+.tl-axis{top:6px}
+.tl-tick{top:-3px;height:8px}
+.tl-tick span{top:10px;left:0;transform:translateX(-50%)}
+.tl-dot{top:-5px;width:12px;height:12px;margin-left:-6px;background:var(--ink-3);box-shadow:none;border:2px solid var(--card)}
+.tl-dot.on{box-shadow:0 0 0 2px var(--primary-base);transform:none}
+.tl-dot.pr{box-shadow:0 0 0 2px var(--orange-base)}
+.tl-card .vd:not(.ok):not(.warn):not(.bad){background:var(--ink-3)}
+.tl-top .tl-trk{height:212px}
+.tl-cards{height:182px}
+.tl-chips{flex-wrap:nowrap;overflow:hidden;max-width:116px;min-height:15px}
+.tl-leads{height:24px;bottom:0}
+/* 0.9.3 protocol families */
+.tl-mk.miss{background:transparent;border:1.5px dashed var(--ink-4);cursor:default;width:16px;height:16px;padding:0;box-sizing:border-box}
+.jk-ser{position:relative}
+.jk-ser.support .tl-th{opacity:.75}
+.jk-runs{position:absolute;top:4px;right:4px;font-size:10px;font-weight:700;padding:0 4px;border-radius:4px;background:rgba(0,0,0,.7);color:#fff;line-height:15px}
+.jk-extra{display:flex;flex-direction:column;gap:6px;justify-content:center;flex:none}
+.jk-extra .jk-more{padding:5px 8px;font-size:11px;text-align:left;white-space:nowrap}
+.jk-more.der{color:var(--ink-2)}
+.tl-gut{flex-wrap:nowrap;flex-direction:row}
+.tl-gut span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70px}
+.tl-gut small{width:auto;padding-left:4px;margin-top:0;white-space:nowrap}
+.tl-gut span{max-width:none;flex:1 1 auto;min-width:0}
+.tl-gut small{flex:none;color:var(--ink-3)}
+.tl-row{grid-template-columns:150px 1fr}
 </style>
 
 </head>
@@ -699,7 +743,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.9.1";
+const VERSION = "subject-view-harness/0.9.3";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, ov: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -2067,21 +2111,57 @@ const tlGap = n => n < 60 ? plural(n, "day") : n < 730 ? `${Math.round(n / 30.44
 const DAY = 864e5;
 const tlDate = z => { const t = Date.parse(z.timestamp || z.created || ""); return isFinite(t) ? t : null; };
 
+/* 0.9.3 many-series timepoints. A "protocol family" folds runs and phase-encode pairs of one sequence together
+   (dMRI_dir98_AP, dMRI_dir99_PA … → dMRI). Support series (localizer, SBRef, field maps, calibration) and gear outputs
+   stored beside the DICOM (NIfTI, JSON sidecars, QC reports) are counted but kept out of the way. */
+const SUPPORT_RE = /\b(loc|localizer|scout|survey|topogram|surview|aahead|calib(ration)?)\b|3.?plane|sbref|field.?map|b0.?map|_ref$/i;
+function famName(desc) {
+  let k = String(desc || "");
+  for (let i = 0; i < 4; i++) k = k.replace(/[_\s-]*sbref$/i, "").replace(/[_\s-]+(ap|pa|lr|rl|si|is|hf|fh)$/i, "").replace(/[_\s-]*run[_\s-]*\d+$/i, "").replace(/[_\s-]*dir\d+$/i, "").replace(/[_\s-]+\d+$/, "");
+  return k.replace(/[_\s-]+$/, "") || String(desc || "Series");
+}
+const clsOf = f => { const c = (f && f.classification) || {}; return [].concat(c.Intent || [], c.Measurement || [], c.Features || []).map(String); };
+function famGroup(q) {
+  const c = clsOf(q.f).join(" ").toLowerCase(), d = (q.desc || "").toLowerCase();
+  if (/structural|t1|t2|flair|pd\b/.test(c) && !/diffusion|functional/.test(c) || /t1w|t2w|mprage|mpr|flair|spc\b/.test(d)) return [0, "Anatomy"];
+  if (/diffusion/.test(c) || /dwi|dmri|dti/.test(d)) return [1, "Diffusion"];
+  if (/functional/.test(c) || /fmri|bold|rest/.test(d)) return [2, "Functional"];
+  return [3, q.mod];
+}
+function tlFamilies(series) {
+  const m = new Map();
+  series.forEach(q => {
+    const sup = SUPPORT_RE.test(q.desc || "") || clsOf(q.f).some(x => /^(localizer|fieldmap|calibration|sbref)$/i.test(x));
+    const name = famName(q.desc), key = (sup ? "s|" : "p|") + q.mod + "|" + name.toLowerCase();
+    if (!m.has(key)) { const g = famGroup(q); m.set(key, { key, name, mod: q.mod, role: sup ? "support" : "primary", g: g[0], group: g[1], runs: [] }); }
+    m.get(key).runs.push(q);
+  });
+  const fams = [...m.values()];
+  fams.forEach(F => { F.rep = F.runs.filter(q => thumbSource(q.a)).sort((p, q) => (q.n || 0) - (p.n || 0))[0] || F.runs[0]; F.n = F.runs.reduce((k, q) => k + (q.n || 0), 0); });
+  const t1 = F => /t1/i.test(F.name) ? 0 : /t2/i.test(F.name) ? 1 : 2;
+  return fams.sort((a, b) => (a.role === b.role ? 0 : a.role === "primary" ? -1 : 1) || a.g - b.g || t1(a) - t1(b) || a.name.localeCompare(b.name));
+}
+const derivedOf = (a, src) => (a.files || []).filter(f => f !== src && (((f.origin || {}).type === "job") || (src && /^(nifti|source code|archive|json|text|tabular data|qa)$/i.test(f.type || ""))));
+const DER_KIND = f => /qa|mriqc|qc|report/i.test(f.name || "") ? "QC report" : /nifti/i.test(f.type || "") || /\.nii/.test(f.name || "") ? "NIfTI" : /json/i.test(f.name || "") || f.type === "source code" ? "sidecar" : (f.type || "file");
+
 function tlStudies(s, d) {
   const sess = subjSessions(s._id), dated = sess.filter(z => tlDate(z) != null);
   const base = dated.find(z => /baseline/i.test(z.label || "")) || dated.find(z => /screen/i.test(z.label || "")) || dated[0];
   const t0 = base ? Math.floor(tlDate(base) / DAY) : 0;
   return sess.map(z => {
     const as = d && d.acqs && !(d.acqErr || {})[z._id] ? (d.acqs[z._id] || []) : null, t = tlDate(z);
-    const series = (as || []).map(a => { const f = dicomFile(a) || (a.files || [])[0] || {}, h = dcmH(f); return { a, mod: tlMod(a), n: f.zip_member_count || null, desc: h.SeriesDescription || a.label, study: h.StudyDescription || null, body: h.BodyPartExamined || null }; });
+    const series = (as || []).map(a => { const f = dicomFile(a) || (a.files || [])[0] || {}, h = dcmH(f); return { a, f, mod: tlMod(a), n: f.zip_member_count || null, desc: h.SeriesDescription || a.label, study: h.StudyDescription || null, body: h.BodyPartExamined || null, der: derivedOf(a, dicomFile(a)) }; });
+    const fams = tlFamilies(series.filter(q => q.mod !== "Derived")), der = series.flatMap(q => q.der);
+    const derived = { n: der.length, kinds: Object.entries(der.reduce((o, f) => (o[DER_KIND(f)] = (o[DER_KIND(f)] || 0) + 1, o), {})).map(([k, v]) => v + " " + k + (v > 1 && !/s$/.test(k) ? "s" : "")) };
     const mods = MOD_ORDER.filter(m => series.some(x => x.mod === m));
     const img = series.filter(x => thumbSource(x.a));
     const prim = mods.find(m => m !== "Derived" && m !== "Other") || mods[0];
     const LOC = /loc|scout|survey|topogram|surview|3.?plane|calib/i, rank = x => (LOC.test(x.desc || "") ? -1e6 : 0) + (x.n || 0);
-    const key = img.filter(x => x.mod === prim).sort((p, q) => rank(q) - rank(p))[0] || img[0] || null;
+    const fk = fams.find(F => F.role === "primary" && F.mod === prim && F.rep && thumbSource(F.rep.a));
+    const key = fk ? fk.rep : img.filter(x => x.mod === prim).sort((p, q) => rank(q) - rank(p))[0] || img[0] || null;
     const st = sessStatus(z, s._id), day = t != null ? Math.floor(t / DAY) - t0 : null;
     const study = (series.find(x => x.study) || {}).study, body = [...new Set(series.map(x => x.body).filter(Boolean))].join(", ");
-    return { z, id: z._id, t, day, rel: day == null ? "no date" : tlRel(day), date: t != null ? new Date(t).toISOString().slice(0, 10) : "—", series, mods, key, st, study, body, loaded: !!as };
+    return { z, id: z._id, t, day, rel: day == null ? "no date" : tlRel(day), date: t != null ? new Date(t).toISOString().slice(0, 10) : "—", series, fams, derived, mods, key, st, study, body, loaded: !!as };
   });
 }
 
@@ -2142,53 +2222,87 @@ function timeline(s, d) {
   const jobsOf = id => d && d.jobsOk ? d.jobs.filter(j => (j.parents && j.parents.session === id) || (j.destination && j.destination.id === id)) : [];
   const span = dated.length > 1 ? Math.round((hi0 - lo0) / DAY) : 0;
 
-  /* key images: evenly spaced cards, each tied to its true date on the axis */
-  const cards = dated.map((x, i) => {
-    const on = x.id === O.sel, pr = cmp && x.id === cmp.id;
-    return `<button class="tl-card ${on ? "on" : ""} ${pr ? "pr" : ""}" style="left:${((i + 0.5) / n) * 100}%" data-tl="sel:${x.id}" aria-pressed="${on}" title="${esc(x.z.label)} · ${x.date}">
+  /* key images sit at their true date; tlLayout() nudges overlapping cards apart after render (short elbow connectors) */
+  const cards = dated.map(x => {
+    const on = x.id === O.sel, pr = cmp && x.id === cmp.id, tt = tasksOf(x.id), jj = jobsOf(x.id), f = openFail(jj).length, o = tt.filter(OPEN).length;
+    const chips = [
+      x.mods.filter(m => m !== "Derived").map(m => `<span class="tl-mc" style="--c:${modCol(m)}">${esc(m)}</span>`).join(""),
+      f ? `<span class="tl-sc bad" title="${jj.length} gear job(s), ${f} failed">${f} failed</span>` : o ? `<span class="tl-sc warn" title="${tt.length} reader task(s), ${o} open">${o} open</span>` : ""].join("");
+    return `<button class="tl-card ${on ? "on" : ""} ${pr ? "pr" : ""}" style="left:${X(x.t)}%" data-x="${X(x.t)}" data-tl="sel:${x.id}" aria-pressed="${on}" title="${esc(x.z.label)} · ${x.date} · ${esc(x.st.all || x.st.t)}">
       ${pr ? `<span class="tl-tag pr">Prior</span>` : on && cmp ? `<span class="tl-tag cur">Current</span>` : ""}
-      ${tlThumb(x.key && x.key.a, 96)}
-      <span class="tl-cl"><b>${esc(x.z.label)}</b><small>${x.mods.filter(m => m !== "Derived").map(m => `<i style="background:${modCol(m)}"></i>${esc(m)}`).join(" ") || "no images"}</small></span></button>`;
+      ${tlThumb(x.key && x.key.a, 104)}
+      <span class="tl-cl"><b><i class="vd ${x.st.k}"></i>${esc(x.z.label)}</b><small><em>${esc(x.rel)}</em> · ${x.date}</small><span class="tl-chips">${chips}</span></span></button>`;
   }).join("");
-  const leads = dated.map((x, i) => `<line x1="${((i + 0.5) / n) * 100}" y1="0" x2="${X(x.t)}" y2="40" class="${x.id === O.sel ? "on" : cmp && x.id === cmp.id ? "pr" : ""}" vector-effect="non-scaling-stroke"/>`).join("");
   const ticks = tlTicks(lo, hi).map(([x, l]) => `<span class="tl-tick" style="left:${X(x)}%"><span>${esc(l)}</span></span>`).join("");
   const dots = dated.map(x => `<button class="tl-dot ${x.st.k} ${x.id === O.sel ? "on" : ""} ${cmp && x.id === cmp.id ? "pr" : ""}" style="left:${X(x.t)}%" data-tl="sel:${x.id}" title="${esc(x.z.label)} · ${x.date} · ${esc(x.st.all || x.st.t)}"></button>`).join("");
-  /* stagger date labels that would collide (labels are ~76px wide on a track about cardsW px wide) */
-  const minGap = 80 / cardsW * 100; let lastX = -1e9, lastLow = true, stag = false;
-  const dlabs = dated.map(x => { const px = X(x.t), low = px - lastX < minGap ? !lastLow : false; if (low) stag = true; lastX = px; lastLow = low; return `<span class="tl-dl ${x.id === O.sel ? "on" : ""} ${low ? "low" : ""}" style="left:${px}%"><b>${esc(x.rel)}</b><small>${x.date}</small></span>`; }).join("");
+  const multi = allMods.filter(m => m !== "Derived").length > 1;
   const lane = (label, color, body, sub) => `<div class="tl-row"><div class="tl-gut"><i style="background:${color}"></i><span>${esc(label)}</span>${sub ? `<small>${esc(sub)}</small>` : ""}</div><div class="tl-trk">${body}</div></div>`;
-  const modLanes = allMods.map(m => {
+  const modLanes = multi ? allMods.map(m => {
     const xs = dated.filter(x => x.mods.includes(m)), nser = xs.reduce((k, x) => k + x.series.filter(q => q.mod === m).length, 0);
     return lane(MOD_NAME[m] || m, modCol(m), xs.map(x => { const k = x.series.filter(q => q.mod === m).length; return `<button class="tl-mk" style="left:${X(x.t)}%;--c:${modCol(m)}" data-tl="sel:${x.id}" title="${esc(x.z.label)} · ${k} ${esc(m)} series">${k > 1 ? k : ""}</button>`; }).join(""), nser + " series");
-  }).join("");
-  const tight = xs => xs.map((x, i) => i > 0 && X(x.t) - X(xs[i - 1].t) < minGap * 0.9);
-  const rT = tight(dated.filter(x => tasksOf(x.id).length)), jT = tight(dated.filter(x => jobsOf(x.id).length));
-  let ri = -1, ji = -1;
-  const readLane = t.length ? lane("Reads", "var(--warn)", dated.map(x => { const tt = tasksOf(x.id); if (!tt.length) return ""; const o = tt.filter(OPEN).length, c = rT[++ri] || rT[ri + 1]; return `<button class="tl-ev ${o ? "warn" : "ok"} ${c ? "c" : ""}" style="left:${X(x.t)}%" data-pane="${x.id}|tasks" title="${tt.length} reader task(s) · ${o} open">${c ? (o || tt.length) : o ? o + " open" : tt.length + " done"}</button>`; }).join("")) : "";
-  const jobLane = d && d.jobsOk && d.jobs.length ? lane("Processing", "var(--slate-base)", dated.map(x => { const jj = jobsOf(x.id); if (!jj.length) return ""; const f = openFail(jj).length, c = jT[++ji] || jT[ji + 1]; return `<button class="tl-ev ${f ? "bad" : "ok"} ${c ? "c" : ""}" style="left:${X(x.t)}%" data-pane="${x.id}|jobs" title="${jj.length} gear job(s)${f ? " · " + f + " failed" : ""}">${c ? (f || jj.length) : f ? f + " failed" : plural(jj.length, "job")}</button>`; }).join("")) : "";
+  }).join("") : "";
+  /* one modality, several protocols: a lane per primary protocol family, hollow where a visit lacks it */
+  const famNames = [], famSeen = new Map();
+  dated.forEach(x => x.fams.filter(F => F.role === "primary").forEach(F => { const k = F.name.toLowerCase(); if (!famSeen.has(k)) { famSeen.set(k, F); famNames.push(k); } }));
+  const protoLanes = !multi && famNames.length > 1 ? famNames.slice(0, 8).map(k => {
+    const F0 = famSeen.get(k), has = dated.filter(x => x.fams.some(F => F.role === "primary" && F.name.toLowerCase() === k)), loaded = dated.filter(x => x.loaded);
+    return lane(F0.name, modCol(F0.mod), loaded.map(x => { const F = x.fams.find(G => G.role === "primary" && G.name.toLowerCase() === k); return F ? `<button class="tl-mk" style="left:${X(x.t)}%;--c:${modCol(F.mod)}" data-tl="sel:${x.id}" title="${esc(x.z.label)} · ${esc(F.name)} · ${plural(F.runs.length, "run")}">${F.runs.length > 1 ? F.runs.length : ""}</button>` : `<span class="tl-mk miss" style="left:${X(x.t)}%" title="${esc(x.z.label)}: no ${esc(F0.name)}"></span>`; }).join(""), `${has.length}/${loaded.length}`);
+  }).join("") + (famNames.length > 8 ? lane(`+${famNames.length - 8} more protocols`, "var(--ink-3)", "", "see the study list") : "") : "";
+  requestAnimationFrame(tlLayout);
 
   const head = `<div class="card-h"><div style="display:flex;flex-direction:column;gap:2px"><h3>Patient timeline</h3><span class="src" style="font-family:var(--font-ui)">${plural(list.length, "study").replace("studys", "studies")}${span ? ` over ${tlGap(span)}` : ""} · ${dated.length ? `${dated[0].date} → ${dated[dated.length - 1].date}` : "no dates"}${missing.length ? ` · <b style="color:var(--warn-t)">expected, not received: ${esc(missing.join(", "))}</b>` : ""}${undated.length ? ` · ${undated.length} without a date` : ""}</span></div>
-    <span class="vlegend">${allMods.map(m => `<span><i class="vd" style="background:${modCol(m)}"></i>${esc(MOD_NAME[m] || m)}</span>`).join("")}</span></div>`;
-  const strip = dated.length ? `<div class="tl-scroll"><div class="tl" style="min-width:${cardsW + 132}px">
-      <div class="tl-row tl-top"><div class="tl-gut"></div><div class="tl-trk"><div class="tl-cards">${cards}</div><svg class="tl-leads" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">${leads}</svg></div></div>
-      <div class="tl-row tl-axrow ${stag ? "stag" : ""}"><div class="tl-gut"><span class="muted">Time</span></div><div class="tl-trk"><div class="tl-axis">${ticks}${dots}</div><div class="tl-dls">${dlabs}</div></div></div>
-      ${modLanes}${readLane}${jobLane}
+    <span class="vlegend"><span><i class="vd ok"></i>Complete</span><span><i class="vd warn"></i>Reads open</span><span><i class="vd bad"></i>Incomplete</span><span><i class="vd"></i>No checks</span></span></div>`;
+  const strip = dated.length ? `<div class="tl-scroll"><div class="tl ${multi || protoLanes ? "" : "nogut"}" style="min-width:${n * 128 + (multi || protoLanes ? 132 : 0) + 48}px">
+      <div class="tl-row tl-top"><div class="tl-gut"></div><div class="tl-trk"><div class="tl-cards">${cards}</div><svg class="tl-leads" aria-hidden="true"></svg></div></div>
+      <div class="tl-row tl-axrow"><div class="tl-gut">${multi || protoLanes ? `<span class="muted">Time</span>` : ""}</div><div class="tl-trk"><div class="tl-axis">${ticks}${dots}</div></div></div>
+      ${modLanes}${protoLanes}
     </div></div>` : `<div class="empty-big" style="padding:24px">None of these sessions has a date, so they can't be placed on a time axis. They are listed below.</div>`;
   return `<div class="card tl-card-wrap">${head}${strip}</div>${cmp && sel ? tlCompare(sel, cmp) : ""}${tlJacket(s, list, sel, cmp, tasksOf, jobsOf)}`;
 }
 
+/* Place cards as close to their dates as possible without overlap (pool-adjacent-violators on centres), then draw
+   connectors from each card to its date. Runs after every render and on resize; pure DOM, no state. */
+function tlLayout() {
+  const box = document.querySelector("#view .tl-cards"); if (!box) return;
+  const W = box.clientWidth, cs = [...box.querySelectorAll(".tl-card")]; if (!W || !cs.length) return;
+  const cw = cs[0].offsetWidth || 128, sp = cw + 10, half = cw / 2 + 2, ideal = cs.map(c => +c.dataset.x / 100 * W);
+  /* blocks of cards packed at spacing sp; a block's start is the mean of (ideal_k - k*sp) over its members */
+  const start = b => { let m = 0; for (let k = 0; k < b.n; k++) m += ideal[b.i0 + k] - k * sp; return m / b.n; };
+  const blocks = [];
+  ideal.forEach((v, i) => {
+    blocks.push({ i0: i, n: 1 });
+    while (blocks.length > 1) {
+      const B = blocks[blocks.length - 1], A = blocks[blocks.length - 2];
+      if (start(B) - (start(A) + (A.n - 1) * sp) >= sp) break;
+      blocks.pop(); A.n += B.n;
+    }
+  });
+  const pos = new Array(cs.length);
+  blocks.forEach(b => { const s0 = start(b); for (let k = 0; k < b.n; k++) pos[b.i0 + k] = s0 + k * sp; });
+  for (let i = 0; i < pos.length; i++) pos[i] = Math.max(pos[i], half + i * sp, i ? pos[i - 1] + sp : -1e9);
+  for (let i = pos.length - 1; i >= 0; i--) pos[i] = Math.min(pos[i], W - half - (pos.length - 1 - i) * sp, i < pos.length - 1 ? pos[i + 1] - sp : 1e9);
+  cs.forEach((c, i) => { c.style.left = pos[i] + "px"; });
+  const svg = box.parentElement.querySelector(".tl-leads"), H = svg.clientHeight || 28;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = cs.map((c, i) => { const x0 = pos[i], x1 = ideal[i], cls = c.classList.contains("on") ? "on" : c.classList.contains("pr") ? "pr" : ""; return Math.abs(x0 - x1) < 1 ? `<path class="${cls}" d="M${x1} 0V${H}"/>` : `<path class="${cls}" d="M${x0} 0V${H * .4}L${x1} ${H * .75}V${H}"/>`; }).join("");
+}
+window.addEventListener("resize", () => requestAnimationFrame(tlLayout));
+
 function tlJacket(s, list, sel, cmp, tasksOf, jobsOf) {
   const rows = list.slice().reverse().map(x => {
     const on = sel && x.id === sel.id, pr = cmp && x.id === cmp.id, prior = tlPrior(list, x.id);
-    const shown = x.series.slice(0, 6), more = x.series.length - shown.length;
+    const prim = x.fams.filter(F => F.role === "primary"), sup = x.fams.filter(F => F.role === "support"), open = !!(S.ov.exp || {})[x.id];
+    const showF = (open ? x.fams : prim.length ? prim : x.fams).slice(0, open ? 99 : 6), moreP = open ? 0 : Math.max(0, (prim.length ? prim.length : x.fams.length) - 6);
+    const supRuns = sup.reduce((k, F) => k + F.runs.length, 0);
     const nimg = x.series.reduce((k, q) => k + (q.n || 0), 0);
     const tt = tasksOf(x.id), jj = jobsOf(x.id), f = openFail(jj).length, o = tt.filter(OPEN).length;
-    const film = !x.loaded ? `<span class="src">Loading series…</span>` : shown.length ? shown.map(q => `<div class="jk-ser" title="${esc(q.desc)}">${tlThumb(thumbSource(q.a) ? q.a : null, 72)}<span class="jk-sl"><i style="background:${modCol(q.mod)}"></i>${esc(q.desc)}</span><span class="jk-sn">${q.n ? plural(q.n, "image") : esc(q.mod)}</span></div>`).join("") + (more > 0 ? `<button class="jk-more" data-pane="${x.id}|">+${more} series</button>` : "") : `<span class="src">No series</span>`;
+    const famCard = F => `<div class="jk-ser ${F.role}" title="${esc(F.runs.map(q => q.desc).join("\n"))}">${tlThumb(F.rep && thumbSource(F.rep.a) ? F.rep.a : null, 72)}${F.runs.length > 1 ? `<span class="jk-runs">×${F.runs.length}</span>` : ""}<span class="jk-sl"><i style="background:${modCol(F.mod)}"></i>${esc(F.name)}</span><span class="jk-sn">${F.runs.length > 1 ? plural(F.runs.length, "run") + (F.n ? " · " + F.n + " img" : "") : F.n ? plural(F.n, "image") : esc(F.mod)}</span></div>`;
+    const film = !x.loaded ? `<span class="src">Loading series…</span>` : x.fams.length ? showF.map(famCard).join("") + `<div class="jk-extra">${moreP ? `<button class="jk-more" data-tl="exp:${x.id}">+${moreP} protocols</button>` : ""}${sup.length && prim.length ? `<button class="jk-more" data-tl="exp:${x.id}" title="${esc(sup.map(F => F.name).join(", "))}">${open ? "Hide support series" : `+${supRuns} support`}</button>` : ""}${x.derived.n ? `<button class="jk-more der" data-pane="${x.id}|" title="Gear outputs stored with the series: ${esc(x.derived.kinds.join(", "))}">${x.derived.n} derived</button>` : ""}</div>` : `<span class="src">No series</span>`;
     return `<div class="jk-row ${on ? "on" : ""} ${pr ? "pr" : ""}" data-tl="sel:${x.id}">
       <div class="jk-when"><span class="jk-bar" style="background:${x.st.k && x.st.k !== "miss" ? `var(--${x.st.k})` : "var(--slate-focus)"}"></span><b>${x.date}</b><span class="jk-rel">${esc(x.rel)}${prior && x.day != null && prior.day != null ? ` · ${tlGap(x.day - prior.day)} after ${esc(prior.z.label)}` : ""}</span>${x.study ? `<span class="jk-vis">${esc(x.z.label)}</span>` : ""}${pr ? `<span class="tl-tag pr in">Prior</span>` : on && cmp ? `<span class="tl-tag cur in">Current</span>` : ""}</div>
       <div class="jk-what"><div class="jk-mods">${x.mods.map(m => `<span class="jk-mod" style="--c:${modCol(m)}">${esc(m === "Pathology" || m === "Video" || m === "Derived" ? m : m)}</span>`).join("")}</div>
         <div class="jk-desc">${esc(x.study || x.z.label)}</div>
-        <div class="jk-meta">${[x.body, plural(x.series.length, "series").replace("seriess", "series"), nimg ? plural(nimg, "image") : null].filter(Boolean).map(esc).join(" · ")}</div>
+        <div class="jk-meta">${[x.body, plural(x.series.length, "series").replace("seriess", "series") + (x.fams.length < x.series.length ? " in " + plural(prim.length || x.fams.length, "protocol") : ""), nimg ? plural(nimg, "image") : null].filter(Boolean).map(esc).join(" · ")}</div>
         <div class="jk-chk"><em class="vst ${x.st.k}" title="${esc(x.st.all)}"><i class="vd ${x.st.k}"></i>${esc(x.st.t)}</em>${tt.length ? `<button class="jk-chip ${o ? "warn" : "ok"}" data-pane="${x.id}|tasks">${o ? o + " read" + (o > 1 ? "s" : "") + " open" : plural(tt.length, "read") + " done"}</button>` : ""}${jj.length ? `<button class="jk-chip ${f ? "bad" : "ok"}" data-pane="${x.id}|jobs">${f ? f + " failed" : plural(jj.length, "job")}</button>` : ""}</div></div>
       <div class="jk-film">${film}</div>
       <div class="jk-act">${prior ? `<button class="ibtn ${on && cmp && cmp.id === prior.id ? "on" : ""}" data-tl="cmp:${x.id}:${prior.id}" title="Side by side with ${esc(prior.z.label)} (${prior.date})">Compare with prior</button>` : `<span class="src">First study</span>`}<button class="ibtn" data-pane="${x.id}|">Details</button><a class="ibtn" href="${coreLink("sessions", x.id)}" target="_blank" rel="noopener">${ic("open")}Open</a></div>
@@ -2201,27 +2315,28 @@ function tlJacket(s, list, sel, cmp, tasksOf, jobsOf) {
 function tlCompare(cur, pri) {
   const toks = s => new Set(String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").split(" ").filter(w => w && !/^\d+$/.test(w)));
   const sim = (a, b) => { const A = toks(a), B = toks(b); if (!A.size || !B.size) return 0; let k = 0; A.forEach(w => { if (B.has(w)) k++; }); return k / (A.size + B.size - k); };
-  const used = new Set(), pairs = [];
-  cur.series.filter(q => q.mod !== "Derived").forEach(q => {
-    const c = pri.series.filter(p => !used.has(p.a._id) && p.mod === q.mod).map(p => [p, sim(p.desc, q.desc)]).sort((u, v) => v[1] - u[1])[0];
-    if (c) { used.add(c[0].a._id); pairs.push([c[0], q, c[1]]); } else pairs.push([null, q, 0]);
+  const used = new Set(), pairs = [], P = pri.fams.filter(F => F.role === "primary"), C = cur.fams.filter(F => F.role === "primary");
+  C.forEach(q => {
+    const c = P.filter(p => !used.has(p.key) && p.mod === q.mod).map(p => [p, p.name.toLowerCase() === q.name.toLowerCase() ? 1 : sim(p.name, q.name) * .9 + (p.group === q.group ? .05 : 0)]).sort((u, v) => v[1] - u[1])[0];
+    if (c && c[1] > 0) { used.add(c[0].key); pairs.push([c[0], q, c[1]]); } else pairs.push([null, q, 0]);
   });
-  pri.series.filter(p => p.mod !== "Derived" && !used.has(p.a._id)).forEach(p => pairs.push([p, null, 0]));
+  P.filter(p => !used.has(p.key)).forEach(p => pairs.push([p, null, 0]));
   const gap = cur.day != null && pri.day != null ? tlGap(Math.abs(cur.day - pri.day)) : "";
-  const side = (x, q) => q ? `<div class="cmp-cell">${tlThumb(thumbSource(q.a) ? q.a : null, 150)}<span class="jk-sl"><i style="background:${modCol(q.mod)}"></i>${esc(q.desc)}</span><span class="jk-sn">${q.n ? plural(q.n, "image") : esc(q.mod)}</span></div>` : `<div class="cmp-cell none"><span>No matching series in ${esc(x.z.label)}</span></div>`;
+  const side = (x, F) => F ? `<div class="cmp-cell">${tlThumb(F.rep && thumbSource(F.rep.a) ? F.rep.a : null, 150)}<span class="jk-sl"><i style="background:${modCol(F.mod)}"></i>${esc(F.name)}${F.runs.length > 1 ? ` ×${F.runs.length}` : ""}</span><span class="jk-sn">${F.n ? plural(F.n, "image") : esc(F.mod)}</span></div>` : `<div class="cmp-cell none"><span>No matching series in ${esc(x.z.label)}</span></div>`;
   const hd = (x, k) => `<div class="cmp-h ${k}"><span class="tl-tag ${k} in">${k === "pr" ? "Prior" : "Current"}</span><b>${esc(x.z.label)}</b><span>${x.date} · ${esc(x.rel)}</span></div>`;
-  return `<div class="card cmp"><div class="card-h"><div style="display:flex;flex-direction:column;gap:2px"><h3>Compare</h3><span class="src" style="font-family:var(--font-ui)">${gap ? gap + " apart · " : ""}series paired by modality and description · middle slice of each series, not registered</span></div><button class="ibtn" data-tl="cmpoff">${ic("close")}Close</button></div>
+  return `<div class="card cmp"><div class="card-h"><div style="display:flex;flex-direction:column;gap:2px"><h3>Compare</h3><span class="src" style="font-family:var(--font-ui)">${gap ? gap + " apart · " : ""}protocols paired by name and type · support series hidden · middle slice of each series, not registered</span></div><button class="ibtn" data-tl="cmpoff">${ic("close")}Close</button></div>
     <div class="cmp-grid"><div class="cmp-hrow">${hd(pri, "pr")}<span class="cmp-arrow">→</span>${hd(cur, "cur")}</div>
-    ${pairs.map(([p, q, sc]) => `<div class="cmp-row">${side(pri, p)}<span class="cmp-m" title="Label similarity">${p && q ? (sc >= .5 ? "match" : sc > 0 ? "likely" : "same modality") : ""}</span>${side(cur, q)}</div>`).join("")}</div></div>`;
+    ${pairs.map(([p, q, sc]) => `<div class="cmp-row">${side(pri, p)}<span class="cmp-m" title="Label similarity">${p && q ? (sc >= 1 ? "same protocol" : "likely") : ""}</span>${side(cur, q)}</div>`).join("")}</div></div>`;
 }
 
 document.addEventListener("click", e => {
   const t = e.target.closest("[data-tl]"); if (!t) return;
   const [k, a, b] = t.dataset.tl.split(":");
   if (k === "mode") { S.ovMode = a; try { localStorage.setItem("svh-ovmode", a); } catch (er) {} render(); return; }
-  if (k === "sel") { if (e.target.closest("a,[data-pane]") && e.target.closest("[data-tl]") !== t) return; if (S.ov.sel === a) return; S.ov.sel = a; if (S.ov.cmp === a) S.ov.cmp = null; render(); return; }
+  if (k === "sel") { if (e.target.closest("a,[data-pane]") && e.target.closest("[data-tl]") !== t) return; if (S.ov.sel === a) return; S.ov.sel = a; if (S.ov.cmp === a) S.ov.cmp = null; const fromStrip = !!t.closest(".tl"); render(); if (fromStrip) { const r = document.querySelector(".jk-row.on"); if (r) r.scrollIntoView({ block: "nearest", behavior: "smooth" }); } return; }
   if (k === "cmp") { e.stopPropagation(); const off = S.ov.sel === a && S.ov.cmp === b; S.ov.sel = a; S.ov.cmp = off ? null : b; render(); if (!off) { const c = document.querySelector(".card.cmp"); if (c) c.scrollIntoView({ block: "nearest", behavior: "smooth" }); } return; }
   if (k === "cmpoff") { S.ov.cmp = null; render(); }
+  if (k === "exp") { e.stopPropagation(); S.ov.exp = S.ov.exp || {}; S.ov.exp[a] = !S.ov.exp[a]; render(); }
 });
 
 function render() {
