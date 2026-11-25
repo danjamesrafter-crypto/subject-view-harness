@@ -1,8 +1,8 @@
 {
   "name": "session-thumbnails",
   "label": "Session Thumbnails",
-  "version": "0.1.0",
-  "description": "Renders one load-optimised thumbnail per imaging series in a session (middle slice by default; a project thumbnails.json profile can choose plane, slice picker, window and fallbacks per modality or protocol) and packs them into a JPEG sprite with a JSON index (fw.thumbnails/1) for apps. Previews only, not measurements. Skips modalities that may carry burned-in identifiers (US, SC, XC, ES) unless allowed.",
+  "version": "0.2.0",
+  "description": "Renders one load-optimised thumbnail per imaging series in a session (or, from a gear rule, for the triggering series only) (middle slice by default; a project thumbnails.json profile can choose plane, slice picker, window and fallbacks per modality or protocol) and packs them into a JPEG sprite with a JSON index (fw.thumbnails/1) for apps. Previews only, not measurements. Skips modalities that may carry burned-in identifiers (US, SC, XC, ES) unless allowed.",
   "author": "Flywheel (Custom Apps prototype)",
   "maintainer": "Dan Rafter",
   "license": "MIT",
@@ -45,6 +45,17 @@
           "source code",
           "text",
           "json"
+        ]
+      }
+    },
+    "series": {
+      "base": "file",
+      "optional": true,
+      "description": "One series to render (DICOM zip or NIfTI). Set by a gear rule: the analysis then sits on that acquisition and covers only this file. Leave empty to render every series in the session.",
+      "type": {
+        "enum": [
+          "dicom",
+          "nifti"
         ]
       }
     }
@@ -113,14 +124,14 @@
       },
       "about": {
         "base_image": "flywheel/pyradiomics:2.2.2_3.1.0 (Python 3.13, SimpleITK, numpy)",
-        "script": "run_thumbs.py 0.1.0",
+        "script": "run_thumbs.py 0.2.0",
         "index_schema": "fw.thumbnails/1",
         "classmap": "TotalSegmentator 2.18.0 total (organ_centroid picker)"
       }
     },
     "gear-builder": {
       "category": "analysis",
-      "image": "session-thumbnails:0.1.0"
+      "image": "session-thumbnails:0.2.0"
     }
   }
 }

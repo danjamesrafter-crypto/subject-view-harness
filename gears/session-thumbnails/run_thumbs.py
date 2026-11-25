@@ -24,7 +24,7 @@ import numpy as np
 import SimpleITK as sitk
 
 GEAR = "session-thumbnails"
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 SCHEMA = "fw.thumbnails/1"
 FW = Path(os.environ.get("FW_ROOT", "/flywheel/v0"))
 HERE = Path(__file__).resolve().parent
@@ -409,6 +409,16 @@ def series_facts(acq, f):
 
 
 def source_file(acq):
+    if acq.get("_only"):  # triggered on one file (gear rule): render that file only
+        f = next((x for x in acq.get("files", []) if x["name"] == acq["_only"]), None)
+        if not f:
+            return None, None
+        nm = f["name"].lower()
+        if f.get("type") == "dicom" or nm.endswith(".dcm") or nm.endswith(".dicom.zip"):
+            return f, "dicom-zip" if nm.endswith(".zip") or f.get("zip_member_count") else "dicom"
+        if f.get("type") == "nifti" or nm.endswith((".nii", ".nii.gz")):
+            return f, "nifti"
+        return None, None
     for f in acq.get("files", []):
         if f.get("type") == "dicom":
             return f, "dicom-zip" if f["name"].lower().endswith(".zip") or f.get("zip_member_count") else "dicom"
@@ -573,6 +583,7 @@ def run(cfg, outdir, workdir, api=None, session=None, acqs=None, input_profile=N
         "schema": SCHEMA,
         "gear": {"name": GEAR, "version": VERSION, "url": "https://github.com/danjamesrafter-crypto/subject-view-harness/tree/main/gears/session-thumbnails"},
         "session_id": (session or {}).get("_id"), "session_label": (session or {}).get("label"),
+        "scope": "acquisition" if any(a.get("_only") for a in (acqs or [])) else "session",
         "generated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "runtime_s": round(time.time() - t0, 1),
         "profile": prov, "sprite": sprite, "items": items, "skipped": skipped,
         "note": "Previews for navigation only, not measurements. Slices are not registered across sessions.",
@@ -597,9 +608,23 @@ def main():
     elif dest.get("type") == "session":
         sid = dest["id"]
     if not sid:
-        raise SystemExit("run this gear as an analysis on a session")
+        raise SystemExit("run this gear as an analysis on a session, or from a gear rule on an acquisition file")
     session = api.get(f"/api/sessions/{sid}")
-    acqs = api.get(f"/api/sessions/{sid}/acquisitions") or []
+    ser = (cfg.get("inputs") or {}).get("series") or {}
+    if ser:
+        # Gear-rule mode: one series. The analysis sits on that acquisition; render only the triggering file,
+        # from the copy the engine already downloaded.
+        hier = ser.get("hierarchy") or {}
+        aid = hier.get("id") if hier.get("type") == "acquisition" else None
+        if not aid:
+            raise SystemExit("series input must be a file on an acquisition")
+        acq = api.get(f"/api/acquisitions/{aid}")
+        acq["_only"] = (ser.get("object") or {}).get("name") or ser.get("location", {}).get("name")
+        acq["_local"] = ser.get("location", {}).get("path")
+        acqs = [acq]
+        log(f"series mode: {acq.get('label')} / {acq['_only']}")
+    else:
+        acqs = api.get(f"/api/sessions/{sid}/acquisitions") or []
     prof_in = ((cfg.get("inputs") or {}).get("profile") or {}).get("location", {}).get("path")
     work = tempfile.mkdtemp(prefix="thumbs_")
     try:
