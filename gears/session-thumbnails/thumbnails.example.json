@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "name": "lung CT example",
+  "defaults": {
+    "views": [
+      {
+        "name": "key",
+        "plane": "axial",
+        "pick": [
+          "middle"
+        ]
+      }
+    ]
+  },
+  "rules": [
+    {
+      "match": {
+        "modality": "CT"
+      },
+      "views": [
+        {
+          "name": "key",
+          "plane": "coronal",
+          "pick": [
+            "middle"
+          ],
+          "window": "soft_tissue"
+        },
+        {
+          "name": "lung",
+          "plane": "axial",
+          "pick": [
+            {
+              "lesion_max_diameter": {
+                "source": [
+                  "rtstruct",
+                  "seg",
+                  "reader_annotations"
+                ],
+                "lesion": "tracked"
+              }
+            },
+            {
+              "organ_centroid": {
+                "organ": "lung_lower_lobe_right"
+              }
+            },
+            "middle"
+          ],
+          "window": "lung"
+        }
+      ]
+    },
+    {
+      "match": {
+        "modality": "PT"
+      },
+      "views": [
+        {
+          "name": "key",
+          "plane": "coronal",
+          "pick": [
+            "mip",
+            "middle"
+          ],
+          "invert": true
+        }
+      ]
+    },
+    {
+      "match": {
+        "modality": "MR",
+        "protocol": "T1w*"
+      },
+      "views": [
+        {
+          "name": "key",
+          "plane": "sagittal",
+          "pick": [
+            "middle"
+          ]
+        }
+      ]
+    },
+    {
+      "match": {
+        "modality": "MR",
+        "classification": [
+          "Features:SBRef"
+        ]
+      },
+      "views": []
+    }
+  ]
+}

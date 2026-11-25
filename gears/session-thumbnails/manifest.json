@@ -1,0 +1,126 @@
+{
+  "name": "session-thumbnails",
+  "label": "Session Thumbnails",
+  "version": "0.1.0",
+  "description": "Renders one load-optimised thumbnail per imaging series in a session (middle slice by default; a project thumbnails.json profile can choose plane, slice picker, window and fallbacks per modality or protocol) and packs them into a JPEG sprite with a JSON index (fw.thumbnails/1) for apps. Previews only, not measurements. Skips modalities that may carry burned-in identifiers (US, SC, XC, ES) unless allowed.",
+  "author": "Flywheel (Custom Apps prototype)",
+  "maintainer": "Dan Rafter",
+  "license": "MIT",
+  "cite": "",
+  "source": "https://github.com/danjamesrafter-crypto/subject-view-harness/tree/main/gears/session-thumbnails",
+  "url": "https://github.com/danjamesrafter-crypto/subject-view-harness/tree/main/gears/session-thumbnails",
+  "environment": {
+    "BUILD_TIME": "2026-07-06T22:30:28Z",
+    "CI_JOB_URL": "https://gitlab.com/flywheel-io/tools/img/python/-/jobs/15210818708",
+    "COMMIT_REF": "main",
+    "COMMIT_SHA": "8cc432d1",
+    "FLYWHEEL": "/flywheel/v0",
+    "PATH": "/venv/bin:/root/.local/bin:/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin:/opt/bin",
+    "PWD": "/flywheel/v0",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYTHONPATH": "/venv/lib/python3.13/site-packages",
+    "SHLVL": "0",
+    "SSL_CERT_FILE": "/etc/ssl/certs/ca-certificates.crt",
+    "TZ": "UTC",
+    "UV_COMPILE_BYTECODE": "1",
+    "UV_LINK_MODE": "copy",
+    "UV_NO_CACHE": "1",
+    "UV_PYTHON": "/venv/bin/python",
+    "UV_PYTHON_DOWNLOADS": "never",
+    "VIRTUAL_ENV": "/venv",
+    "_": "/usr/bin/printenv"
+  },
+  "command": "/venv/bin/python /flywheel/v0/run_thumbs.py",
+  "inputs": {
+    "api-key": {
+      "base": "api-key",
+      "read-only": true
+    },
+    "profile": {
+      "base": "file",
+      "optional": true,
+      "description": "Thumbnail profile (JSON; YAML if PyYAML is present). Overrides the project's thumbnails.json.",
+      "type": {
+        "enum": [
+          "source code",
+          "text",
+          "json"
+        ]
+      }
+    }
+  },
+  "config": {
+    "size": {
+      "type": "integer",
+      "default": 256,
+      "minimum": 64,
+      "maximum": 512,
+      "description": "Thumbnail cell size in pixels (square, letterboxed)."
+    },
+    "sprite_columns": {
+      "type": "integer",
+      "default": 8,
+      "minimum": 1,
+      "maximum": 32,
+      "description": "Cells per sprite row."
+    },
+    "jpeg_quality": {
+      "type": "integer",
+      "default": 85,
+      "minimum": 50,
+      "maximum": 100,
+      "description": "Sprite JPEG quality."
+    },
+    "max_file_mb": {
+      "type": "number",
+      "default": 2048,
+      "description": "Skip source files larger than this."
+    },
+    "allow_burned_in_modalities": {
+      "type": "boolean",
+      "default": false,
+      "description": "Render US/SC/XC/ES and images flagged BurnedInAnnotation or LABEL/OVERVIEW. Off by default: their pixels may carry identifiers."
+    }
+  },
+  "custom": {
+    "flywheel": {
+      "suite": "Utility",
+      "show-job": true,
+      "classification": {
+        "function": [
+          "Utility"
+        ],
+        "modality": [
+          "CT",
+          "MR",
+          "PT",
+          "NM",
+          "CR",
+          "DX",
+          "MG"
+        ],
+        "organ": [
+          "Any"
+        ],
+        "species": [
+          "Human",
+          "Animal",
+          "Phantom"
+        ],
+        "therapeutic_area": [
+          "Any"
+        ]
+      },
+      "about": {
+        "base_image": "flywheel/pyradiomics:2.2.2_3.1.0 (Python 3.13, SimpleITK, numpy)",
+        "script": "run_thumbs.py 0.1.0",
+        "index_schema": "fw.thumbnails/1",
+        "classmap": "TotalSegmentator 2.18.0 total (organ_centroid picker)"
+      }
+    },
+    "gear-builder": {
+      "category": "analysis",
+      "image": "session-thumbnails:0.1.0"
+    }
+  }
+}
