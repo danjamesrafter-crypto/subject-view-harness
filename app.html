@@ -776,7 +776,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.13.0";
+const VERSION = "subject-view-harness/0.13.1";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, ov: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -2711,7 +2711,8 @@ function techDiag() {
    Segmentations (coming) are counted separately when an element type or the stored format says so.
    ===================================================================== */
 const ANN = { m: {}, stats: { subjects: 0, records: 0, failed: 0, route: null } };
-const ANN_PEN = `<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M11.1 1.9a1.6 1.6 0 0 1 2.3 0l.7.7a1.6 1.6 0 0 1 0 2.3l-8 8-3.4.8.8-3.4 7.6-7.6zm-6.7 8.3-.4 1.6 1.6-.4 6.4-6.4-1.2-1.2-6.4 6.4z" fill="currentColor"/></svg>`;
+/* Flywheel-Vision-Icons "pencil-edit-create" (U+E99E), the glyph Core shows on file rows; font units, y flipped (ascent 960). */
+const ANN_PEN = `<svg viewBox="0 0 1024 1024" width="12" height="12" aria-hidden="true"><path transform="matrix(1 0 0 -1 0 960)" fill="currentColor" d="M298.667 32h-6.4c-131.84 0-238.933 107.093-238.933 238.933 0 94.293 55.893 180.053 142.080 218.453l168.96 75.094c44.373 19.627 72.96 64 72.96 112.64 0 67.84-55.467 123.307-123.307 123.307h-15.36c-17.493 0-32 14.507-32 32s14.507 32 32 32h15.36c103.253 0 187.307-84.053 187.307-187.307 0-73.813-43.52-140.8-111.36-171.094l-168.96-75.093c-63.147-28.16-103.68-90.88-103.68-160 0-96.427 78.507-174.933 174.933-174.933h6.4c17.493 0 32-14.507 32-32s-14.507-32-32-32zM442.027 37.547c-15.787 0-31.147 6.4-42.667 17.493-14.933 14.933-20.907 36.267-16.213 56.747l16.64 70.4c5.12 21.333 15.787 40.533 31.147 56.32l291.84 291.84c0 0 1.707 2.133 2.56 2.987s2.133 1.707 2.987 2.56l64.853 64.853c28.16 28.16 77.227 28.16 105.387 0l46.080-46.080c14.080-14.080 21.76-32.854 21.76-52.907s-7.68-38.827-21.76-52.907l-64.853-64.853c0 0-1.707-2.133-2.56-2.987s-2.133-1.707-2.987-2.56l-291.84-291.84c-15.36-15.36-34.56-26.027-55.893-31.147l-70.4-16.64c-4.693-1.28-9.387-1.707-14.080-1.707v0.427zM476.16 193.707c-7.253-7.253-11.947-16.213-14.080-25.6l-15.36-64.853 64.853 15.36c9.813 2.133 18.347 7.253 25.6 14.080l272.213 271.787-61.013 61.013-271.787-271.787h-0.427zM793.173 510.72l61.013-61.013 45.227 45.227c2.56 2.56 2.987 5.973 2.987 7.68s0 4.693-2.987 7.68l-46.080 46.080c-5.547 5.547-9.387 5.547-14.933 0l-45.227-45.227v-0.427z"/></svg>`;
 const annIsSeg = a => /seg/i.test(String((a.storage || {}).format || "")) || (a.elements || []).some(e => /seg|mask|labelmap/i.test(e.type || ""));
 
 function annNeed(sid) {
