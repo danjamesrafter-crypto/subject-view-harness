@@ -766,7 +766,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.11.2";
+const VERSION = "subject-view-harness/0.11.3";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, ov: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -2225,6 +2225,8 @@ function tlPrior(list, id) {
   return i > 0 ? list[i - 1] : null;
 }
 
+/* 0.11.3: study "Open" launches the OHIF V3 viewer for that session in a new tab */
+const v3Link = sid => S.origin && S.projectId ? `${S.origin}/ohif-viewer-v3/project/${encodeURIComponent(S.projectId)}/viewer?sessionId=${encodeURIComponent(sid)}` : "#";
 function ovMode() { if (S.ovMode) return S.ovMode; try { return localStorage.getItem("svh-ovmode") || "timeline"; } catch (e) { return "timeline"; } }
 function overviewTab(s, d) {
   const m = ovMode();
@@ -2345,7 +2347,7 @@ function tlJacket(s, list, sel, cmp, tasksOf, jobsOf) {
         ${(T1 => T1.state === "ok" ? `<div class="jk-tech">${techLine(T1.T, T1.diffs.concat(T1.notes))}${T1.isRef ? `<span class="tk-ref">reference</span>` : T1.ref && T1.rt ? (w => w.length ? `<span class="tk-ref warn" title="${esc(w.map(d => d.msg).join("\n"))}">≠ ${esc(T1.ref.z.label)}: ${esc(w.map(d => d.msg).join("; "))}</span>` : `<span class="tk-ref ok">comparable with ${esc(T1.ref.z.label)}</span>`)(T1.diffs.filter(d => d.sev === "warn").concat(T1.notes)) : ""}</div>` : T1.state === "noheader" ? `<div class="jk-tech"><span class="tk none">No header metadata on the key series</span></div>` : "")(techStudy(list, x))}
         <div class="jk-chk"><em class="vst ${x.st.k}" title="${esc(x.st.all)}"><i class="vd ${x.st.k}"></i>${esc(x.st.t)}</em>${tt.length ? `<button class="jk-chip ${o ? "warn" : "ok"}" data-pane="${x.id}|tasks">${o ? o + " read" + (o > 1 ? "s" : "") + " open" : plural(tt.length, "read") + " done"}</button>` : ""}${jj.length ? `<button class="jk-chip ${f ? "bad" : "ok"}" data-pane="${x.id}|jobs">${f ? f + " failed" : plural(jj.length, "job")}</button>` : ""}</div></div>
       <div class="jk-film">${film}</div>
-      <div class="jk-act">${prior ? `<button class="ibtn ${on && cmp && cmp.id === prior.id ? "on" : ""}" data-tl="cmp:${x.id}:${prior.id}" title="Side by side with ${esc(prior.z.label)} (${prior.date})">Compare with prior</button>` : `<span class="src">First study</span>`}<button class="ibtn" data-pane="${x.id}|">Details</button><a class="ibtn" href="${coreLink("sessions", x.id)}" target="_blank" rel="noopener">${ic("open")}Open</a></div>
+      <div class="jk-act">${prior ? `<button class="ibtn ${on && cmp && cmp.id === prior.id ? "on" : ""}" data-tl="cmp:${x.id}:${prior.id}" title="Side by side with ${esc(prior.z.label)} (${prior.date})">Compare with prior</button>` : `<span class="src">First study</span>`}<button class="ibtn" data-pane="${x.id}|">Details</button><a class="ibtn" href="${v3Link(x.id)}" target="_blank" rel="noopener" title="Open ${esc(x.z.label)} in the OHIF V3 viewer (new tab)">${ic("open")}Open</a></div>
     </div>`;
   }).join("");
   return `<div class="card"><div class="card-h"><h3>Studies</h3><span class="src">Newest first · click a study to select it on the timeline</span></div><div class="jk">${rows}</div></div>`;
