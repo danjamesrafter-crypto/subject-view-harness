@@ -737,6 +737,16 @@ select:focus{border-color:var(--primary-base)}
 .tl-chips{flex-wrap:wrap;row-gap:3px;max-height:34px}
 .tl-top .tl-trk{height:228px}
 .tl-cards{height:198px}
+/* 0.13.0 annotation badge (mirrors Core's file-row indicator: pencil + blue count bubble) */
+.ann-b{position:relative;display:inline-flex;align-items:center;justify-content:center;width:22px;height:20px;border-radius:6px;color:var(--primary-base,#5B9BFF);border:1px solid var(--info-border,#2f6bff55);background:var(--card,#0d1526);text-decoration:none;flex:none}
+.ann-b:hover{background:var(--info-wash,rgba(47,107,255,.15))}
+.ann-b i{position:absolute;top:-7px;right:-7px;min-width:15px;height:15px;padding:0 3px;box-sizing:border-box;border-radius:8px;background:var(--primary-base,#2f6bff);color:#fff;font:600 9px/15px Inter,system-ui,sans-serif;font-style:normal;text-align:center}
+.ann-b.seg{color:var(--orange-base,#FF8C00);border-color:var(--orange-border,#ff8c0055)}.ann-b.seg i{background:var(--orange-base,#FF8C00)}
+.ann-b.sm{width:18px;height:15px;border-radius:5px}.ann-b.sm svg{width:10px;height:10px}.ann-b.sm i{top:-6px;right:-6px;min-width:13px;height:13px;font-size:8px;line-height:13px}
+.ann-b.ov{position:absolute;top:5px;left:5px;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,.5)}
+.jk-ser{position:relative}.cmp-th{position:relative;display:inline-block}
+.ann-b.sm{width:auto;height:15px;padding:0 4px 0 3px;gap:2px;border-radius:8px;line-height:14px}
+.ann-b.sm i{position:static;min-width:0;height:auto;padding:0;background:none;color:inherit;font-size:10px;line-height:14px}
 </style>
 
 </head>
@@ -766,7 +776,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.12.1";
+const VERSION = "subject-view-harness/0.13.0";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, ov: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -1229,7 +1239,7 @@ function infoTab(s, d) {
 function diagTab() {
   setTimeout(() => tcCount().then(n => { const e = document.getElementById("tcN"); if (e) e.textContent = n == null ? "storage unavailable" : n + " stored"; }), 0);
   const ok = S.calls.filter(c => c.status === "ok").length, er = S.calls.filter(c => c.status === "error").length;
-  return aboutCard() + gthDiag() + techDiag() + `<div class="card diag"><div class="card-h"><h3>Diagnostics</h3><span class="src">${VERSION} · ${ok} ok · ${er} failed · newest first · GET + SDK tag/info writes</span></div>
+  return aboutCard() + gthDiag() + techDiag() + annDiag() + `<div class="card diag"><div class="card-h"><h3>Diagnostics</h3><span class="src">${VERSION} · ${ok} ok · ${er} failed · newest first · GET + SDK tag/info writes</span></div>
     <div class="card-b" style="font-size:13px;color:var(--ink-2)">Origin <span class="mono">${esc(S.origin || "unknown")}</span> · user <span class="mono">${esc(S.user ? S.user._id : "?")}</span> · opened from <span class="mono">${esc(S.opener ? (S.opener.container_type || "?") + " " + (S.opener._id || "") : "?")}</span> · project <span class="mono">${esc(S.projectId || "?")}</span></div>
     <div class="card-b" style="font-size:13px;color:var(--ink-2);display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span>Thumbnail cache on this device: <b id="tcStat">${tcOn() ? "on" : "off"}</b> · <span class="mono">${TC.hits} hits · ${TC.misses} misses this session${TC.err ? " · storage " + esc(TC.err) : ""}</span> · <span id="tcN" class="mono"></span></span><button class="ibtn" data-act="tctoggle">${tcOn() ? "Turn off" : "Turn on"}</button><button class="ibtn" data-act="tcclear">Clear thumbnails and anatomy maps</button><span class="src" style="font-family:var(--font-ui);flex-basis:100%">Rendered middle slices (newest 400) and anatomy maps built from segmentations (newest 60, ${SC.hits} hits · ${SC.misses} misses this session) are kept in this browser for 14 days so they appear instantly next launch. Both are derived from your data: turn this off on shared machines.</span></div>
     ${schedule().length || (S.project && (S.project.templates || S.project.template)) ? `<div class="card-b"><div class="src" style="font-family:var(--font-ui);margin-bottom:6px">Session templates as read from project.templates (${schedule().length} parsed)</div><pre>${esc(JSON.stringify(S.project.templates || S.project.template, null, 2).slice(0, 4000))}</pre></div>` : `<div class="card-b src" style="font-family:var(--font-ui)">No session templates on this project (project.templates is empty).</div>`}
@@ -2255,6 +2265,7 @@ function overviewTab(s, d) {
 }
 
 function timeline(s, d) {
+  annNeed(s._id);
   const list = tlStudies(s, d);
   if (!list.length) return `<div class="card"><div class="empty-big">No studies for this subject yet.</div></div>`;
   tlEnsure(s, list);
@@ -2281,7 +2292,7 @@ function timeline(s, d) {
     const chips = [
       x.mods.filter(m => m !== "Derived").map(m => `<span class="tl-mc" style="--c:${modCol(m)}">${esc(m)}</span>`).join(""),
       f ? `<span class="tl-sc bad" title="${jj.length} gear job(s), ${f} failed">${f} failed</span>` : o ? `<span class="tl-sc warn" title="${tt.length} reader task(s), ${o} open">${o} open</span>` : "",
-      techChip(techStudy(list, x))].join("");
+      techChip(techStudy(list, x)), annBadge(annFor(s._id, "session", x.id), x.z.label, x.id, "sm")].join("");
     return `<button class="tl-card ${on ? "on" : ""} ${pr ? "pr" : ""}" style="left:${P(x)}%" data-x="${P(x)}" data-tl="sel:${x.id}" aria-pressed="${on}" title="${esc(x.z.label)} · ${x.date} · ${esc(x.st.all || x.st.t)}">
       ${pr ? `<span class="tl-tag pr">Prior</span>` : on && cmp ? `<span class="tl-tag cur">Current</span>` : ""}
       ${tlThumb(x.key && x.key.a, 104)}
@@ -2357,7 +2368,7 @@ function tlJacket(s, list, sel, cmp, tasksOf, jobsOf) {
     const supRuns = sup.reduce((k, F) => k + F.runs.length, 0);
     const nimg = x.series.reduce((k, q) => k + (q.n || 0), 0);
     const tt = tasksOf(x.id), jj = jobsOf(x.id), f = openFail(jj).length, o = tt.filter(OPEN).length;
-    const famCard = F => `<div class="jk-ser ${F.role}" title="${esc(F.runs.map(q => q.desc).join("\n"))}">${tlThumb(F.rep && thumbSource(F.rep.a) ? F.rep.a : null, 72)}${F.runs.length > 1 ? `<span class="jk-runs">×${F.runs.length}</span>` : ""}<span class="jk-sl"><i style="background:${modCol(F.mod)}"></i>${esc(F.name)}</span><span class="jk-sn">${F.runs.length > 1 ? plural(F.runs.length, "run") + (F.n ? " · " + F.n + " img" : "") : F.n ? plural(F.n, "image") : esc(F.mod)}</span></div>`;
+    const famCard = F => `<div class="jk-ser ${F.role}" title="${esc(F.runs.map(q => q.desc).join("\n"))}">${tlThumb(F.rep && thumbSource(F.rep.a) ? F.rep.a : null, 72)}${annBadge(annForAcqs(s._id, F.runs.map(q => q.a)), `${x.z.label} · ${F.name}`, x.id, "ov")}${F.runs.length > 1 ? `<span class="jk-runs">×${F.runs.length}</span>` : ""}<span class="jk-sl"><i style="background:${modCol(F.mod)}"></i>${esc(F.name)}</span><span class="jk-sn">${F.runs.length > 1 ? plural(F.runs.length, "run") + (F.n ? " · " + F.n + " img" : "") : F.n ? plural(F.n, "image") : esc(F.mod)}</span></div>`;
     const film = !x.loaded ? `<span class="src">Loading series…</span>` : x.fams.length ? showF.map(famCard).join("") + `<div class="jk-extra">${moreP ? `<button class="jk-more" data-tl="exp:${x.id}">+${moreP} protocols</button>` : ""}${sup.length && prim.length ? `<button class="jk-more" data-tl="exp:${x.id}" title="${esc(sup.map(F => F.name).join(", "))}">${open ? "Hide support series" : `+${supRuns} support`}</button>` : ""}${x.derived.n ? `<button class="jk-more der" data-pane="${x.id}|" title="Gear outputs stored with the series: ${esc(x.derived.kinds.join(", "))}">${x.derived.n} derived</button>` : ""}</div>` : `<span class="src">No series</span>`;
     return `<div class="jk-row ${on ? "on" : ""} ${pr ? "pr" : ""}" data-tl="sel:${x.id}">
       <div class="jk-when"><span class="jk-bar" style="background:${x.st.k && x.st.k !== "miss" ? `var(--${x.st.k})` : "var(--slate-focus)"}"></span><b>${x.date}</b><span class="jk-rel">${esc(x.rel)}${prior && x.day != null && prior.day != null ? ` · ${tlGap(x.day - prior.day)} after ${esc(prior.z.label)}` : ""}</span>${x.study ? `<span class="jk-vis">${esc(x.z.label)}</span>` : ""}${pr ? `<span class="tl-tag pr in">Prior</span>` : on && cmp ? `<span class="tl-tag cur in">Current</span>` : ""}</div>
@@ -2386,7 +2397,7 @@ function tlCompare(cur, pri) {
   const gap = cur.day != null && pri.day != null ? tlGap(Math.abs(cur.day - pri.day)) : "";
   const tOf = F => { const a = F && F.rep && F.rep.a; if (!a) return null; techNeed(a); const r = techOf(a); return r && r.state === "ok" ? r.t : null; };
   const pd = new Map(pairs.map(([p, q]) => [q || p, p && q ? techDiff(tOf(p), tOf(q)) : []]));
-  const side = (x, F, other) => F ? `<div class="cmp-cell">${tlThumb(F.rep && thumbSource(F.rep.a) ? F.rep.a : null, 150)}<span class="jk-sl"><i style="background:${modCol(F.mod)}"></i>${esc(F.name)}${F.runs.length > 1 ? ` ×${F.runs.length}` : ""}</span><span class="jk-sn">${F.n ? plural(F.n, "image") : esc(F.mod)}</span>${(T => T ? `<span class="jk-tech sm">${techLine(T, other ? pd.get(other) : [])}</span>` : "")(tOf(F))}</div>` : `<div class="cmp-cell none"><span>No matching series in ${esc(x.z.label)}</span></div>`;
+  const side = (x, F, other) => F ? `<div class="cmp-cell"><span class="cmp-th">${tlThumb(F.rep && thumbSource(F.rep.a) ? F.rep.a : null, 150)}${annBadge(annForAcqs(S.subj, F.runs.map(q => q.a)), `${x.z.label} · ${F.name}`, x.id, "ov")}</span><span class="jk-sl"><i style="background:${modCol(F.mod)}"></i>${esc(F.name)}${F.runs.length > 1 ? ` ×${F.runs.length}` : ""}</span><span class="jk-sn">${F.n ? plural(F.n, "image") : esc(F.mod)}</span>${(T => T ? `<span class="jk-tech sm">${techLine(T, other ? pd.get(other) : [])}</span>` : "")(tOf(F))}</div>` : `<div class="cmp-cell none"><span>No matching series in ${esc(x.z.label)}</span></div>`;
   const dsum = pairs.filter(([p, q]) => p && q).flatMap(([p, q]) => pd.get(q).filter(d => d.sev === "warn").map(d => `${q.name}: ${d.msg}`));
   const hd = (x, k) => `<div class="cmp-h ${k}"><span class="tl-tag ${k} in">${k === "pr" ? "Prior" : "Current"}</span><b>${esc(x.z.label)}</b><span>${x.date} · ${esc(x.rel)}</span></div>`;
   return `<div class="card cmp"><div class="card-h"><div style="display:flex;flex-direction:column;gap:2px"><h3>Compare</h3><span class="src" style="font-family:var(--font-ui)">${gap ? gap + " apart · " : ""}protocols paired by name and type · support series hidden · technique from DICOM headers, differences highlighted · middle slice of each series, not registered</span></div><button class="ibtn" data-tl="cmpoff">${ic("close")}Close</button></div>
@@ -2687,6 +2698,70 @@ function techDiag() {
     ${TECH.missing.length ? `<span>No header (run File Metadata Importer): ${esc(TECH.missing.slice(0, 8).join(", "))}${TECH.missing.length > 8 ? "…" : ""}</span>` : ""}
     <span class="src">Kept: ${TECH_TAGS.length} technical tags and ${TECH_CLS.length} classification fields. Every other header field, including patient identifiers, is discarded on arrival and never displayed or cached.</span>
     <span class="src">Checks against the reference study (Baseline, else Screening, else first): slice thickness (&gt;1.5× or ≥2 mm apart), CT kernel class (soft vs sharp), contrast, coverage, MR field strength; scanner and kVp shown as notes. CT thicker than 5 mm is flagged (RECIST 1.1).</span>
+  </div></div>`;
+}
+
+/* =====================================================================
+   v0.13.0: annotation indicator, reusing Core's file-row badge (pencil + blue count).
+   Source: Flywheel v3 annotations, the same endpoint Core's Sessions tab uses
+   (GET /api/v3/annotations?filter=parents.acquisition=<id>&sort=modified:desc&join_origin=true; seen on r6nvg8 11-25).
+   Here one call per subject (filter=parents.subject=<id>), falling back to one per session if the server refuses it.
+   Each record: label, state, task_id, parents{…, acquisition, file{file_id, version}}, elements[{type, label, color,
+   metrics{length,width,area…}}], metrics{total{count}, by_label[]}, origin/owner, created/modified.
+   Segmentations (coming) are counted separately when an element type or the stored format says so.
+   ===================================================================== */
+const ANN = { m: {}, stats: { subjects: 0, records: 0, failed: 0, route: null } };
+const ANN_PEN = `<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M11.1 1.9a1.6 1.6 0 0 1 2.3 0l.7.7a1.6 1.6 0 0 1 0 2.3l-8 8-3.4.8.8-3.4 7.6-7.6zm-6.7 8.3-.4 1.6 1.6-.4 6.4-6.4-1.2-1.2-6.4 6.4z" fill="currentColor"/></svg>`;
+const annIsSeg = a => /seg/i.test(String((a.storage || {}).format || "")) || (a.elements || []).some(e => /seg|mask|labelmap/i.test(e.type || ""));
+
+function annNeed(sid) {
+  if (!sid || ANN.m[sid] || !S.ext) return;
+  ANN.m[sid] = { state: "loading" };
+  (async () => {
+    const q = f => api("/api/v3/annotations", { filter: f, sort: "modified:desc", join_origin: true, exhaustive: true, limit: 1000 }, { soft: true });
+    let r = await q(`parents.subject=${sid}`), route = "subject";
+    if (r == null) {
+      route = "session";
+      const parts = await Promise.all(subjSessions(sid).map(z => q(`parents.session=${z._id}`)));
+      r = parts.some(x => x != null) ? parts.flatMap(x => listOf(x || [])) : null;
+    }
+    if (r == null) { ANN.m[sid] = { state: "err" }; ANN.stats.failed++; return techRedraw(); }
+    const list = listOf(r).filter(a => a && !a.deleted && !a.replaced);
+    const by = { session: {}, acq: {}, file: {} }, add = (k, id, a) => { if (id) (by[k][id] = by[k][id] || []).push(a); };
+    list.forEach(a => { const p = a.parents || {}; add("session", p.session, a); add("acq", p.acquisition, a); add("file", (p.file || {}).file_id, a); });
+    ANN.m[sid] = { state: "ok", list, by, route };
+    ANN.stats.subjects++; ANN.stats.records += list.length; ANN.stats.route = route;
+    techRedraw();
+  })().catch(e => { ANN.m[sid] = { state: "err" }; ANN.stats.failed++; });
+}
+const annFor = (sid, kind, id) => { const m = ANN.m[sid]; return m && m.state === "ok" ? (m.by[kind][id] || []) : []; };
+/* Series-level: annotations on any file of these acquisitions */
+const annForAcqs = (sid, acqs) => acqs.flatMap(a => annFor(sid, "acq", a._id));
+
+const annUser = a => { const o = a.origin || a.owner || {}; return o.id || o.type || ""; };
+const fmtMetric = (k, v) => v == null ? "" : `${k === "length" ? "L" : k === "width" ? "W" : k === "area" ? "Area" : k === "volume" ? "Vol" : k}: ${Math.round(v * 100) / 100}${k === "area" ? " mm²" : k === "volume" ? " mm³" : " mm"}`;
+function annLine(a) {
+  const n = ((a.metrics || {}).total || {}).count != null ? a.metrics.total.count : (a.elements || []).length;
+  const els = (a.elements || []).slice(0, 4).map(e => `  ${e.label || "Unlabeled"} · ${e.type || "?"}${Object.entries(e.metrics || {}).filter(([k, v]) => typeof v === "number").map(([k, v]) => " · " + fmtMetric(k, v)).join("")}`);
+  const more = (a.elements || []).length > 4 ? [`  +${a.elements.length - 4} more`] : [];
+  return [`${a.label || "Annotation"}${a.version ? " v" + a.version : ""} · ${plural(n, annIsSeg(a) ? "segment" : "measurement")}${a.state ? " · " + a.state : ""}${a.task_id ? " · reader task" : ""}`, `  ${(a.modified || a.created || "").slice(0, 10)} · ${annUser(a)}`, ...els, ...more].join("\n");
+}
+function annTip(list, where) {
+  const seg = list.filter(annIsSeg).length, ann = list.length - seg;
+  return `${where}: ${[ann ? plural(ann, "annotation") : "", seg ? plural(seg, "segmentation") : ""].filter(Boolean).join(", ")}\n\n${list.slice(0, 6).map(annLine).join("\n\n")}${list.length > 6 ? `\n\n+${list.length - 6} more` : ""}\n\nClick to open in the viewer`;
+}
+/* The badge: same shape as Core's (pencil, blue count bubble). `sid` = session id for the viewer link. */
+function annBadge(list, where, sid, cls) {
+  if (!list || !list.length) return "";
+  const seg = list.some(annIsSeg);
+  return `<a class="ann-b ${cls || ""}${seg ? " seg" : ""}" href="${v3Link(sid)}" target="_blank" rel="noopener" title="${esc(annTip(list, where))}" onclick="event.stopPropagation()">${ANN_PEN}<i>${list.length}</i></a>`;
+}
+
+function annDiag() {
+  const s = ANN.stats;
+  return `<div class="card"><div class="card-h"><h3>Annotations</h3><span class="src">Flywheel v3 annotations, same source as Core's file-row badge</span></div><div class="card-b" style="font-size:13px;color:var(--ink-2);display:flex;flex-direction:column;gap:4px">
+    <span>${s.subjects} subject${s.subjects === 1 ? "" : "s"} loaded · ${s.records} annotation record${s.records === 1 ? "" : "s"}${s.route ? ` · by ${s.route} (GET /api/v3/annotations?filter=parents.${s.route}=…)` : ""}${s.failed ? ` · <b style="color:var(--bad-t)">${s.failed} failed</b>` : ""}</span>
+    <span class="src">Shown on timeline cards (per study), series thumbnails (per acquisition) and Compare. Deleted and replaced versions are hidden. Segmentations are counted separately once their element type or stored format identifies them.</span>
   </div></div>`;
 }
 
