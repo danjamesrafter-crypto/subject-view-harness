@@ -744,7 +744,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.9.4";
+const VERSION = "subject-view-harness/0.9.5";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, ov: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -2149,7 +2149,8 @@ function tlStudies(s, d) {
   const sess = subjSessions(s._id), dated = sess.filter(z => tlDate(z) != null);
   const base = dated.find(z => /baseline/i.test(z.label || "")) || dated.find(z => /screen/i.test(z.label || "")) || dated[0];
   const t0 = base ? Math.floor(tlDate(base) / DAY) : 0;
-  return sess.map(z => {
+  const sch = schedule(), vix = z => { const i = sch.findIndex(v => v.L && v.L.test(z.label)); return i < 0 ? 999 : i; };
+  return sess.slice().sort((a, b) => (tlDate(a) || 0) - (tlDate(b) || 0) || vix(a) - vix(b) || String(a.label).localeCompare(String(b.label), undefined, { numeric: true })).map(z => {
     const as = d && d.acqs && !(d.acqErr || {})[z._id] ? (d.acqs[z._id] || []) : null, t = tlDate(z);
     const series = (as || []).map(a => { const f = dicomFile(a) || (a.files || [])[0] || {}, h = dcmH(f); return { a, f, mod: tlMod(a), n: f.zip_member_count || null, desc: h.SeriesDescription || a.label, study: h.StudyDescription || null, body: h.BodyPartExamined || null, der: derivedOf(a, dicomFile(a)) }; });
     const fams = tlFamilies(series.filter(q => q.mod !== "Derived")), der = series.flatMap(q => q.der);
@@ -2214,6 +2215,11 @@ function timeline(s, d) {
   const O = S.ov, dated = list.filter(x => x.t != null), undated = list.filter(x => x.t == null);
   const lo0 = dated.length ? dated[0].t : 0, hi0 = dated.length ? dated[dated.length - 1].t : 0, pad = Math.max(10 * DAY, (hi0 - lo0) * 0.04);
   const lo = lo0 - pad, hi = hi0 + pad, X = t => ((t - lo) / (hi - lo || 1)) * 100;
+  /* studies that share one date (e.g. a demo import with a single scan date) can't be spread on a time axis:
+     show them in order, evenly spaced, and say so */
+  const sameDay = dated.length > 1 && hi0 - lo0 < DAY;
+  dated.forEach((x, i) => { x.pos = sameDay ? ((i + 0.5) / dated.length) * 100 : X(x.t); if (sameDay) x.rel = `#${i + 1} of ${dated.length}`; });
+  const P = x => x.pos;
   const R = subjRollup(s._id), missing = R.cols.filter(c => c.v && !c.z).map(c => c.v.label);
   const allMods = MOD_ORDER.filter(m => list.some(x => x.mods.includes(m)));
   const n = dated.length, cardsW = Math.max(n * 132, 760);
@@ -2229,13 +2235,13 @@ function timeline(s, d) {
     const chips = [
       x.mods.filter(m => m !== "Derived").map(m => `<span class="tl-mc" style="--c:${modCol(m)}">${esc(m)}</span>`).join(""),
       f ? `<span class="tl-sc bad" title="${jj.length} gear job(s), ${f} failed">${f} failed</span>` : o ? `<span class="tl-sc warn" title="${tt.length} reader task(s), ${o} open">${o} open</span>` : ""].join("");
-    return `<button class="tl-card ${on ? "on" : ""} ${pr ? "pr" : ""}" style="left:${X(x.t)}%" data-x="${X(x.t)}" data-tl="sel:${x.id}" aria-pressed="${on}" title="${esc(x.z.label)} · ${x.date} · ${esc(x.st.all || x.st.t)}">
+    return `<button class="tl-card ${on ? "on" : ""} ${pr ? "pr" : ""}" style="left:${P(x)}%" data-x="${P(x)}" data-tl="sel:${x.id}" aria-pressed="${on}" title="${esc(x.z.label)} · ${x.date} · ${esc(x.st.all || x.st.t)}">
       ${pr ? `<span class="tl-tag pr">Prior</span>` : on && cmp ? `<span class="tl-tag cur">Current</span>` : ""}
       ${tlThumb(x.key && x.key.a, 104)}
       <span class="tl-cl"><b><i class="vd ${x.st.k}"></i>${esc(x.z.label)}</b><small><em>${esc(x.rel)}</em> · ${x.date}</small><span class="tl-chips">${chips}</span></span></button>`;
   }).join("");
-  const ticks = tlTicks(lo, hi).map(([x, l]) => `<span class="tl-tick" style="left:${X(x)}%"><span>${esc(l)}</span></span>`).join("");
-  const dots = dated.map(x => `<button class="tl-dot ${x.st.k} ${x.id === O.sel ? "on" : ""} ${cmp && x.id === cmp.id ? "pr" : ""}" style="left:${X(x.t)}%" data-tl="sel:${x.id}" title="${esc(x.z.label)} · ${x.date} · ${esc(x.st.all || x.st.t)}"></button>`).join("");
+  const ticks = sameDay ? "" : tlTicks(lo, hi).map(([x, l]) => `<span class="tl-tick" style="left:${X(x)}%"><span>${esc(l)}</span></span>`).join("");
+  const dots = dated.map(x => `<button class="tl-dot ${x.st.k} ${x.id === O.sel ? "on" : ""} ${cmp && x.id === cmp.id ? "pr" : ""}" style="left:${P(x)}%" data-tl="sel:${x.id}" title="${esc(x.z.label)} · ${x.date} · ${esc(x.st.all || x.st.t)}"></button>`).join("");
   const multi = allMods.filter(m => m !== "Derived").length > 1;
   const lane = (label, color, body, sub) => `<div class="tl-row"><div class="tl-gut"><i style="background:${color}"></i><span>${esc(label)}</span>${sub ? `<small>${esc(sub)}</small>` : ""}</div><div class="tl-trk">${body}</div></div>`;
   /* lanes: per modality; a modality with several protocols across visits gets one lane per protocol family
@@ -2248,17 +2254,17 @@ function timeline(s, d) {
     if (names.length <= 1) {
       if (!multi) return "";
       const nser = withM.reduce((k, x) => k + x.series.filter(q => q.mod === m).length, 0);
-      return lane(MOD_NAME[m] || m, modCol(m), withM.map(x => { const k = x.series.filter(q => q.mod === m).length; return `<button class="tl-mk" style="left:${X(x.t)}%;--c:${modCol(m)}" data-tl="sel:${x.id}" title="${esc(x.z.label)} · ${k} ${esc(m)} series">${k > 1 ? k : ""}</button>`; }).join(""), plural(nser, "series").replace("seriess", "series"));
+      return lane(MOD_NAME[m] || m, modCol(m), withM.map(x => { const k = x.series.filter(q => q.mod === m).length; return `<button class="tl-mk" style="left:${P(x)}%;--c:${modCol(m)}" data-tl="sel:${x.id}" title="${esc(x.z.label)} · ${k} ${esc(m)} series">${k > 1 ? k : ""}</button>`; }).join(""), plural(nser, "series").replace("seriess", "series"));
     }
     const cap = 8;
     return (multi ? `<div class="tl-row tl-grp"><div class="tl-gut"><span>${esc(MOD_NAME[m] || m)} protocols</span></div><div class="tl-trk"></div></div>` : "") + names.slice(0, cap).map(k => {
       const F0 = seen.get(k), has = withM.filter(x => x.fams.some(F => F.role === "primary" && F.mod === m && F.name.toLowerCase() === k)).length;
-      return lane(F0.name, modCol(m), withM.map(x => { const F = x.fams.find(G => G.role === "primary" && G.mod === m && G.name.toLowerCase() === k); return F ? `<button class="tl-mk" style="left:${X(x.t)}%;--c:${modCol(m)}" data-tl="sel:${x.id}" title="${esc(x.z.label)} · ${esc(F.name)} · ${plural(F.runs.length, "run")}">${F.runs.length > 1 ? F.runs.length : ""}</button>` : `<span class="tl-mk miss" style="left:${X(x.t)}%" title="${esc(x.z.label)}: no ${esc(F0.name)}"></span>`; }).join(""), `${has}/${withM.length}`);
+      return lane(F0.name, modCol(m), withM.map(x => { const F = x.fams.find(G => G.role === "primary" && G.mod === m && G.name.toLowerCase() === k); return F ? `<button class="tl-mk" style="left:${P(x)}%;--c:${modCol(m)}" data-tl="sel:${x.id}" title="${esc(x.z.label)} · ${esc(F.name)} · ${plural(F.runs.length, "run")}">${F.runs.length > 1 ? F.runs.length : ""}</button>` : `<span class="tl-mk miss" style="left:${P(x)}%" title="${esc(x.z.label)}: no ${esc(F0.name)}"></span>`; }).join(""), `${has}/${withM.length}`);
     }).join("") + (names.length > cap ? lane(`+${names.length - cap} more`, "var(--ink-3)", "", "") : "");
   }).join("");
   requestAnimationFrame(tlLayout);
 
-  const head = `<div class="card-h"><div style="display:flex;flex-direction:column;gap:2px"><h3>Patient timeline</h3><span class="src" style="font-family:var(--font-ui)">${plural(list.length, "study").replace("studys", "studies")}${span ? ` over ${tlGap(span)}` : ""} · ${dated.length ? `${dated[0].date} → ${dated[dated.length - 1].date}` : "no dates"}${missing.length ? ` · <b style="color:var(--warn-t)">expected, not received: ${esc(missing.join(", "))}</b>` : ""}${undated.length ? ` · ${undated.length} without a date` : ""}</span></div>
+  const head = `<div class="card-h"><div style="display:flex;flex-direction:column;gap:2px"><h3>Patient timeline</h3><span class="src" style="font-family:var(--font-ui)">${plural(list.length, "study").replace("studys", "studies")}${span ? ` over ${tlGap(span)}` : ""} · ${dated.length ? `${dated[0].date} → ${dated[dated.length - 1].date}` : "no dates"}${missing.length ? ` · <b style="color:var(--warn-t)">expected, not received: ${esc(missing.join(", "))}</b>` : ""}${undated.length ? ` · ${undated.length} without a date` : ""}${sameDay ? ` · <b style="color:var(--warn-t)">all on the same date, shown in visit order (not to scale)</b>` : ""}</span></div>
     <span class="vlegend"><span><i class="vd ok"></i>Complete</span><span><i class="vd warn"></i>Reads open</span><span><i class="vd bad"></i>Incomplete</span><span><i class="vd"></i>No checks</span></span></div>`;
   const strip = dated.length ? `<div class="tl-scroll"><div class="tl ${multi || protoLanes ? "" : "nogut"}" style="min-width:${n * 128 + (multi || protoLanes ? 132 : 0) + 48}px">
       <div class="tl-row tl-top"><div class="tl-gut"></div><div class="tl-trk"><div class="tl-cards">${cards}</div><svg class="tl-leads" aria-hidden="true"></svg></div></div>
