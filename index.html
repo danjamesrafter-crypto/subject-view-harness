@@ -573,6 +573,102 @@ select:focus{border-color:var(--primary-base)}
 .an-patient canvas{display:block;width:100%;image-rendering:pixelated;background:transparent}
 .an-sides{display:flex;justify-content:space-between;padding:4px 10px 0;font-size:12px;font-weight:600;color:var(--text-secondary,#9aa4b8)}
 .an-segsrc{margin:6px 10px 0;font-family:var(--font-ui)}
+/* ---- 0.9.0 Overview timeline ---- */
+.ov-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;flex-wrap:wrap}
+.tl-scroll{overflow-x:auto;padding:4px 0 12px}
+.tl{position:relative;padding-right:24px}
+.tl-row{display:grid;grid-template-columns:132px 1fr;align-items:center;min-height:30px}
+.tl-row+.tl-row:not(.tl-axrow){border-top:1px solid var(--line-soft)}
+.tl-gut{display:flex;align-items:center;gap:6px;padding:0 10px 0 20px;font-size:12px;color:var(--typography-light);min-width:0;flex-wrap:wrap}
+.tl-gut i{width:8px;height:8px;border-radius:2px;flex:none}
+.tl-gut span{color:var(--ink-2);font-weight:600}
+.tl-gut small{width:100%;padding-left:14px;font-size:10px;color:var(--ink-3);margin-top:-2px}
+.tl-trk{position:relative;height:30px;margin:0 8px}
+.tl-top .tl-trk{height:196px}
+.tl-cards{position:absolute;inset:8px 0 auto 0;height:148px}
+.tl-card{position:absolute;top:0;transform:translateX(-50%);width:116px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 6px 6px;border-radius:10px;border:1px solid var(--line);background:var(--card-2);color:var(--ink);cursor:pointer;transition:border-color .2s,box-shadow .2s}
+.tl-card:hover{border-color:var(--line-strong)}
+.tl-card.on{border-color:var(--primary-base);box-shadow:0 0 0 1px var(--primary-base)}
+.tl-card.pr{border-color:var(--orange-base);box-shadow:0 0 0 1px var(--orange-base)}
+.tl-cl{display:flex;flex-direction:column;align-items:center;gap:2px;max-width:100%}
+.tl-cl b{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:104px}
+.tl-cl small{font-size:10px;color:var(--ink-3);display:flex;gap:3px;align-items:center;flex-wrap:wrap;justify-content:center}
+.tl-cl small i{display:inline-block;width:6px;height:6px;border-radius:2px}
+.tl-leads{position:absolute;left:0;right:0;bottom:0;height:40px;width:100%;overflow:visible}
+.tl-leads line{stroke:var(--line-strong);stroke-width:1}
+.tl-leads line.on{stroke:var(--primary-base);stroke-width:2}
+.tl-leads line.pr{stroke:var(--orange-base);stroke-width:2}
+.tl-tag{position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:600;line-height:1;padding:3px 6px;border-radius:6px;color:#fff;white-space:nowrap}
+.tl-tag.pr{background:var(--orange-base)}.tl-tag.cur{background:var(--primary-base)}
+.tl-tag.in{position:static;transform:none;display:inline-block;width:max-content}
+.tl-th{display:block;border-radius:6px;object-fit:contain;background:#000;flex:none}
+.tl-th.ph{display:flex;align-items:center;justify-content:center;background:var(--page-shaded);border:1px dashed var(--line);color:var(--ink-3);font-size:10px;text-align:center;padding:4px;line-height:1.3}
+.tl-th.ph.ld{border-style:solid;background:linear-gradient(90deg,var(--page-shaded),var(--card-2),var(--page-shaded));background-size:200% 100%;animation:tlsh 1.2s linear infinite}
+@keyframes tlsh{to{background-position:-200% 0}}
+.tl-axrow .tl-trk{height:58px}
+.tl-axis{position:absolute;left:0;right:0;top:10px;height:2px;background:var(--primary-base);border-radius:1px}
+.tl-axis::after{content:"";position:absolute;right:-8px;top:-4px;border-left:8px solid var(--primary-base);border-top:5px solid transparent;border-bottom:5px solid transparent}
+.tl-tick{position:absolute;top:-4px;width:1px;height:10px;background:var(--line-strong)}
+.tl-tick span{position:absolute;top:-16px;left:4px;font-size:10px;color:var(--ink-3);white-space:nowrap}
+.tl-dot{position:absolute;top:-6px;width:14px;height:14px;margin-left:-7px;border-radius:50%;border:2px solid var(--card);background:var(--slate-focus);cursor:pointer;padding:0;box-shadow:0 0 0 1px var(--line-strong)}
+.tl-dot.ok{background:var(--ok)}.tl-dot.warn{background:var(--warn)}.tl-dot.bad{background:var(--bad)}
+.tl-dot.on{box-shadow:0 0 0 2px var(--primary-base);transform:scale(1.15)}
+.tl-dot.pr{box-shadow:0 0 0 2px var(--orange-base)}
+.tl-dls{position:absolute;left:0;right:0;top:20px}
+.tl-dl{position:absolute;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;font-size:11px;line-height:1.25;white-space:nowrap}
+.tl-dl b{font-weight:600;color:var(--ink-2)}.tl-dl small{font-size:10px;color:var(--ink-3)}
+.tl-dl.on b{color:var(--primary-base)}
+.tl-mk{position:absolute;top:7px;height:16px;min-width:16px;margin-left:-8px;padding:0 4px;border-radius:4px;border:none;background:var(--c);color:#0b0b14;font-size:10px;font-weight:700;line-height:16px;cursor:pointer}
+.tl-mk:hover{filter:brightness(1.2)}
+.tl-ev{position:absolute;top:6px;transform:translateX(-50%);height:18px;padding:0 6px;border-radius:9px;font-size:10px;font-weight:600;line-height:16px;cursor:pointer;white-space:nowrap;border:1px solid}
+.tl-ev.ok{background:var(--ok-wash);border-color:var(--ok-border);color:var(--ok-t)}
+.tl-ev.warn{background:var(--warn-wash);border-color:var(--warn-border);color:var(--warn-t)}
+.tl-ev.bad{background:var(--bad-wash);border-color:var(--bad-border);color:var(--bad-t)}
+/* study list */
+.jk{display:flex;flex-direction:column}
+.jk-row{display:grid;grid-template-columns:200px 230px 1fr auto;gap:16px;align-items:start;padding:14px 20px;border-top:1px solid var(--line-soft);cursor:pointer;position:relative}
+.jk-row:first-child{border-top:none}
+.jk-row:hover{background:var(--rowhover)}
+.jk-row.on{background:var(--accent-wash);box-shadow:inset 3px 0 0 var(--primary-base)}
+.jk-row.pr{box-shadow:inset 3px 0 0 var(--orange-base)}
+.jk-when{display:flex;flex-direction:column;gap:3px;padding-left:12px;position:relative}
+.jk-bar{position:absolute;left:0;top:2px;bottom:2px;width:3px;border-radius:2px}
+.jk-when b{font-family:var(--font-mono);font-size:14px;font-weight:600;color:var(--ink)}
+.jk-rel{font-size:12px;color:var(--ink-2)}
+.jk-vis{font-size:12px;color:var(--ink-3)}
+.jk-what{display:flex;flex-direction:column;gap:4px;min-width:0}
+.jk-mods{display:flex;gap:4px;flex-wrap:wrap}
+.jk-mod{font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;background:color-mix(in srgb,var(--c) 22%,transparent);color:var(--c);border:1px solid color-mix(in srgb,var(--c) 45%,transparent)}
+.jk-desc{font-size:14px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jk-meta{font-size:12px;color:var(--ink-3)}
+.jk-chk{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:2px}
+.jk-chk .vst{font-style:normal;font-size:11px;display:inline-flex;align-items:center;gap:4px;color:var(--typography-light)}
+.jk-chip{font-size:10px;font-weight:600;padding:1px 6px;border-radius:9px;border:1px solid;cursor:pointer;background:transparent}
+.jk-chip.ok{border-color:var(--ok-border);color:var(--ok-t)}.jk-chip.warn{border-color:var(--warn-border);color:var(--warn-t)}.jk-chip.bad{border-color:var(--bad-border);color:var(--bad-t);background:var(--bad-wash)}
+.jk-film{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;min-width:0}
+.jk-ser{display:flex;flex-direction:column;gap:3px;width:84px;flex:none}
+.jk-ser .tl-th{width:84px!important;height:84px!important}
+.jk-sl{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--ink-2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:100%}
+.jk-sl i{width:6px;height:6px;border-radius:2px;flex:none}
+.jk-sn{font-size:10px;color:var(--ink-3)}
+.jk-more{align-self:center;flex:none;font-size:12px;color:var(--primary-base);background:none;border:1px dashed var(--line);border-radius:8px;padding:8px 10px;cursor:pointer}
+.jk-act{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.jk-act .ibtn{height:28px;font-size:12px;padding:4px 10px}
+.jk-act .ibtn.on{border-color:var(--orange-base);color:var(--orange-base)}
+@media (max-width:1180px){.jk-row{grid-template-columns:170px 1fr auto}.jk-film{grid-column:1/-1;order:5}}
+/* compare */
+.cmp .card-h{border-bottom:1px solid var(--line-soft)}
+.cmp-grid{display:flex;flex-direction:column;gap:12px;padding:16px 20px}
+.cmp-hrow,.cmp-row{display:grid;grid-template-columns:1fr 72px 1fr;align-items:center;gap:12px}
+.cmp-h{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2)}
+.cmp-h b{color:var(--ink)}
+.cmp-arrow{text-align:center;color:var(--ink-3);font-size:18px}
+.cmp-cell{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px;border:1px solid var(--line-soft);border-radius:10px;background:var(--card-2)}
+.cmp-cell.none{min-height:120px;justify-content:center;color:var(--ink-3);font-size:12px;border-style:dashed;background:transparent}
+.cmp-cell .tl-th{max-width:100%}
+.cmp-m{text-align:center;font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em}
+.tl-dl.low{top:28px}.tl-dl.low::before{content:"";position:absolute;top:-30px;left:50%;height:26px;border-left:1px dotted var(--line-strong)}
+.tl-axrow.stag .tl-trk{height:88px}
 </style>
 
 </head>
@@ -602,9 +698,9 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.8.1";
+const VERSION = "subject-view-harness/0.9.0";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
+const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, ov: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
 
 const stLabel = v => ({ todo: "To Do", in_progress: "In Progress", complete: "Complete", completed: "Completed", failed: "Failed", pending: "Pending", running: "Running", cancelled: "Cancelled", blocked: "Blocked" })[v] || String(v || "").replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
@@ -1935,6 +2031,195 @@ document.addEventListener("mousemove", e => {
   box.innerHTML = R.visits[S.an.visit].organs[n] ? anReadout(n, radCell(R, S.an.visit, n, sig, S.an.cmp), sig) : `<b>${esc(orgLabel(n))}</b> <span class="muted">segmented, no features</span>`;
 });
 
+/* =====================================================================
+   v0.9.0: Overview "Timeline", a PACS-style longitudinal view of one patient.
+   Top: key image per study, tied to a proportional date axis. Middle: one lane per
+   modality plus reads and processing. Bottom: study list (newest first) with a series
+   filmstrip, and a prior-vs-current comparison. The old grid stays as "Checklist".
+   ===================================================================== */
+const MOD_ORDER = ["CT", "PT", "MR", "NM", "US", "MG", "CR", "DX", "XA", "RF", "Pathology", "OP", "OPT", "Video", "Derived", "Other"];
+const MOD_COL = { CT: "#5B9BFF", PT: "#FF8C00", MR: "#B080FC", NM: "#F5C04A", US: "#00CED1", MG: "#FF69B4", CR: "#9CCEF9", DX: "#9CCEF9", XA: "#66CDAA", RF: "#66CDAA", Pathology: "#F28B8B", OP: "#14AE5C", OPT: "#14AE5C", Video: "#FF6347", Derived: "#748295", Other: "#748295" };
+const MOD_NAME = { CT: "CT", PT: "PET", MR: "MR", NM: "Nuclear", US: "Ultrasound", MG: "Mammo", CR: "X-ray", DX: "X-ray", XA: "Angio", RF: "Fluoro", Pathology: "Pathology", OP: "Fundus", OPT: "OCT", Video: "Video", Derived: "Derived", Other: "Other" };
+const modCol = m => MOD_COL[m] || MOD_COL.Other;
+function tlMod(a) {
+  const fs = a.files || [], f = fs.find(x => x.modality) || fs.find(x => x.type === "dicom") || fs[0];
+  if (!f) return "Other";
+  const m = String(f.modality || "").toUpperCase();
+  if (m === "SM") return "Pathology";
+  if (m === "XC" || m === "ES") return "Video";
+  if (m && m !== "OT") return m === "PET" ? "PT" : m;
+  const e = extOf(f), t = String(f.type || "").toLowerCase();
+  if (/^(svs|tiff?|scn|bif|ndpi|qptiff|mrxs)$/.test(e) || /aperio|slide/.test(t)) return "Pathology";
+  if (/^(mp4|mov|avi|mkv|webm)$/.test(e) || t === "video") return "Video";
+  if (/nifti|mask|segmentation/.test(t) || /^(nii|nii\.gz|nrrd|mgz)$/.test(e)) return "Derived";
+  return m === "OT" ? "Other" : "Other";
+}
+const dcmH = f => { const i = (f && f.info) || {}; return (i.header && i.header.dicom) || i; };
+function tlRel(days) {
+  if (days === 0) return "Day 0";
+  const s = days < 0 ? "−" : "+", n = Math.abs(days);
+  if (n < 60) return `${s}${n} d`;
+  if (n < 730) return `${s}${Math.round(n / 30.44)} mo`;
+  return `${s}${(n / 365.25).toFixed(1)} y`;
+}
+const tlGap = n => n < 60 ? plural(n, "day") : n < 730 ? `${Math.round(n / 30.44)} months` : `${(n / 365.25).toFixed(1)} years`;
+const DAY = 864e5;
+const tlDate = z => { const t = Date.parse(z.timestamp || z.created || ""); return isFinite(t) ? t : null; };
+
+function tlStudies(s, d) {
+  const sess = subjSessions(s._id), dated = sess.filter(z => tlDate(z) != null);
+  const base = dated.find(z => /baseline/i.test(z.label || "")) || dated.find(z => /screen/i.test(z.label || "")) || dated[0];
+  const t0 = base ? Math.floor(tlDate(base) / DAY) : 0;
+  return sess.map(z => {
+    const as = d && d.acqs && !(d.acqErr || {})[z._id] ? (d.acqs[z._id] || []) : null, t = tlDate(z);
+    const series = (as || []).map(a => { const f = dicomFile(a) || (a.files || [])[0] || {}, h = dcmH(f); return { a, mod: tlMod(a), n: f.zip_member_count || null, desc: h.SeriesDescription || a.label, study: h.StudyDescription || null, body: h.BodyPartExamined || null }; });
+    const mods = MOD_ORDER.filter(m => series.some(x => x.mod === m));
+    const img = series.filter(x => thumbSource(x.a));
+    const prim = mods.find(m => m !== "Derived" && m !== "Other") || mods[0];
+    const LOC = /loc|scout|survey|topogram|surview|3.?plane|calib/i, rank = x => (LOC.test(x.desc || "") ? -1e6 : 0) + (x.n || 0);
+    const key = img.filter(x => x.mod === prim).sort((p, q) => rank(q) - rank(p))[0] || img[0] || null;
+    const st = sessStatus(z, s._id), day = t != null ? Math.floor(t / DAY) - t0 : null;
+    const study = (series.find(x => x.study) || {}).study, body = [...new Set(series.map(x => x.body).filter(Boolean))].join(", ");
+    return { z, id: z._id, t, day, rel: day == null ? "no date" : tlRel(day), date: t != null ? new Date(t).toISOString().slice(0, 10) : "—", series, mods, key, st, study, body, loaded: !!as };
+  });
+}
+
+function tlThumb(a, sz, cls) {
+  if (!a) return `<span class="tl-th ph none ${cls || ""}" style="width:${sz}px;height:${sz}px"><span>No image</span></span>`;
+  const st = S.thumbs[a._id] || { state: "idle" };
+  if (st.state === "idle") loadThumb(a).then(() => tlThumbDone(a));
+  if (st.state === "ok") return `<img class="tl-th ${cls || ""}" data-tlth="${a._id}" data-sz="${sz}" data-cls="${cls || ""}" style="width:${sz}px;height:${sz}px" src="${st.url}" alt="${esc(a.label)}" title="${esc(a.label)}${esc(thumbCaption(st))}">`;
+  const msg = st.state === "none" || st.state === "err" ? (st.note || "No preview") : "";
+  return `<span class="tl-th ph ${msg ? "none" : "ld"} ${cls || ""}" data-tlth="${a._id}" data-sz="${sz}" data-cls="${cls || ""}" style="width:${sz}px;height:${sz}px" title="${esc(msg)}">${msg ? `<span>${esc(msg.length > 26 ? msg.slice(0, 24) + "…" : msg)}</span>` : ""}</span>`;
+}
+function tlThumbDone(a) {
+  document.querySelectorAll(`#view [data-tlth="${CSS.escape(a._id)}"]`).forEach(n => { const t = document.createElement("template"); t.innerHTML = tlThumb(a, +n.dataset.sz, n.dataset.cls); n.replaceWith(t.content.firstElementChild); });
+}
+
+function tlTicks(lo, hi) {
+  const span = hi - lo, out = [], dd = new Date(lo);
+  const steps = [[1, "m"], [2, "m"], [3, "m"], [6, "m"], [12, "m"], [24, "m"], [60, "m"], [120, "m"]];
+  if (span < 75 * DAY) { const w = span < 21 * DAY ? 1 : 7; let x = Date.UTC(dd.getUTCFullYear(), dd.getUTCMonth(), dd.getUTCDate()); for (; x <= hi; x += w * DAY) if (x >= lo) out.push([x, new Date(x).toISOString().slice(5, 10)]); return out; }
+  const st = steps.find(([n]) => span / (n * 30.44 * DAY) <= 8) || steps[steps.length - 1];
+  let y = dd.getUTCFullYear(), m = Math.ceil(dd.getUTCMonth() / st[0]) * st[0];
+  for (let k = 0; k < 40; k++, m += st[0]) { const x = Date.UTC(y + Math.floor(m / 12), m % 12, 1); if (x > hi) break; if (x >= lo) { const D = new Date(x); out.push([x, st[0] >= 12 || D.getUTCMonth() === 0 ? String(D.getUTCFullYear()) : D.toLocaleString("en", { month: "short", timeZone: "UTC" })]); } }
+  return out;
+}
+
+function tlEnsure(s, list) {
+  const O = S.ov;
+  if (O.subj !== s._id) { S.ov = { subj: s._id, sel: null, cmp: null }; }
+  if (!S.ov.sel || !list.some(x => x.id === S.ov.sel)) { const dated = list.filter(x => x.t != null); S.ov.sel = (dated[dated.length - 1] || list[list.length - 1] || {}).id || null; }
+  if (S.ov.cmp && !list.some(x => x.id === S.ov.cmp)) S.ov.cmp = null;
+}
+function tlPrior(list, id) {
+  const i = list.findIndex(x => x.id === id), cur = list[i]; if (!cur) return null;
+  for (let j = i - 1; j >= 0; j--) if (list[j].mods.some(m => cur.mods.includes(m) && m !== "Derived" && m !== "Other")) return list[j];
+  return i > 0 ? list[i - 1] : null;
+}
+
+function ovMode() { if (S.ovMode) return S.ovMode; try { return localStorage.getItem("svh-ovmode") || "timeline"; } catch (e) { return "timeline"; } }
+function overviewTab(s, d) {
+  const m = ovMode();
+  const bar = `<div class="ov-bar"><span class="src" style="font-family:var(--font-ui)">${m === "timeline" ? "Every study for this patient on one time axis, newest study first in the list below." : "Visit-by-visit checks: required series, reads, jobs, queries, metadata."}</span><div class="an-seg sm" role="tablist" aria-label="Overview layout">${[["timeline", "Timeline"], ["grid", "Checklist"]].map(([k, l]) => `<button class="ibtn ${m === k ? "on" : ""}" role="tab" aria-selected="${m === k}" data-tl="mode:${k}">${l}</button>`).join("")}</div></div>`;
+  return bar + (m === "grid" ? matrix(s, d) : timeline(s, d));
+}
+
+function timeline(s, d) {
+  const list = tlStudies(s, d);
+  if (!list.length) return `<div class="card"><div class="empty-big">No studies for this subject yet.</div></div>`;
+  tlEnsure(s, list);
+  const O = S.ov, dated = list.filter(x => x.t != null), undated = list.filter(x => x.t == null);
+  const lo0 = dated.length ? dated[0].t : 0, hi0 = dated.length ? dated[dated.length - 1].t : 0, pad = Math.max(10 * DAY, (hi0 - lo0) * 0.04);
+  const lo = lo0 - pad, hi = hi0 + pad, X = t => ((t - lo) / (hi - lo || 1)) * 100;
+  const R = subjRollup(s._id), missing = R.cols.filter(c => c.v && !c.z).map(c => c.v.label);
+  const allMods = MOD_ORDER.filter(m => list.some(x => x.mods.includes(m)));
+  const n = dated.length, cardsW = Math.max(n * 132, 760);
+  const sel = list.find(x => x.id === O.sel), cmp = O.cmp && list.find(x => x.id === O.cmp);
+  const t = tasksForSubject(s._id) || [];
+  const tasksOf = id => t.filter(x => { const z = sessionOfTask(x, s._id); return z && z._id === id; });
+  const jobsOf = id => d && d.jobsOk ? d.jobs.filter(j => (j.parents && j.parents.session === id) || (j.destination && j.destination.id === id)) : [];
+  const span = dated.length > 1 ? Math.round((hi0 - lo0) / DAY) : 0;
+
+  /* key images: evenly spaced cards, each tied to its true date on the axis */
+  const cards = dated.map((x, i) => {
+    const on = x.id === O.sel, pr = cmp && x.id === cmp.id;
+    return `<button class="tl-card ${on ? "on" : ""} ${pr ? "pr" : ""}" style="left:${((i + 0.5) / n) * 100}%" data-tl="sel:${x.id}" aria-pressed="${on}" title="${esc(x.z.label)} · ${x.date}">
+      ${pr ? `<span class="tl-tag pr">Prior</span>` : on && cmp ? `<span class="tl-tag cur">Current</span>` : ""}
+      ${tlThumb(x.key && x.key.a, 96)}
+      <span class="tl-cl"><b>${esc(x.z.label)}</b><small>${x.mods.filter(m => m !== "Derived").map(m => `<i style="background:${modCol(m)}"></i>${esc(m)}`).join(" ") || "no images"}</small></span></button>`;
+  }).join("");
+  const leads = dated.map((x, i) => `<line x1="${((i + 0.5) / n) * 100}" y1="0" x2="${X(x.t)}" y2="40" class="${x.id === O.sel ? "on" : cmp && x.id === cmp.id ? "pr" : ""}" vector-effect="non-scaling-stroke"/>`).join("");
+  const ticks = tlTicks(lo, hi).map(([x, l]) => `<span class="tl-tick" style="left:${X(x)}%"><span>${esc(l)}</span></span>`).join("");
+  const dots = dated.map(x => `<button class="tl-dot ${x.st.k} ${x.id === O.sel ? "on" : ""} ${cmp && x.id === cmp.id ? "pr" : ""}" style="left:${X(x.t)}%" data-tl="sel:${x.id}" title="${esc(x.z.label)} · ${x.date} · ${esc(x.st.all || x.st.t)}"></button>`).join("");
+  /* stagger date labels that would collide (labels are ~76px wide on a track about cardsW px wide) */
+  const minGap = 80 / cardsW * 100; let lastX = -1e9, lastLow = true, stag = false;
+  const dlabs = dated.map(x => { const px = X(x.t), low = px - lastX < minGap ? !lastLow : false; if (low) stag = true; lastX = px; lastLow = low; return `<span class="tl-dl ${x.id === O.sel ? "on" : ""} ${low ? "low" : ""}" style="left:${px}%"><b>${esc(x.rel)}</b><small>${x.date}</small></span>`; }).join("");
+  const lane = (label, color, body, sub) => `<div class="tl-row"><div class="tl-gut"><i style="background:${color}"></i><span>${esc(label)}</span>${sub ? `<small>${esc(sub)}</small>` : ""}</div><div class="tl-trk">${body}</div></div>`;
+  const modLanes = allMods.map(m => {
+    const xs = dated.filter(x => x.mods.includes(m)), nser = xs.reduce((k, x) => k + x.series.filter(q => q.mod === m).length, 0);
+    return lane(MOD_NAME[m] || m, modCol(m), xs.map(x => { const k = x.series.filter(q => q.mod === m).length; return `<button class="tl-mk" style="left:${X(x.t)}%;--c:${modCol(m)}" data-tl="sel:${x.id}" title="${esc(x.z.label)} · ${k} ${esc(m)} series">${k > 1 ? k : ""}</button>`; }).join(""), nser + " series");
+  }).join("");
+  const readLane = t.length ? lane("Reads", "var(--warn)", dated.map(x => { const tt = tasksOf(x.id); if (!tt.length) return ""; const o = tt.filter(OPEN).length; return `<button class="tl-ev ${o ? "warn" : "ok"}" style="left:${X(x.t)}%" data-pane="${x.id}|tasks" title="${tt.length} reader task(s) · ${o} open">${o ? o + " open" : tt.length + " done"}</button>`; }).join("")) : "";
+  const jobLane = d && d.jobsOk && d.jobs.length ? lane("Processing", "var(--slate-base)", dated.map(x => { const jj = jobsOf(x.id); if (!jj.length) return ""; const f = openFail(jj).length; return `<button class="tl-ev ${f ? "bad" : "ok"}" style="left:${X(x.t)}%" data-pane="${x.id}|jobs" title="${jj.length} gear job(s)${f ? " · " + f + " failed" : ""}">${f ? f + " failed" : plural(jj.length, "job")}</button>`; }).join("")) : "";
+
+  const head = `<div class="card-h"><div style="display:flex;flex-direction:column;gap:2px"><h3>Patient timeline</h3><span class="src" style="font-family:var(--font-ui)">${plural(list.length, "study").replace("studys", "studies")}${span ? ` over ${tlGap(span)}` : ""} · ${dated.length ? `${dated[0].date} → ${dated[dated.length - 1].date}` : "no dates"}${missing.length ? ` · <b style="color:var(--warn-t)">expected, not received: ${esc(missing.join(", "))}</b>` : ""}${undated.length ? ` · ${undated.length} without a date` : ""}</span></div>
+    <span class="vlegend">${allMods.map(m => `<span><i class="vd" style="background:${modCol(m)}"></i>${esc(MOD_NAME[m] || m)}</span>`).join("")}</span></div>`;
+  const strip = dated.length ? `<div class="tl-scroll"><div class="tl" style="min-width:${cardsW + 132}px">
+      <div class="tl-row tl-top"><div class="tl-gut"></div><div class="tl-trk"><div class="tl-cards">${cards}</div><svg class="tl-leads" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">${leads}</svg></div></div>
+      <div class="tl-row tl-axrow ${stag ? "stag" : ""}"><div class="tl-gut"><span class="muted">Time</span></div><div class="tl-trk"><div class="tl-axis">${ticks}${dots}</div><div class="tl-dls">${dlabs}</div></div></div>
+      ${modLanes}${readLane}${jobLane}
+    </div></div>` : `<div class="empty-big" style="padding:24px">None of these sessions has a date, so they can't be placed on a time axis. They are listed below.</div>`;
+  return `<div class="card tl-card-wrap">${head}${strip}</div>${cmp && sel ? tlCompare(sel, cmp) : ""}${tlJacket(s, list, sel, cmp, tasksOf, jobsOf)}`;
+}
+
+function tlJacket(s, list, sel, cmp, tasksOf, jobsOf) {
+  const rows = list.slice().reverse().map(x => {
+    const on = sel && x.id === sel.id, pr = cmp && x.id === cmp.id, prior = tlPrior(list, x.id);
+    const shown = x.series.slice(0, 6), more = x.series.length - shown.length;
+    const nimg = x.series.reduce((k, q) => k + (q.n || 0), 0);
+    const tt = tasksOf(x.id), jj = jobsOf(x.id), f = openFail(jj).length, o = tt.filter(OPEN).length;
+    const film = !x.loaded ? `<span class="src">Loading series…</span>` : shown.length ? shown.map(q => `<div class="jk-ser" title="${esc(q.desc)}">${tlThumb(thumbSource(q.a) ? q.a : null, 72)}<span class="jk-sl"><i style="background:${modCol(q.mod)}"></i>${esc(q.desc)}</span><span class="jk-sn">${q.n ? plural(q.n, "image") : esc(q.mod)}</span></div>`).join("") + (more > 0 ? `<button class="jk-more" data-pane="${x.id}|">+${more} series</button>` : "") : `<span class="src">No series</span>`;
+    return `<div class="jk-row ${on ? "on" : ""} ${pr ? "pr" : ""}" data-tl="sel:${x.id}">
+      <div class="jk-when"><span class="jk-bar" style="background:${x.st.k && x.st.k !== "miss" ? `var(--${x.st.k})` : "var(--slate-focus)"}"></span><b>${x.date}</b><span class="jk-rel">${esc(x.rel)}${prior && x.day != null && prior.day != null ? ` · ${tlGap(x.day - prior.day)} after ${esc(prior.z.label)}` : ""}</span>${x.study ? `<span class="jk-vis">${esc(x.z.label)}</span>` : ""}${pr ? `<span class="tl-tag pr in">Prior</span>` : on && cmp ? `<span class="tl-tag cur in">Current</span>` : ""}</div>
+      <div class="jk-what"><div class="jk-mods">${x.mods.map(m => `<span class="jk-mod" style="--c:${modCol(m)}">${esc(m === "Pathology" || m === "Video" || m === "Derived" ? m : m)}</span>`).join("")}</div>
+        <div class="jk-desc">${esc(x.study || x.z.label)}</div>
+        <div class="jk-meta">${[x.body, plural(x.series.length, "series").replace("seriess", "series"), nimg ? plural(nimg, "image") : null].filter(Boolean).map(esc).join(" · ")}</div>
+        <div class="jk-chk"><em class="vst ${x.st.k}" title="${esc(x.st.all)}"><i class="vd ${x.st.k}"></i>${esc(x.st.t)}</em>${tt.length ? `<button class="jk-chip ${o ? "warn" : "ok"}" data-pane="${x.id}|tasks">${o ? o + " read" + (o > 1 ? "s" : "") + " open" : plural(tt.length, "read") + " done"}</button>` : ""}${jj.length ? `<button class="jk-chip ${f ? "bad" : "ok"}" data-pane="${x.id}|jobs">${f ? f + " failed" : plural(jj.length, "job")}</button>` : ""}</div></div>
+      <div class="jk-film">${film}</div>
+      <div class="jk-act">${prior ? `<button class="ibtn ${on && cmp && cmp.id === prior.id ? "on" : ""}" data-tl="cmp:${x.id}:${prior.id}" title="Side by side with ${esc(prior.z.label)} (${prior.date})">Compare with prior</button>` : `<span class="src">First study</span>`}<button class="ibtn" data-pane="${x.id}|">Details</button><a class="ibtn" href="${coreLink("sessions", x.id)}" target="_blank" rel="noopener">${ic("open")}Open</a></div>
+    </div>`;
+  }).join("");
+  return `<div class="card"><div class="card-h"><h3>Studies</h3><span class="src">Newest first · click a study to select it on the timeline</span></div><div class="jk">${rows}</div></div>`;
+}
+
+/* Prior vs current, series paired by modality then by label similarity. Middle slice of each series: not registered. */
+function tlCompare(cur, pri) {
+  const toks = s => new Set(String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").split(" ").filter(w => w && !/^\d+$/.test(w)));
+  const sim = (a, b) => { const A = toks(a), B = toks(b); if (!A.size || !B.size) return 0; let k = 0; A.forEach(w => { if (B.has(w)) k++; }); return k / (A.size + B.size - k); };
+  const used = new Set(), pairs = [];
+  cur.series.filter(q => q.mod !== "Derived").forEach(q => {
+    const c = pri.series.filter(p => !used.has(p.a._id) && p.mod === q.mod).map(p => [p, sim(p.desc, q.desc)]).sort((u, v) => v[1] - u[1])[0];
+    if (c) { used.add(c[0].a._id); pairs.push([c[0], q, c[1]]); } else pairs.push([null, q, 0]);
+  });
+  pri.series.filter(p => p.mod !== "Derived" && !used.has(p.a._id)).forEach(p => pairs.push([p, null, 0]));
+  const gap = cur.day != null && pri.day != null ? tlGap(Math.abs(cur.day - pri.day)) : "";
+  const side = (x, q) => q ? `<div class="cmp-cell">${tlThumb(thumbSource(q.a) ? q.a : null, 150)}<span class="jk-sl"><i style="background:${modCol(q.mod)}"></i>${esc(q.desc)}</span><span class="jk-sn">${q.n ? plural(q.n, "image") : esc(q.mod)}</span></div>` : `<div class="cmp-cell none"><span>No matching series in ${esc(x.z.label)}</span></div>`;
+  const hd = (x, k) => `<div class="cmp-h ${k}"><span class="tl-tag ${k} in">${k === "pr" ? "Prior" : "Current"}</span><b>${esc(x.z.label)}</b><span>${x.date} · ${esc(x.rel)}</span></div>`;
+  return `<div class="card cmp"><div class="card-h"><div style="display:flex;flex-direction:column;gap:2px"><h3>Compare</h3><span class="src" style="font-family:var(--font-ui)">${gap ? gap + " apart · " : ""}series paired by modality and description · middle slice of each series, not registered</span></div><button class="ibtn" data-tl="cmpoff">${ic("close")}Close</button></div>
+    <div class="cmp-grid"><div class="cmp-hrow">${hd(pri, "pr")}<span class="cmp-arrow">→</span>${hd(cur, "cur")}</div>
+    ${pairs.map(([p, q, sc]) => `<div class="cmp-row">${side(pri, p)}<span class="cmp-m" title="Label similarity">${p && q ? (sc >= .5 ? "match" : sc > 0 ? "likely" : "same modality") : ""}</span>${side(cur, q)}</div>`).join("")}</div></div>`;
+}
+
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-tl]"); if (!t) return;
+  const [k, a, b] = t.dataset.tl.split(":");
+  if (k === "mode") { S.ovMode = a; try { localStorage.setItem("svh-ovmode", a); } catch (er) {} render(); return; }
+  if (k === "sel") { if (e.target.closest("a,[data-pane]") && e.target.closest("[data-tl]") !== t) return; if (S.ov.sel === a) return; S.ov.sel = a; if (S.ov.cmp === a) S.ov.cmp = null; render(); return; }
+  if (k === "cmp") { e.stopPropagation(); const off = S.ov.sel === a && S.ov.cmp === b; S.ov.sel = a; S.ov.cmp = off ? null : b; render(); if (!off) { const c = document.querySelector(".card.cmp"); if (c) c.scrollIntoView({ block: "nearest", behavior: "smooth" }); } return; }
+  if (k === "cmpoff") { S.ov.cmp = null; render(); }
+});
+
 function render() {
   renderSide();
   const v = document.getElementById("view");
@@ -1943,7 +2228,7 @@ function render() {
   const s = S.subjects.find(x => x._id === S.subj);
   if (!s) { v.innerHTML = `<div class="card"><div class="empty-big">${S.subjects.length ? "Pick a subject." : "This project has no subjects yet."}</div></div>${S.tab === "diagnostics" ? diagTab() : ""}`; pane(); return; }
   const d = S.detail[s._id];
-  const body = { overview: () => matrix(s, d), anatomy: () => anatomyTab(s, d), tasks: () => tasksTab(s, d), queries: () => queriesTab(s, d), clinical: () => infoTab(s, d), diagnostics: diagTab }[S.tab]();
+  const body = { overview: () => overviewTab(s, d), anatomy: () => anatomyTab(s, d), tasks: () => tasksTab(s, d), queries: () => queriesTab(s, d), clinical: () => infoTab(s, d), diagnostics: diagTab }[S.tab]();
   v.innerHTML = header(s, d) + tabs() + body;
   const dl = document.getElementById("tagList"); if (dl && S.tagEdit) dl.innerHTML = knownTags().map(t => `<option value="${esc(t)}">`).join("");
   if (S.tagEdit) { const i = document.querySelector(`[data-tagin="${CSS.escape(S.tagEdit)}"]`); if (i && document.activeElement !== i) i.focus(); }
