@@ -714,6 +714,7 @@ select:focus{border-color:var(--primary-base)}
 .tl-gut span{max-width:none;flex:1 1 auto;min-width:0}
 .tl-gut small{flex:none;color:var(--ink-3)}
 .tl-row{grid-template-columns:150px 1fr}
+.tl-grp{min-height:22px}.tl-grp .tl-trk{height:22px}.tl-grp .tl-gut span{font-size:11px;color:var(--ink-3);font-weight:600}
 </style>
 
 </head>
@@ -743,7 +744,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.9.3";
+const VERSION = "subject-view-harness/0.9.4";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, ov: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -2237,17 +2238,24 @@ function timeline(s, d) {
   const dots = dated.map(x => `<button class="tl-dot ${x.st.k} ${x.id === O.sel ? "on" : ""} ${cmp && x.id === cmp.id ? "pr" : ""}" style="left:${X(x.t)}%" data-tl="sel:${x.id}" title="${esc(x.z.label)} · ${x.date} · ${esc(x.st.all || x.st.t)}"></button>`).join("");
   const multi = allMods.filter(m => m !== "Derived").length > 1;
   const lane = (label, color, body, sub) => `<div class="tl-row"><div class="tl-gut"><i style="background:${color}"></i><span>${esc(label)}</span>${sub ? `<small>${esc(sub)}</small>` : ""}</div><div class="tl-trk">${body}</div></div>`;
-  const modLanes = multi ? allMods.map(m => {
-    const xs = dated.filter(x => x.mods.includes(m)), nser = xs.reduce((k, x) => k + x.series.filter(q => q.mod === m).length, 0);
-    return lane(MOD_NAME[m] || m, modCol(m), xs.map(x => { const k = x.series.filter(q => q.mod === m).length; return `<button class="tl-mk" style="left:${X(x.t)}%;--c:${modCol(m)}" data-tl="sel:${x.id}" title="${esc(x.z.label)} · ${k} ${esc(m)} series">${k > 1 ? k : ""}</button>`; }).join(""), nser + " series");
-  }).join("") : "";
-  /* one modality, several protocols: a lane per primary protocol family, hollow where a visit lacks it */
-  const famNames = [], famSeen = new Map();
-  dated.forEach(x => x.fams.filter(F => F.role === "primary").forEach(F => { const k = F.name.toLowerCase(); if (!famSeen.has(k)) { famSeen.set(k, F); famNames.push(k); } }));
-  const protoLanes = !multi && famNames.length > 1 ? famNames.slice(0, 8).map(k => {
-    const F0 = famSeen.get(k), has = dated.filter(x => x.fams.some(F => F.role === "primary" && F.name.toLowerCase() === k)), loaded = dated.filter(x => x.loaded);
-    return lane(F0.name, modCol(F0.mod), loaded.map(x => { const F = x.fams.find(G => G.role === "primary" && G.name.toLowerCase() === k); return F ? `<button class="tl-mk" style="left:${X(x.t)}%;--c:${modCol(F.mod)}" data-tl="sel:${x.id}" title="${esc(x.z.label)} · ${esc(F.name)} · ${plural(F.runs.length, "run")}">${F.runs.length > 1 ? F.runs.length : ""}</button>` : `<span class="tl-mk miss" style="left:${X(x.t)}%" title="${esc(x.z.label)}: no ${esc(F0.name)}"></span>`; }).join(""), `${has.length}/${loaded.length}`);
-  }).join("") + (famNames.length > 8 ? lane(`+${famNames.length - 8} more protocols`, "var(--ink-3)", "", "see the study list") : "") : "";
+  /* lanes: per modality; a modality with several protocols across visits gets one lane per protocol family
+     (hollow where a visit that has that modality lacks the protocol), otherwise a single modality lane */
+  const modLanes = "", loaded = dated.filter(x => x.loaded);
+  const protoLanes = allMods.filter(m => m !== "Derived").map(m => {
+    const names = [], seen = new Map();
+    dated.forEach(x => x.fams.filter(F => F.role === "primary" && F.mod === m).forEach(F => { const k = F.name.toLowerCase(); if (!seen.has(k)) { seen.set(k, F); names.push(k); } }));
+    const withM = loaded.filter(x => x.mods.includes(m));
+    if (names.length <= 1) {
+      if (!multi) return "";
+      const nser = withM.reduce((k, x) => k + x.series.filter(q => q.mod === m).length, 0);
+      return lane(MOD_NAME[m] || m, modCol(m), withM.map(x => { const k = x.series.filter(q => q.mod === m).length; return `<button class="tl-mk" style="left:${X(x.t)}%;--c:${modCol(m)}" data-tl="sel:${x.id}" title="${esc(x.z.label)} · ${k} ${esc(m)} series">${k > 1 ? k : ""}</button>`; }).join(""), plural(nser, "series").replace("seriess", "series"));
+    }
+    const cap = 8;
+    return (multi ? `<div class="tl-row tl-grp"><div class="tl-gut"><span>${esc(MOD_NAME[m] || m)} protocols</span></div><div class="tl-trk"></div></div>` : "") + names.slice(0, cap).map(k => {
+      const F0 = seen.get(k), has = withM.filter(x => x.fams.some(F => F.role === "primary" && F.mod === m && F.name.toLowerCase() === k)).length;
+      return lane(F0.name, modCol(m), withM.map(x => { const F = x.fams.find(G => G.role === "primary" && G.mod === m && G.name.toLowerCase() === k); return F ? `<button class="tl-mk" style="left:${X(x.t)}%;--c:${modCol(m)}" data-tl="sel:${x.id}" title="${esc(x.z.label)} · ${esc(F.name)} · ${plural(F.runs.length, "run")}">${F.runs.length > 1 ? F.runs.length : ""}</button>` : `<span class="tl-mk miss" style="left:${X(x.t)}%" title="${esc(x.z.label)}: no ${esc(F0.name)}"></span>`; }).join(""), `${has}/${withM.length}`);
+    }).join("") + (names.length > cap ? lane(`+${names.length - cap} more`, "var(--ink-3)", "", "") : "");
+  }).join("");
   requestAnimationFrame(tlLayout);
 
   const head = `<div class="card-h"><div style="display:flex;flex-direction:column;gap:2px"><h3>Patient timeline</h3><span class="src" style="font-family:var(--font-ui)">${plural(list.length, "study").replace("studys", "studies")}${span ? ` over ${tlGap(span)}` : ""} · ${dated.length ? `${dated[0].date} → ${dated[dated.length - 1].date}` : "no dates"}${missing.length ? ` · <b style="color:var(--warn-t)">expected, not received: ${esc(missing.join(", "))}</b>` : ""}${undated.length ? ` · ${undated.length} without a date` : ""}</span></div>
