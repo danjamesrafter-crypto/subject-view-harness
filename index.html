@@ -744,7 +744,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.10.0";
+const VERSION = "subject-view-harness/0.10.1";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, ov: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -2355,7 +2355,7 @@ document.addEventListener("click", e => {
 });
 
 /* =====================================================================
-   v0.10.0: thumbnails from the session-thumbnails gear (fw.thumbnails/1).
+   v0.10.0: thumbnails from the session-thumbnails gear (fw.thumbnails/1). v0.10.1: also reads gear output on acquisitions (gear-rule runs).
    Per session: newest session-thumbnails analysis -> thumbs.json + thumbs.jpg (two requests), cells cropped to
    data URLs. A thumbnail is used only if its source file is unchanged since the gear ran (same file id and
    modified time); otherwise, or with no gear output, the app renders in the browser as before.
@@ -2370,15 +2370,15 @@ function gthSessionOf(a) {
   return null;
 }
 
-async function gthLoadSession(sid) {
-  const t0 = performance.now();
-  const ans = listOf(await api(`/api/sessions/${sid}/analyses`, null, { soft: true }) || []);
-  const an = ans.filter(x => ((x.gear_info || {}).name === GTH_GEAR) && (x.files || []).some(f => f.name === "thumbs.json") && (x.files || []).some(f => f.name === "thumbs.jpg"))
-    .sort((p, q) => String(q.created).localeCompare(String(p.created)))[0];
-  if (!an) { GTH.stats.none++; return null; }
+function gthAcqsOf(sid) {
+  for (const d of Object.values(S.detail)) if (d && d.acqs && d.acqs[sid]) return d.acqs[sid];
+  return [];
+}
+
+async function gthLoadAnalysis(an, sid) {
   const ref = f => ({ ...f, file_id: f.file_id || f._id, parent_ref: { type: "analysis", id: an._id }, parents: { ...(an.parents || {}), analysis: an._id } });
   const fj = an.files.find(f => f.name === "thumbs.json"), fs = an.files.find(f => f.name === "thumbs.jpg");
-  const [jb, sb] = await Promise.all([sdk(`SDK getFileBlob thumbs.json (${sid.slice(-6)})`, () => S.ext.getFileBlob(ref(fj))), sdk(`SDK getFileBlob thumbs.jpg (${sid.slice(-6)})`, () => S.ext.getFileBlob(ref(fs)))]);
+  const [jb, sb] = await Promise.all([sdk(`SDK getFileBlob thumbs.json (${an._id.slice(-6)})`, () => S.ext.getFileBlob(ref(fj))), sdk(`SDK getFileBlob thumbs.jpg (${an._id.slice(-6)})`, () => S.ext.getFileBlob(ref(fs)))]);
   const idx = JSON.parse(await jb.text());
   if (idx.schema !== "fw.thumbnails/1") throw new Error("unknown thumbnail schema " + idx.schema);
   const bmp = await createImageBitmap(sb);
@@ -2390,8 +2390,30 @@ async function gthLoadSession(sid) {
     cv.getContext("2d").drawImage(bmp, x, y, w, h, 0, 0, w, h);
     (cells[it.acquisition_id] = cells[it.acquisition_id] || []).push({ ...it, url: cv.toDataURL("image/jpeg", 0.9) });
   }
+  return { an, idx, cells, bytes: (fs.size || 0) + (fj.size || 0) };
+}
+
+/* Gear output can sit on the session (run by hand or by batch) or on an acquisition (run by a gear rule on one series).
+   Take the newest session-level analysis and the newest per acquisition; per acquisition, the newest that covers it wins. */
+async function gthLoadSession(sid) {
+  const t0 = performance.now();
+  const isThumbs = x => ((x.gear_info || {}).name === GTH_GEAR) && (x.files || []).some(f => f.name === "thumbs.json") && (x.files || []).some(f => f.name === "thumbs.jpg");
+  const newest = xs => xs.filter(isThumbs).sort((p, q) => String(q.created).localeCompare(String(p.created)))[0];
+  const acqs = gthAcqsOf(sid);
+  const [sesAns, ...acqAns] = await Promise.all([
+    api(`/api/sessions/${sid}/analyses`, null, { soft: true }),
+    ...acqs.map(a => api(`/api/acquisitions/${a._id}/analyses`, null, { soft: true }))]);
+  const picks = [newest(listOf(sesAns || [])), ...acqAns.map(x => newest(listOf(x || [])))].filter(Boolean);
+  if (!picks.length) { GTH.stats.none++; return null; }
+  const loaded = await Promise.all(picks.map(an => gthLoadAnalysis(an, sid)));
+  const cells = {}, when = {};
+  for (const L of loaded) for (const [aid, cs] of Object.entries(L.cells)) {
+    if (!when[aid] || String(L.an.created) > when[aid]) { cells[aid] = cs; when[aid] = String(L.an.created); }
+  }
   GTH.stats.sessions++;
-  const out = { an, idx, cells, ms: Math.round(performance.now() - t0), bytes: (fs.size || 0) + (fj.size || 0) };
+  const top = loaded.slice().sort((p, q) => String(q.an.created).localeCompare(String(p.an.created)))[0];
+  const out = { an: top.an, idx: top.idx, cells, ms: Math.round(performance.now() - t0), bytes: loaded.reduce((k, L) => k + L.bytes, 0),
+    sources: { session: loaded.filter(L => (L.idx.scope || "session") === "session").length, acquisition: loaded.filter(L => L.idx.scope === "acquisition").length } };
   GTH.idx[sid] = out;
   return out;
 }
@@ -2450,6 +2472,7 @@ function gthDiag() {
   const kb = sess.reduce((k, x) => k + (x.bytes || 0), 0) / 1024;
   return `<div class="card"><div class="card-h"><h3>Thumbnail source</h3><span class="src">session-thumbnails gear first, browser rendering as fallback</span></div><div class="card-b" style="font-size:13px;color:var(--ink-2);display:flex;flex-direction:column;gap:4px">
     <span>${sess.length} session${sess.length === 1 ? "" : "s"} with gear output (${kb.toFixed(0)} KB fetched${ms != null ? `, all gear thumbnails ready ${ms} ms after the first request` : ""}) · ${s.used} thumbnails from the gear · ${s.stale} stale (file changed since the gear ran) · ${s.none} session${s.none === 1 ? "" : "s"} without gear output${s.failed ? ` · <b style="color:var(--bad-t)">${s.failed} failed</b>` : ""}</span>
+    ${sess.length ? `<span>Gear outputs read: ${sess.reduce((k, x) => k + ((x.sources || {}).session || 0), 0)} on sessions (batch or manual) · ${sess.reduce((k, x) => k + ((x.sources || {}).acquisition || 0), 0)} on acquisitions (gear rule)</span>` : ""}
     <span>Browser-rendered this launch: ${TC.misses} downloaded and rendered · ${TC.hits} from this browser's cache.</span>
     ${sess.length ? `<span class="src">Gear ${esc((sess[0].idx.gear || {}).version || "?")} · profile ${esc((sess[0].idx.profile || {}).source || "?")}${(sess[0].idx.profile || {}).file ? " " + esc(sess[0].idx.profile.file) : ""} · sha256 ${esc(((sess[0].idx.profile || {}).sha256 || "").slice(0, 12))}</span>` : ""}
   </div></div>`;
