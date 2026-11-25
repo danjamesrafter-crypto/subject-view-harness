@@ -669,6 +669,7 @@ select:focus{border-color:var(--primary-base)}
 .cmp-m{text-align:center;font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em}
 .tl-dl.low{top:28px}.tl-dl.low::before{content:"";position:absolute;top:-30px;left:50%;height:26px;border-left:1px dotted var(--line-strong)}
 .tl-axrow.stag .tl-trk{height:88px}
+.tl-ev.c{min-width:18px;padding:0 4px;text-align:center}
 </style>
 
 </head>
@@ -698,7 +699,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.9.0";
+const VERSION = "subject-view-harness/0.9.1";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, ov: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -2160,8 +2161,11 @@ function timeline(s, d) {
     const xs = dated.filter(x => x.mods.includes(m)), nser = xs.reduce((k, x) => k + x.series.filter(q => q.mod === m).length, 0);
     return lane(MOD_NAME[m] || m, modCol(m), xs.map(x => { const k = x.series.filter(q => q.mod === m).length; return `<button class="tl-mk" style="left:${X(x.t)}%;--c:${modCol(m)}" data-tl="sel:${x.id}" title="${esc(x.z.label)} · ${k} ${esc(m)} series">${k > 1 ? k : ""}</button>`; }).join(""), nser + " series");
   }).join("");
-  const readLane = t.length ? lane("Reads", "var(--warn)", dated.map(x => { const tt = tasksOf(x.id); if (!tt.length) return ""; const o = tt.filter(OPEN).length; return `<button class="tl-ev ${o ? "warn" : "ok"}" style="left:${X(x.t)}%" data-pane="${x.id}|tasks" title="${tt.length} reader task(s) · ${o} open">${o ? o + " open" : tt.length + " done"}</button>`; }).join("")) : "";
-  const jobLane = d && d.jobsOk && d.jobs.length ? lane("Processing", "var(--slate-base)", dated.map(x => { const jj = jobsOf(x.id); if (!jj.length) return ""; const f = openFail(jj).length; return `<button class="tl-ev ${f ? "bad" : "ok"}" style="left:${X(x.t)}%" data-pane="${x.id}|jobs" title="${jj.length} gear job(s)${f ? " · " + f + " failed" : ""}">${f ? f + " failed" : plural(jj.length, "job")}</button>`; }).join("")) : "";
+  const tight = xs => xs.map((x, i) => i > 0 && X(x.t) - X(xs[i - 1].t) < minGap * 0.9);
+  const rT = tight(dated.filter(x => tasksOf(x.id).length)), jT = tight(dated.filter(x => jobsOf(x.id).length));
+  let ri = -1, ji = -1;
+  const readLane = t.length ? lane("Reads", "var(--warn)", dated.map(x => { const tt = tasksOf(x.id); if (!tt.length) return ""; const o = tt.filter(OPEN).length, c = rT[++ri] || rT[ri + 1]; return `<button class="tl-ev ${o ? "warn" : "ok"} ${c ? "c" : ""}" style="left:${X(x.t)}%" data-pane="${x.id}|tasks" title="${tt.length} reader task(s) · ${o} open">${c ? (o || tt.length) : o ? o + " open" : tt.length + " done"}</button>`; }).join("")) : "";
+  const jobLane = d && d.jobsOk && d.jobs.length ? lane("Processing", "var(--slate-base)", dated.map(x => { const jj = jobsOf(x.id); if (!jj.length) return ""; const f = openFail(jj).length, c = jT[++ji] || jT[ji + 1]; return `<button class="tl-ev ${f ? "bad" : "ok"} ${c ? "c" : ""}" style="left:${X(x.t)}%" data-pane="${x.id}|jobs" title="${jj.length} gear job(s)${f ? " · " + f + " failed" : ""}">${c ? (f || jj.length) : f ? f + " failed" : plural(jj.length, "job")}</button>`; }).join("")) : "";
 
   const head = `<div class="card-h"><div style="display:flex;flex-direction:column;gap:2px"><h3>Patient timeline</h3><span class="src" style="font-family:var(--font-ui)">${plural(list.length, "study").replace("studys", "studies")}${span ? ` over ${tlGap(span)}` : ""} · ${dated.length ? `${dated[0].date} → ${dated[dated.length - 1].date}` : "no dates"}${missing.length ? ` · <b style="color:var(--warn-t)">expected, not received: ${esc(missing.join(", "))}</b>` : ""}${undated.length ? ` · ${undated.length} without a date` : ""}</span></div>
     <span class="vlegend">${allMods.map(m => `<span><i class="vd" style="background:${modCol(m)}"></i>${esc(MOD_NAME[m] || m)}</span>`).join("")}</span></div>`;
