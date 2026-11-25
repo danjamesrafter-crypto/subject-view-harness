@@ -766,7 +766,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.11.0";
+const VERSION = "subject-view-harness/0.11.1";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, ov: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -2470,7 +2470,10 @@ loadThumb = function (a) {
     if (cands && cands.length) {
       const it = cands.find(c => c.view === "key") || cands[0];
       const f = (a.files || []).find(x => (x.file_id || x._id) === it.file_id);
-      if (f && (!it.file_modified || !f.modified || it.file_modified === f.modified)) {
+      /* v0.11.1: stale = content changed. Prefer the file hash: metadata-only updates (file-metadata-importer, file-classifier,
+         tags) bump `modified` but not the content. Fall back to `modified` when either side has no hash. */
+      const same = f && (it.file_hash && f.hash ? it.file_hash === f.hash : (!it.file_modified || !f.modified || it.file_modified === f.modified));
+      if (same) {
         st.state = "ok"; st.url = it.url;
         st.meta = { kind: "gear", picker: it.picker, plane: it.plane, slice: it.slice, slices: it.slices, view: it.view, gear: g.idx.gear && g.idx.gear.version, views: cands.length };
         GTH.stats.used++; GTH.stats.ms.push(Math.round(performance.now() - GTH.t0));
