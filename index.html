@@ -715,6 +715,28 @@ select:focus{border-color:var(--primary-base)}
 .tl-gut small{flex:none;color:var(--ink-3)}
 .tl-row{grid-template-columns:150px 1fr}
 .tl-grp{min-height:22px}.tl-grp .tl-trk{height:22px}.tl-grp .tl-gut span{font-size:11px;color:var(--ink-3);font-weight:600}
+/* 0.11.0 technique / comparability */
+.tl-tc{font-size:10px;font-weight:600;padding:0 5px;border-radius:8px;line-height:14px;border:1px solid;white-space:nowrap}
+.tl-tc.ok{color:var(--ok-t);border-color:var(--ok-border)}
+.tl-tc.info{color:var(--info-t);border-color:var(--info-border)}
+.tl-tc.warn{color:var(--warn-t);border-color:var(--warn-border);background:var(--warn-wash,transparent)}
+.tl-tc.ref{color:var(--ink-2);border-color:var(--slate-focus,var(--ink-3));border-style:dashed}
+.tl-tc.none{color:var(--ink-3);border-color:var(--ink-3);border-style:dotted}
+.jk-tech{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:2px 0}
+.jk-tech.sm{margin-top:4px;justify-content:center}
+.jk-tech .tk{font-size:11px;color:var(--ink-2);background:var(--card-header,rgba(127,127,127,.08));border-radius:4px;padding:0 5px;line-height:16px;white-space:nowrap}
+.jk-tech.sm .tk{font-size:10px}
+.jk-tech .tk.warn{color:var(--warn-t);background:var(--warn-wash,transparent);outline:1px solid var(--warn-border)}
+.jk-tech .tk.info{color:var(--info-t);outline:1px dashed var(--info-border)}
+.jk-tech .tk.none{color:var(--ink-3);background:transparent;font-style:italic}
+.jk-tech .tk-ref{font-size:11px;color:var(--ink-3);margin-left:2px}
+.jk-tech .tk-ref.warn{color:var(--warn-t)}.jk-tech .tk-ref.ok{color:var(--ok-t)}
+.cmp-warn{display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--warn-t);background:var(--warn-wash,transparent);border:1px solid var(--warn-border);border-radius:8px;padding:8px 10px;margin:4px 0 8px}
+.cmp-warn span{color:var(--ink-2)}
+.tl-sc{white-space:nowrap}
+.tl-chips{flex-wrap:wrap;row-gap:3px;max-height:34px}
+.tl-top .tl-trk{height:228px}
+.tl-cards{height:198px}
 </style>
 
 </head>
@@ -744,7 +766,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.10.1";
+const VERSION = "subject-view-harness/0.11.0";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, ov: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -1207,7 +1229,7 @@ function infoTab(s, d) {
 function diagTab() {
   setTimeout(() => tcCount().then(n => { const e = document.getElementById("tcN"); if (e) e.textContent = n == null ? "storage unavailable" : n + " stored"; }), 0);
   const ok = S.calls.filter(c => c.status === "ok").length, er = S.calls.filter(c => c.status === "error").length;
-  return aboutCard() + gthDiag() + `<div class="card diag"><div class="card-h"><h3>Diagnostics</h3><span class="src">${VERSION} · ${ok} ok · ${er} failed · newest first · GET + SDK tag/info writes</span></div>
+  return aboutCard() + gthDiag() + techDiag() + `<div class="card diag"><div class="card-h"><h3>Diagnostics</h3><span class="src">${VERSION} · ${ok} ok · ${er} failed · newest first · GET + SDK tag/info writes</span></div>
     <div class="card-b" style="font-size:13px;color:var(--ink-2)">Origin <span class="mono">${esc(S.origin || "unknown")}</span> · user <span class="mono">${esc(S.user ? S.user._id : "?")}</span> · opened from <span class="mono">${esc(S.opener ? (S.opener.container_type || "?") + " " + (S.opener._id || "") : "?")}</span> · project <span class="mono">${esc(S.projectId || "?")}</span></div>
     <div class="card-b" style="font-size:13px;color:var(--ink-2);display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span>Thumbnail cache on this device: <b id="tcStat">${tcOn() ? "on" : "off"}</b> · <span class="mono">${TC.hits} hits · ${TC.misses} misses this session${TC.err ? " · storage " + esc(TC.err) : ""}</span> · <span id="tcN" class="mono"></span></span><button class="ibtn" data-act="tctoggle">${tcOn() ? "Turn off" : "Turn on"}</button><button class="ibtn" data-act="tcclear">Clear thumbnails and anatomy maps</button><span class="src" style="font-family:var(--font-ui);flex-basis:100%">Rendered middle slices (newest 400) and anatomy maps built from segmentations (newest 60, ${SC.hits} hits · ${SC.misses} misses this session) are kept in this browser for 14 days so they appear instantly next launch. Both are derived from your data: turn this off on shared machines.</span></div>
     ${schedule().length || (S.project && (S.project.templates || S.project.template)) ? `<div class="card-b"><div class="src" style="font-family:var(--font-ui);margin-bottom:6px">Session templates as read from project.templates (${schedule().length} parsed)</div><pre>${esc(JSON.stringify(S.project.templates || S.project.template, null, 2).slice(0, 4000))}</pre></div>` : `<div class="card-b src" style="font-family:var(--font-ui)">No session templates on this project (project.templates is empty).</div>`}
@@ -1861,6 +1883,7 @@ function aboutCard() {
     ["Flywheel Vision Design System", "vision-react tokens + icon font", "UI", "https://claude.ai/artifact/VWFDvStzgRxSSJzChTnXt9"],
     ["dicom-parser", "1.8.21", "Series thumbnails", "https://github.com/cornerstonejs/dicomParser"],
     ["TotalSegmentator", (ts.version || RAD_ASSUMED.ts) + (src ? "" : " · assumed"), "Organ masks (Anatomy tab)", "https://github.com/wasserth/TotalSegmentator"],
+    ["file-metadata-importer + file-classifier", "as installed on the site", "Acquisition technique and comparability checks (Overview timeline, Compare)", "https://gitlab.com/flywheel-io/flywheel-apps/file-metadata-importer"],
     ["session-thumbnails gear", (Object.values(GTH.idx).find(x => x && x.idx) || { idx: { gear: { version: "not run on these sessions" } } }).idx.gear.version, "Series thumbnails (fw.thumbnails/1 index + sprite), browser rendering as fallback", "https://github.com/danjamesrafter-crypto/subject-view-harness/tree/main/gears/session-thumbnails"],
     ["PyRadiomics", (pr.version || RAD_ASSUMED.pr) + (src ? "" : " · assumed"), "Features per organ (Anatomy tab)", "https://pyradiomics.readthedocs.io/en/latest/features.html"]
   ];
@@ -2235,7 +2258,8 @@ function timeline(s, d) {
     const on = x.id === O.sel, pr = cmp && x.id === cmp.id, tt = tasksOf(x.id), jj = jobsOf(x.id), f = openFail(jj).length, o = tt.filter(OPEN).length;
     const chips = [
       x.mods.filter(m => m !== "Derived").map(m => `<span class="tl-mc" style="--c:${modCol(m)}">${esc(m)}</span>`).join(""),
-      f ? `<span class="tl-sc bad" title="${jj.length} gear job(s), ${f} failed">${f} failed</span>` : o ? `<span class="tl-sc warn" title="${tt.length} reader task(s), ${o} open">${o} open</span>` : ""].join("");
+      f ? `<span class="tl-sc bad" title="${jj.length} gear job(s), ${f} failed">${f} failed</span>` : o ? `<span class="tl-sc warn" title="${tt.length} reader task(s), ${o} open">${o} open</span>` : "",
+      techChip(techStudy(list, x))].join("");
     return `<button class="tl-card ${on ? "on" : ""} ${pr ? "pr" : ""}" style="left:${P(x)}%" data-x="${P(x)}" data-tl="sel:${x.id}" aria-pressed="${on}" title="${esc(x.z.label)} · ${x.date} · ${esc(x.st.all || x.st.t)}">
       ${pr ? `<span class="tl-tag pr">Prior</span>` : on && cmp ? `<span class="tl-tag cur">Current</span>` : ""}
       ${tlThumb(x.key && x.key.a, 104)}
@@ -2318,6 +2342,7 @@ function tlJacket(s, list, sel, cmp, tasksOf, jobsOf) {
       <div class="jk-what"><div class="jk-mods">${x.mods.map(m => `<span class="jk-mod" style="--c:${modCol(m)}">${esc(m === "Pathology" || m === "Video" || m === "Derived" ? m : m)}</span>`).join("")}</div>
         <div class="jk-desc">${esc(x.study || x.z.label)}</div>
         <div class="jk-meta">${[x.body, plural(x.series.length, "series").replace("seriess", "series") + (x.fams.length < x.series.length ? " in " + plural(prim.length || x.fams.length, "protocol") : ""), nimg ? plural(nimg, "image") : null].filter(Boolean).map(esc).join(" · ")}</div>
+        ${(T1 => T1.state === "ok" ? `<div class="jk-tech">${techLine(T1.T, T1.diffs.concat(T1.notes))}${T1.isRef ? `<span class="tk-ref">reference</span>` : T1.ref && T1.rt ? (w => w.length ? `<span class="tk-ref warn" title="${esc(w.map(d => d.msg).join("\n"))}">≠ ${esc(T1.ref.z.label)}: ${esc(w.map(d => d.msg).join("; "))}</span>` : `<span class="tk-ref ok">comparable with ${esc(T1.ref.z.label)}</span>`)(T1.diffs.filter(d => d.sev === "warn").concat(T1.notes)) : ""}</div>` : T1.state === "noheader" ? `<div class="jk-tech"><span class="tk none">No header metadata on the key series</span></div>` : "")(techStudy(list, x))}
         <div class="jk-chk"><em class="vst ${x.st.k}" title="${esc(x.st.all)}"><i class="vd ${x.st.k}"></i>${esc(x.st.t)}</em>${tt.length ? `<button class="jk-chip ${o ? "warn" : "ok"}" data-pane="${x.id}|tasks">${o ? o + " read" + (o > 1 ? "s" : "") + " open" : plural(tt.length, "read") + " done"}</button>` : ""}${jj.length ? `<button class="jk-chip ${f ? "bad" : "ok"}" data-pane="${x.id}|jobs">${f ? f + " failed" : plural(jj.length, "job")}</button>` : ""}</div></div>
       <div class="jk-film">${film}</div>
       <div class="jk-act">${prior ? `<button class="ibtn ${on && cmp && cmp.id === prior.id ? "on" : ""}" data-tl="cmp:${x.id}:${prior.id}" title="Side by side with ${esc(prior.z.label)} (${prior.date})">Compare with prior</button>` : `<span class="src">First study</span>`}<button class="ibtn" data-pane="${x.id}|">Details</button><a class="ibtn" href="${coreLink("sessions", x.id)}" target="_blank" rel="noopener">${ic("open")}Open</a></div>
@@ -2337,11 +2362,15 @@ function tlCompare(cur, pri) {
   });
   P.filter(p => !used.has(p.key)).forEach(p => pairs.push([p, null, 0]));
   const gap = cur.day != null && pri.day != null ? tlGap(Math.abs(cur.day - pri.day)) : "";
-  const side = (x, F) => F ? `<div class="cmp-cell">${tlThumb(F.rep && thumbSource(F.rep.a) ? F.rep.a : null, 150)}<span class="jk-sl"><i style="background:${modCol(F.mod)}"></i>${esc(F.name)}${F.runs.length > 1 ? ` ×${F.runs.length}` : ""}</span><span class="jk-sn">${F.n ? plural(F.n, "image") : esc(F.mod)}</span></div>` : `<div class="cmp-cell none"><span>No matching series in ${esc(x.z.label)}</span></div>`;
+  const tOf = F => { const a = F && F.rep && F.rep.a; if (!a) return null; techNeed(a); const r = techOf(a); return r && r.state === "ok" ? r.t : null; };
+  const pd = new Map(pairs.map(([p, q]) => [q || p, p && q ? techDiff(tOf(p), tOf(q)) : []]));
+  const side = (x, F, other) => F ? `<div class="cmp-cell">${tlThumb(F.rep && thumbSource(F.rep.a) ? F.rep.a : null, 150)}<span class="jk-sl"><i style="background:${modCol(F.mod)}"></i>${esc(F.name)}${F.runs.length > 1 ? ` ×${F.runs.length}` : ""}</span><span class="jk-sn">${F.n ? plural(F.n, "image") : esc(F.mod)}</span>${(T => T ? `<span class="jk-tech sm">${techLine(T, other ? pd.get(other) : [])}</span>` : "")(tOf(F))}</div>` : `<div class="cmp-cell none"><span>No matching series in ${esc(x.z.label)}</span></div>`;
+  const dsum = pairs.filter(([p, q]) => p && q).flatMap(([p, q]) => pd.get(q).filter(d => d.sev === "warn").map(d => `${q.name}: ${d.msg}`));
   const hd = (x, k) => `<div class="cmp-h ${k}"><span class="tl-tag ${k} in">${k === "pr" ? "Prior" : "Current"}</span><b>${esc(x.z.label)}</b><span>${x.date} · ${esc(x.rel)}</span></div>`;
-  return `<div class="card cmp"><div class="card-h"><div style="display:flex;flex-direction:column;gap:2px"><h3>Compare</h3><span class="src" style="font-family:var(--font-ui)">${gap ? gap + " apart · " : ""}protocols paired by name and type · support series hidden · middle slice of each series, not registered</span></div><button class="ibtn" data-tl="cmpoff">${ic("close")}Close</button></div>
+  return `<div class="card cmp"><div class="card-h"><div style="display:flex;flex-direction:column;gap:2px"><h3>Compare</h3><span class="src" style="font-family:var(--font-ui)">${gap ? gap + " apart · " : ""}protocols paired by name and type · support series hidden · technique from DICOM headers, differences highlighted · middle slice of each series, not registered</span></div><button class="ibtn" data-tl="cmpoff">${ic("close")}Close</button></div>
     <div class="cmp-grid"><div class="cmp-hrow">${hd(pri, "pr")}<span class="cmp-arrow">→</span>${hd(cur, "cur")}</div>
-    ${pairs.map(([p, q, sc]) => `<div class="cmp-row">${side(pri, p)}<span class="cmp-m" title="Label similarity">${p && q ? (sc >= 1 ? "same protocol" : "likely") : ""}</span>${side(cur, q)}</div>`).join("")}</div></div>`;
+    ${dsum.length ? `<div class="cmp-warn">${ic("warning")}<span><b>Technique differs</b>, so size and density changes may not be real: ${esc(dsum.join("; "))}</span></div>` : ""}
+    ${pairs.map(([p, q, sc]) => `<div class="cmp-row">${side(pri, p, q)}<span class="cmp-m" title="Label similarity">${p && q ? (sc >= 1 ? "same protocol" : "likely") : ""}</span>${side(cur, q, q)}</div>`).join("")}</div></div>`;
 }
 
 document.addEventListener("click", e => {
@@ -2475,6 +2504,162 @@ function gthDiag() {
     ${sess.length ? `<span>Gear outputs read: ${sess.reduce((k, x) => k + ((x.sources || {}).session || 0), 0)} on sessions (batch or manual) · ${sess.reduce((k, x) => k + ((x.sources || {}).acquisition || 0), 0)} on acquisitions (gear rule)</span>` : ""}
     <span>Browser-rendered this launch: ${TC.misses} downloaded and rendered · ${TC.hits} from this browser's cache.</span>
     ${sess.length ? `<span class="src">Gear ${esc((sess[0].idx.gear || {}).version || "?")} · profile ${esc((sess[0].idx.profile || {}).source || "?")}${(sess[0].idx.profile || {}).file ? " " + esc(sess[0].idx.profile.file) : ""} · sha256 ${esc(((sess[0].idx.profile || {}).sha256 || "").slice(0, 12))}</span>` : ""}
+  </div></div>`;
+}
+
+/* =====================================================================
+   v0.11.0: acquisition technique and comparability with the reference study.
+   Source: file-metadata-importer (file.info.header.dicom) and file-classifier (file.classification), read with
+   GET /api/acquisitions/{id} (the session acquisitions listing does not carry file info). Only the allow-listed
+   technical tags below are kept; every other header field (patient name, IDs, dates of birth, institution…) is
+   dropped as soon as the response arrives and is never stored, rendered or cached.
+   ===================================================================== */
+const TECH_TAGS = ["SliceThickness", "SpacingBetweenSlices", "ConvolutionKernel", "ContrastBolusAgent", "ContrastBolusRoute",
+  "BodyPartExamined", "KVP", "Manufacturer", "ManufacturerModelName", "MagneticFieldStrength", "PixelSpacing", "Rows", "Columns",
+  "ReconstructionDiameter", "SeriesDescription", "ProtocolName"];
+const TECH_CLS = ["Contrast", "Anatomy", "Contrast Phase", "Contrast Delivery", "Scan Type", "Scan Orientation"];
+const TECH = { m: {}, q: [], busy: 0, max: 4, stats: { asked: 0, ok: 0, noHeader: 0, failed: 0, ms: [] }, missing: [], timer: null };
+
+function techOf(a) { return a && TECH.m[a._id]; }
+function techNeed(a) {
+  if (!a || !a._id || TECH.m[a._id] || !S.ext) return;
+  TECH.m[a._id] = { state: "loading" }; TECH.q.push(a); TECH.stats.asked++; techPump();
+}
+function techPump() {
+  while (TECH.busy < TECH.max && TECH.q.length) {
+    const a = TECH.q.shift(); TECH.busy++;
+    const t0 = performance.now();
+    api(`/api/acquisitions/${a._id}`, null, { soft: true }).then(r => {
+      TECH.stats.ms.push(Math.round(performance.now() - t0));
+      TECH.m[a._id] = r ? techPick(a, r) : { state: "err" };
+      if (!r) TECH.stats.failed++;
+    }).catch(() => { TECH.m[a._id] = { state: "err" }; TECH.stats.failed++; })
+      .finally(() => { TECH.busy--; techPump(); techRedraw(); });
+  }
+}
+function techPick(a, r) {
+  const fs = (r && r.files) || [], want = dicomFile(a);
+  const f = (want && fs.find(x => x.name === want.name)) || fs.find(x => x.type === "dicom") || null;
+  if (!f) return { state: "nofile" };
+  const d = (((f.info || {}).header || {}).dicom) || null, h = {};
+  if (d) TECH_TAGS.forEach(k => { if (d[k] !== undefined && d[k] !== null && d[k] !== "") h[k] = d[k]; });
+  const c = {}, fc = f.classification || {};
+  TECH_CLS.forEach(k => { if (fc[k] && [].concat(fc[k]).length) c[k] = [].concat(fc[k]).map(String); });
+  if (!d) { TECH.stats.noHeader++; TECH.missing.push((z => z ? `${(S.subjects.find(u => u._id === ((z.subject || {})._id || (z.parents || {}).subject)) || {}).label || "?"} ${z.label} / ` : "")(S.sessions.find(z => z._id === gthSessionOf(a))) + (a.label || a._id)); return { state: "noheader", c }; }
+  TECH.stats.ok++;
+  return { state: "ok", h, c, t: techNorm(h, c, tlMod(a)) };
+}
+function techRedraw() {
+  clearTimeout(TECH.timer);
+  TECH.timer = setTimeout(() => { if (S.tab === "overview" || S.tab === "diag") render(); }, 120);
+}
+
+/* Normalised technique used for display and comparison */
+const num = v => { const x = parseFloat(Array.isArray(v) ? v[0] : v); return isFinite(x) ? x : null; };
+const KSHARP = /lung|bone|sharp|detail|edge|hd|^(b|br|bf|i|hr)[5-9]\d|^fc(5\d|8\d|[3-9]\d[ab])|^y[a-e]$|^[d-l]$/i;
+const KSOFT = /standard|soft|smooth|body|abd|^(b|br|bf|i|hr|j)[1-4]\d|^fc[0-4]\d|^[abc]$/i;
+function kernelClass(k) {
+  const s = String(Array.isArray(k) ? k[0] : k || "").trim();
+  if (!s) return null;
+  return KSHARP.test(s) ? "sharp" : KSOFT.test(s) ? "soft" : null;
+}
+const BODY = [[/chest.?to.?pelvis|chest.?abd.?pel|cap\b/i, "Chest–pelvis"], [/thorax|chest|lung/i, "Chest"], [/abdomen|abd|pelvis|liver/i, "Abdomen"],
+  [/head|brain|skull/i, "Head"], [/neck/i, "Neck"], [/whole.?body|wb\b/i, "Whole body"]];
+const bodyNorm = s => { for (const [re, n] of BODY) if (re.test(String(s || ""))) return n; return s ? String(s) : null; };
+const BODY_COVERS = { "Chest–pelvis": ["Chest", "Abdomen", "Chest–pelvis"], "Whole body": ["Chest", "Abdomen", "Chest–pelvis", "Head", "Neck", "Whole body"] };
+function techNorm(h, c, mod) {
+  const thk = num(h.SliceThickness), kern = h.ConvolutionKernel != null ? String(Array.isArray(h.ConvolutionKernel) ? h.ConvolutionKernel[0] : h.ConvolutionKernel) : null;
+  const agent = h.ContrastBolusAgent != null ? String(h.ContrastBolusAgent).trim() : "";
+  let con = null, conSrc = null;
+  if (c.Contrast) { con = c.Contrast.includes("Contrast") ? true : c.Contrast.includes("No Contrast") ? false : null; conSrc = "classifier"; }
+  if (con == null && agent) { con = !/^(none|no|n|0)$/i.test(agent); conSrc = "header"; }
+  let body = h.BodyPartExamined ? bodyNorm(h.BodyPartExamined) : null, bodySrc = body ? "header" : null;
+  if (!body && c.Anatomy) { body = c.Anatomy.map(bodyNorm).join(" + "); bodySrc = "classifier"; }
+  return {
+    mod, thk, kern, kc: mod === "CT" ? kernelClass(kern) : null, con, conSrc, agent: agent || null,
+    phase: (c["Contrast Phase"] || [])[0] || null, body, bodySrc, kvp: num(h.KVP),
+    vendor: h.Manufacturer ? String(h.Manufacturer).replace(/\s*(medical systems|healthcare|healthineers)\b.*$/i, "").trim() : null,
+    model: h.ManufacturerModelName ? String(h.ManufacturerModelName) : null, field: num(h.MagneticFieldStrength),
+    px: num(h.PixelSpacing), fov: num(h.ReconstructionDiameter),
+  };
+}
+const fmtMm = v => v == null ? "?" : (Math.round(v * 100) / 100) + " mm";
+function techLine(T, diffs) {
+  if (!T) return "";
+  const bad = new Set((diffs || []).filter(x => x.sev === "warn").map(x => x.k)), info = new Set((diffs || []).filter(x => x.sev === "info").map(x => x.k));
+  const it = (k, s, tip) => s ? `<span class="tk ${bad.has(k) ? "warn" : info.has(k) ? "info" : ""}"${tip ? ` title="${esc(tip)}"` : ""}>${esc(s)}</span>` : "";
+  return [
+    it("thk", T.thk != null ? fmtMm(T.thk) : null, "Slice thickness"),
+    it("kc", T.kern ? T.kern + (T.kc ? ` (${T.kc})` : "") : null, "Reconstruction kernel" + (T.kc ? "" : ": not mapped to soft or sharp")),
+    it("con", T.con == null ? null : T.con ? "contrast" + (T.phase ? " · " + T.phase.toLowerCase() : "") : "no contrast", T.con == null ? "" : `Contrast from ${T.conSrc}${T.agent ? ": " + T.agent : ""}`),
+    it("body", T.body, T.body ? `Coverage from ${T.bodySrc === "header" ? "BodyPartExamined" : "classifier anatomy"}` : ""),
+    it("kvp", T.mod === "CT" && T.kvp ? T.kvp + " kV" : null, "Tube voltage"),
+    it("field", T.mod === "MR" && T.field ? T.field + " T" : null, "Field strength"),
+    it("vendor", [T.vendor, T.model].filter(Boolean).join(" ") || null, "Scanner"),
+  ].filter(Boolean).join("");
+}
+
+/* Differences that matter when comparing measurements between timepoints (same modality only) */
+function techDiff(R, T) {
+  if (!R || !T || R.mod !== T.mod) return [];
+  const out = [], add = (k, sev, msg) => out.push({ k, sev, msg });
+  if (R.thk != null && T.thk != null && (Math.max(R.thk, T.thk) / Math.max(0.1, Math.min(R.thk, T.thk)) > 1.5 || Math.abs(R.thk - T.thk) >= 2))
+    add("thk", "warn", `slice thickness ${fmtMm(T.thk)} vs ${fmtMm(R.thk)}`);
+  if (R.kc && T.kc && R.kc !== T.kc) add("kc", "warn", `${T.kc} kernel (${T.kern}) vs ${R.kc} (${R.kern})`);
+  if (R.con != null && T.con != null && R.con !== T.con) add("con", "warn", `${T.con ? "contrast" : "no contrast"} vs ${R.con ? "contrast" : "no contrast"}`);
+  if (R.body && T.body && R.body !== T.body) {
+    const covers = (a, b) => (BODY_COVERS[a] || [a]).includes(b);
+    if (!covers(T.body, R.body)) add("body", "warn", `coverage ${T.body} vs ${R.body}`);
+  }
+  if (R.mod === "MR" && R.field && T.field && R.field !== T.field) add("field", "warn", `${T.field} T vs ${R.field} T`);
+  if (R.vendor && T.vendor && R.vendor.toLowerCase() !== T.vendor.toLowerCase()) add("vendor", "info", `scanner ${T.vendor} vs ${R.vendor}`);
+  else if (R.model && T.model && R.model !== T.model) add("vendor", "info", `scanner model ${T.model} vs ${R.model}`);
+  if (R.mod === "CT" && R.kvp && T.kvp && R.kvp !== T.kvp) add("kvp", "info", `${T.kvp} kV vs ${R.kvp} kV`);
+  return out;
+}
+/* Study-level cautions independent of the reference */
+function techNotes(T) {
+  const n = [];
+  if (T && T.mod === "CT" && T.thk != null && T.thk > 5) n.push({ k: "thk", sev: "warn", msg: `${fmtMm(T.thk)} slices: RECIST 1.1 assumes CT at 5 mm or thinner` });
+  return n;
+}
+
+/* Reference study: Baseline (or Screening, or the first dated study) whose key series has the same modality */
+function techRef(list, x) {
+  if (!x || !x.key) return null;
+  const mod = x.key.mod, pool = list.filter(y => y.t != null && y.key && y.key.mod === mod);
+  return pool.find(y => /baseline/i.test(y.z.label || "")) || pool.find(y => /screen/i.test(y.z.label || "")) || pool[0] || null;
+}
+/* Everything the UI needs for one study: its technique, the reference, the differences */
+function techStudy(list, x) {
+  const a = x && x.key && x.key.a; if (!a) return { state: "none" };
+  techNeed(a);
+  const me = techOf(a) || { state: "loading" };
+  if (me.state !== "ok") return { state: me.state };
+  const ref = techRef(list, x), isRef = ref && ref.id === x.id;
+  let rt = null;
+  if (ref && !isRef) { techNeed(ref.key.a); const r = techOf(ref.key.a); rt = r && r.state === "ok" ? r.t : null; if (!r || r.state === "loading") return { state: "ok", T: me.t, ref, isRef, refLoading: true, diffs: [], notes: techNotes(me.t) }; }
+  return { state: "ok", T: me.t, ref, isRef, rt, diffs: isRef ? [] : techDiff(rt, me.t), notes: techNotes(me.t) };
+}
+function techChip(S1) {
+  if (!S1 || S1.state === "loading" || S1.state === "none") return "";
+  if (S1.state === "noheader") return `<span class="tl-tc none" title="No DICOM header metadata on the key series. Run File Metadata Importer on it.">no header</span>`;
+  if (S1.state !== "ok") return "";
+  const w = S1.diffs.filter(d => d.sev === "warn").concat(S1.notes), i = S1.diffs.filter(d => d.sev === "info");
+  if (S1.isRef) return `<span class="tl-tc ref" title="Reference for comparability checks${S1.notes.length ? "\n" + S1.notes.map(n => n.msg).join("\n") : ""}">ref${S1.notes.length ? " ·!" : ""}</span>`;
+  if (!S1.ref || S1.refLoading) return "";
+  if (!S1.rt) return `<span class="tl-tc none" title="${esc(S1.ref.z.label)} has no header metadata to compare against">ref ?</span>`;
+  const tip = `Compared with ${S1.ref.z.label}:\n` + (w.length || i.length ? w.concat(i).map(d => (d.sev === "warn" ? "≠ " : "~ ") + d.msg).join("\n") : "same slice thickness, kernel, contrast and coverage");
+  return w.length ? `<span class="tl-tc warn" title="${esc(tip)}">≠ ref · ${w.length}</span>` : i.length ? `<span class="tl-tc info" title="${esc(tip)}">≈ ref</span>` : `<span class="tl-tc ok" title="${esc(tip)}">= ref</span>`;
+}
+
+function techDiag() {
+  const s = TECH.stats, ms = s.ms.length ? Math.round(s.ms.reduce((a, b) => a + b, 0) / s.ms.length) : null;
+  return `<div class="card"><div class="card-h"><h3>Technique metadata</h3><span class="src">file-metadata-importer header + file-classifier, key series only</span></div><div class="card-b" style="font-size:13px;color:var(--ink-2);display:flex;flex-direction:column;gap:4px">
+    <span>${s.asked} series looked up (GET /api/acquisitions/{id}${ms != null ? `, mean ${ms} ms` : ""}) · ${s.ok} with header · ${s.noHeader} without header${s.failed ? ` · <b style="color:var(--bad-t)">${s.failed} failed</b>` : ""}</span>
+    ${TECH.missing.length ? `<span>No header (run File Metadata Importer): ${esc(TECH.missing.slice(0, 8).join(", "))}${TECH.missing.length > 8 ? "…" : ""}</span>` : ""}
+    <span class="src">Kept: ${TECH_TAGS.length} technical tags and ${TECH_CLS.length} classification fields. Every other header field, including patient identifiers, is discarded on arrival and never displayed or cached.</span>
+    <span class="src">Checks against the reference study (Baseline, else Screening, else first): slice thickness (&gt;1.5× or ≥2 mm apart), CT kernel class (soft vs sharp), contrast, coverage, MR field strength; scanner and kVp shown as notes. CT thicker than 5 mm is flagged (RECIST 1.1).</span>
   </div></div>`;
 }
 
