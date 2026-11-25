@@ -766,7 +766,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.12.0";
+const VERSION = "subject-view-harness/0.12.1";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, ov: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -1308,7 +1308,7 @@ function drawFermi() {
        "pyradiomics": { "version": "3.x", "settings": { "binWidth": 25, "resampledPixelSpacing": [1,1,1] } },
        "acquisition": { "slice_thickness": 1.0, "kernel": "B30f", "contrast": "portal venous", "kvp": 120 },
        "organs": { "liver": { "voxels": 1543210, "features": { "original_shape_VoxelVolume": 1.54e6, ... } }, ... } }
-   If no such file is found the tab shows a deterministic simulation in the same shape, labelled as such.
+   If no such file is found the tab says so (0.12.1); a deterministic simulation in the same shape is available as opt-in demo data.
    ===================================================================== */
 const RAD_SCHEMA = "fw.organ-radiomics/1";
 const RAD_ASSUMED = { ts: "2.x (task total, 117 classes)", pr: "3.1.0" };
@@ -1489,7 +1489,7 @@ function simSubject(sid, visits, cohort) {
   return out;
 }
 
-/* ---------- loading: real gear output first, simulation otherwise ---------- */
+/* ---------- loading: real gear output first; otherwise an empty state (simulation only as opt-in demo data, 0.12.1) ---------- */
 function radVisitCols(sid) {
   const cols = visitsFor(sid).filter(c => c.z);
   if (cols.length) return cols.map((c, i) => ({ key: c.z._id, label: c.v ? c.v.label : c.z.label, short: c.v ? c.v.label : c.z.label, date: c.z.timestamp || c.z.created, z: c.z, i }));
@@ -1559,12 +1559,21 @@ async function radReal(sid, acqsBySession) {
   const allFull = visits.every(v => v.kind === "full");
   return { source: allFull ? "file" : "stats", visits, effects: [] };
 }
+function anDemo() { if (S.anDemo != null) return S.anDemo; try { return S.anDemo = localStorage.getItem("svh-andemo") === "1"; } catch (e) { return S.anDemo = false; } }
+function setAnDemo(on) { S.anDemo = !!on; try { localStorage.setItem("svh-andemo", on ? "1" : "0"); } catch (e) {} Object.keys(S.rad).forEach(k => { if (S.rad[k] && (S.rad[k].none || S.rad[k].source === "sim")) delete S.rad[k]; }); }
+/* What the subject has, so the empty state can say why there is nothing to show */
+function radNone(sid, acqsBySession) {
+  const cols = radVisitCols(sid).filter(c => c.z), mods = new Map(); let ct = 0, ctVisits = 0;
+  cols.forEach(c => { const as = (acqsBySession || {})[c.z._id] || []; let has = false; as.forEach(a => { const m = acqMod(a); if (m && m !== "—") mods.set(m, (mods.get(m) || 0) + 1); if (/^ct$/i.test(m)) { ct++; has = true; } }); if (has) ctVisits++; });
+  return { none: true, visits: [], nVisits: cols.length, ct, ctVisits, mods: [...mods.entries()].sort((a, b) => b[1] - a[1]) };
+}
 async function loadRad(sid) {
   const d = S.detail[sid]; if (!d || !d.ok) return;
   S.rad[sid] = { loading: true };
   let R = S.radReal[sid];
   if (R === undefined) { try { R = await radReal(sid, d.acqs); } catch (e) { R = null; } S.radReal[sid] = R; }
-  S.rad[sid] = R || simSubject(sid, radVisitCols(sid), false);
+  /* 0.12.1: no measured output -> an honest empty state. The simulation is only shown when the viewer turns on demo data. */
+  S.rad[sid] = R || (anDemo() ? simSubject(sid, radVisitCols(sid), false) : radNone(sid, d.acqs));
   render();
 }
 /* Real cohort: read every other subject's stage-1/2 output in the background (4 at a time), never mixing in simulated values. */
@@ -1734,12 +1743,22 @@ function anState(R) {
   if (!R.visits[vi0(R)].organs[A.organ]) A.organ = R.visits[vi0(R)].organs.liver ? "liver" : Object.keys(R.visits[vi0(R)].organs)[0];
   return A;
 }
+function anNone(R) {
+  const modTxt = R.mods.length ? R.mods.map(([m, n]) => `${esc(m)} (${n})`).join(", ") : "none found";
+  const why = !R.nVisits ? "This subject has no sessions yet."
+    : !R.ct ? `This subject has no CT series (series by modality: ${modTxt}). Organ measurements here come from CT: TotalSegmentator segments the organs and PyRadiomics measures them, so there is nothing to show for this subject.`
+    : `${plural(R.ct, "CT series")} in ${R.ctVisits} of ${plural(R.nVisits, "visit")}, but no TotalSegmentator or PyRadiomics output was found on them (looked for <span class="mono">total_statistics.json</span> and <span class="mono">*organ_radiomics*.json</span> on the acquisitions, their analyses and the session analyses).`;
+  const how = R.ct ? `<div class="an-note" style="text-align:left;max-width:720px"><b>To get real values:</b> run <span class="mono">total-segmentator</span> on the CT acquisitions (task <span class="mono">total</span>, compute-statistics on, NIfTI output on) for volume and mean density, then <span class="mono">pyradiomics-multilabel</span> for shape, density and texture. Results appear here on the next refresh.</div>` : "";
+  return `<div class="card"><div class="empty-big" style="gap:10px"><b style="color:var(--ink)">No organ measurements for this subject</b><span style="max-width:720px">${why}</span>${how}
+    <span class="src" style="margin-top:6px">Demo data (synthetic, seeded per subject, never a measurement) can be shown for walkthroughs: <button class="ibtn" data-an="demo:on">Show demo data</button></span></div></div>`;
+}
 function anatomyTab(s, d) {
   if (!d || !d.ok) return `<div class="card"><div class="loading"><span class="spin"></span>Loading subject…</div></div>`;
   const R = S.rad[s._id];
   if (!R) { setTimeout(() => loadRad(s._id), 0); return `<div class="card"><div class="loading"><span class="spin"></span>Looking for organ radiomics…</div></div>`; }
   if (R.loading) return `<div class="card"><div class="loading"><span class="spin"></span>Looking for organ radiomics…</div></div>`;
   if (R.err) return `<div class="card"><div class="empty-big"><b style="color:var(--ink)">Couldn't read organ radiomics</b><span>${esc(R.err)}</span></div></div>`;
+  if (R.none) return anNone(R);
   if (!R.visits.length) return `<div class="card"><div class="empty-big">No visits with organ radiomics.</div></div>`;
   const A = anState(R), V = R.visits, sig = sigOf(A.sig), vi = A.visit, sim = R.source === "sim";
   const v0 = V[vi], ts = v0.ts || {}, pr = v0.pr || {};
@@ -1751,10 +1770,10 @@ function anatomyTab(s, d) {
       <span class="an-lab">Visit <span class="an-chips">${V.map((x, i) => `<button class="fchip ${i === vi ? "on" : ""}" data-an="visit:${i}" title="${esc(x.label)}${x.date ? " · " + esc(dt(x.date).slice(0, 10)) : ""}">${esc(x.short)}</button>`).join("")}</span></span>
       <span class="an-lab">Compare <span class="an-chips">${cmpOpts.map(([k, l]) => `<button class="fchip ${A.cmp === k ? "on" : ""}" data-an="cmp:${k}" ${k === "prev" && V.length < 2 ? "disabled" : ""}>${l}</button>`).join("")}</span></span>
       <span style="flex:1"></span>
-      ${sim ? `<span class="pill an-sim" title="No organ_radiomics.json on this subject's acquisitions. Values are synthetic, seeded per subject, for layout and workflow review only.">Simulated data</span>` : R.source === "stats" ? `<span class="pill an-real" title="${esc(v0.analysis || "")} · ${esc(v0.file || "")}">TotalSegmentator statistics · ${V.length} visit${V.length === 1 ? "" : "s"}</span>` : `<span class="pill an-real" title="${esc(v0.file || "")}">${esc(v0.file || "organ_radiomics.json")}</span>`}
+      ${sim ? `<span class="pill an-sim" title="Demo data: synthetic values seeded per subject, for layout and workflow review only.">Demo data · simulated</span><button class="ibtn" data-an="demo:off" title="Turn demo data off (remembered in this browser)">Hide demo data</button>` : R.source === "stats" ? `<span class="pill an-real" title="${esc(v0.analysis || "")} · ${esc(v0.file || "")}">TotalSegmentator statistics · ${V.length} visit${V.length === 1 ? "" : "s"}</span>` : `<span class="pill an-real" title="${esc(v0.file || "")}">${esc(v0.file || "organ_radiomics.json")}</span>`}
     </div>
     ${R.source === "stats" ? `<div class="an-note">Real per-organ <b>volume</b> and <b>mean density</b> from TotalSegmentator <span class="mono">total</span> (<span class="mono">total_statistics.json</span>). Shape, texture and the other first-order signals need the PyRadiomics step, which hasn't run yet; they are disabled here rather than simulated. Structures cut off by the scan edge are reported as 0 by TotalSegmentator and shown as no data.${V.length < radVisitCols(s._id).filter(c => c.z).length ? ` ${radVisitCols(s._id).filter(c => c.z).length - V.length} of this subject's visits have no output yet.` : ""}</div>` : ""}
-    ${sim ? `<div class="an-note">No <span class="mono">organ_radiomics.json</span> was found on this subject's acquisitions, so this tab shows a deterministic simulation in the same format (TotalSegmentator classes × PyRadiomics features). Nothing here is a measurement.</div>` : ""}
+    ${sim ? `<div class="an-note"><b>Demo data is on.</b> This subject has no TotalSegmentator or PyRadiomics output, so the tab is showing a deterministic simulation in the same format (TotalSegmentator classes × PyRadiomics features), including invented acquisition settings. Nothing here is a measurement, and it ignores the subject's real modalities.</div>` : ""}
   </div>`;
   return head + `<div class="an-grid">${anMap(R, A, sig, vi)}<div class="an-right">${A.view === "organ" ? anOrgan(R, A, sig, vi) : anSignal(R, A, sig, vi)}</div></div>` + anFoot(R, ts, pr);
 }
@@ -1887,7 +1906,7 @@ function aboutCard() {
     ["session-thumbnails gear", (Object.values(GTH.idx).find(x => x && x.idx) || { idx: { gear: { version: "not run on these sessions" } } }).idx.gear.version, "Series thumbnails (fw.thumbnails/1 index + sprite), browser rendering as fallback", "https://github.com/danjamesrafter-crypto/subject-view-harness/tree/main/gears/session-thumbnails"],
     ["PyRadiomics", (pr.version || RAD_ASSUMED.pr) + (src ? "" : " · assumed"), "Features per organ (Anatomy tab)", "https://pyradiomics.readthedocs.io/en/latest/features.html"]
   ];
-  return `<div class="card"><div class="card-h"><h3>About</h3><span class="src">Versions and sources${src ? "" : " · Anatomy values are simulated until a gear writes organ_radiomics.json"}</span></div><div class="card-b"><table class="an-tbl about"><thead><tr><th>Component</th><th>Version</th><th>Used for</th><th>Source</th></tr></thead><tbody>${rows.map(r => `<tr><td>${esc(r[0])}</td><td class="mono">${esc(r[1])}</td><td class="muted">${esc(r[2])}</td><td><a href="${r[3]}" target="_blank" rel="noopener">${esc(r[3].replace(/^https:\/\//, "").replace(/\/$/, ""))}</a></td></tr>`).join("")}</tbody></table>
+  return `<div class="card"><div class="card-h"><h3>About</h3><span class="src">Versions and sources${src ? "" : " · Anatomy shows only measured output; simulated values appear only with demo data turned on"}</span></div><div class="card-b"><table class="an-tbl about"><thead><tr><th>Component</th><th>Version</th><th>Used for</th><th>Source</th></tr></thead><tbody>${rows.map(r => `<tr><td>${esc(r[0])}</td><td class="mono">${esc(r[1])}</td><td class="muted">${esc(r[2])}</td><td><a href="${r[3]}" target="_blank" rel="noopener">${esc(r[3].replace(/^https:\/\//, "").replace(/\/$/, ""))}</a></td></tr>`).join("")}</tbody></table>
     <div class="src" style="font-family:var(--font-ui);margin-top:8px">Data contract read by the Anatomy tab: <span class="mono">${RAD_SCHEMA}</span>, one <span class="mono">*.organ_radiomics.json</span> per CT acquisition, on the acquisition or as an analysis on its session. Written by the <span class="mono">pyradiomics-multilabel</span> gear; TotalSegmentator <span class="mono">total_statistics.json</span> gives volume and mean HU only.</div></div></div>`;
 }
 
@@ -1899,6 +1918,7 @@ document.addEventListener("click", e => {
   if (t.dataset.org) { A.organ = t.dataset.org; render(); return; }
   const [k, v] = t.dataset.an.split(":");
   if (k === "view") A.view = v; else if (k === "visit") A.visit = +v; else if (k === "cmp") A.cmp = v; else if (k === "layer") A.layer = v; else if (k === "anat") A.anat = v; else if (k === "sig") A.sig = v;
+  else if (k === "demo") { setAnDemo(v === "on"); }
   else if (k === "fclass") A.fclass = v; else if (k === "all") A.showAll = !A.showAll; else if (k === "csv") { radCSV(S.subj); return; }
   render();
 });
