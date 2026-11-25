@@ -744,7 +744,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.9.5";
+const VERSION = "subject-view-harness/0.10.0";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, ov: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -1207,7 +1207,7 @@ function infoTab(s, d) {
 function diagTab() {
   setTimeout(() => tcCount().then(n => { const e = document.getElementById("tcN"); if (e) e.textContent = n == null ? "storage unavailable" : n + " stored"; }), 0);
   const ok = S.calls.filter(c => c.status === "ok").length, er = S.calls.filter(c => c.status === "error").length;
-  return aboutCard() + `<div class="card diag"><div class="card-h"><h3>Diagnostics</h3><span class="src">${VERSION} · ${ok} ok · ${er} failed · newest first · GET + SDK tag/info writes</span></div>
+  return aboutCard() + gthDiag() + `<div class="card diag"><div class="card-h"><h3>Diagnostics</h3><span class="src">${VERSION} · ${ok} ok · ${er} failed · newest first · GET + SDK tag/info writes</span></div>
     <div class="card-b" style="font-size:13px;color:var(--ink-2)">Origin <span class="mono">${esc(S.origin || "unknown")}</span> · user <span class="mono">${esc(S.user ? S.user._id : "?")}</span> · opened from <span class="mono">${esc(S.opener ? (S.opener.container_type || "?") + " " + (S.opener._id || "") : "?")}</span> · project <span class="mono">${esc(S.projectId || "?")}</span></div>
     <div class="card-b" style="font-size:13px;color:var(--ink-2);display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span>Thumbnail cache on this device: <b id="tcStat">${tcOn() ? "on" : "off"}</b> · <span class="mono">${TC.hits} hits · ${TC.misses} misses this session${TC.err ? " · storage " + esc(TC.err) : ""}</span> · <span id="tcN" class="mono"></span></span><button class="ibtn" data-act="tctoggle">${tcOn() ? "Turn off" : "Turn on"}</button><button class="ibtn" data-act="tcclear">Clear thumbnails and anatomy maps</button><span class="src" style="font-family:var(--font-ui);flex-basis:100%">Rendered middle slices (newest 400) and anatomy maps built from segmentations (newest 60, ${SC.hits} hits · ${SC.misses} misses this session) are kept in this browser for 14 days so they appear instantly next launch. Both are derived from your data: turn this off on shared machines.</span></div>
     ${schedule().length || (S.project && (S.project.templates || S.project.template)) ? `<div class="card-b"><div class="src" style="font-family:var(--font-ui);margin-bottom:6px">Session templates as read from project.templates (${schedule().length} parsed)</div><pre>${esc(JSON.stringify(S.project.templates || S.project.template, null, 2).slice(0, 4000))}</pre></div>` : `<div class="card-b src" style="font-family:var(--font-ui)">No session templates on this project (project.templates is empty).</div>`}
@@ -1861,6 +1861,7 @@ function aboutCard() {
     ["Flywheel Vision Design System", "vision-react tokens + icon font", "UI", "https://claude.ai/artifact/VWFDvStzgRxSSJzChTnXt9"],
     ["dicom-parser", "1.8.21", "Series thumbnails", "https://github.com/cornerstonejs/dicomParser"],
     ["TotalSegmentator", (ts.version || RAD_ASSUMED.ts) + (src ? "" : " · assumed"), "Organ masks (Anatomy tab)", "https://github.com/wasserth/TotalSegmentator"],
+    ["session-thumbnails gear", (Object.values(GTH.idx).find(x => x && x.idx) || { idx: { gear: { version: "not run on these sessions" } } }).idx.gear.version, "Series thumbnails (fw.thumbnails/1 index + sprite), browser rendering as fallback", "https://github.com/danjamesrafter-crypto/subject-view-harness/tree/main/gears/session-thumbnails"],
     ["PyRadiomics", (pr.version || RAD_ASSUMED.pr) + (src ? "" : " · assumed"), "Features per organ (Anatomy tab)", "https://pyradiomics.readthedocs.io/en/latest/features.html"]
   ];
   return `<div class="card"><div class="card-h"><h3>About</h3><span class="src">Versions and sources${src ? "" : " · Anatomy values are simulated until a gear writes organ_radiomics.json"}</span></div><div class="card-b"><table class="an-tbl about"><thead><tr><th>Component</th><th>Version</th><th>Used for</th><th>Source</th></tr></thead><tbody>${rows.map(r => `<tr><td>${esc(r[0])}</td><td class="mono">${esc(r[1])}</td><td class="muted">${esc(r[2])}</td><td><a href="${r[3]}" target="_blank" rel="noopener">${esc(r[3].replace(/^https:\/\//, "").replace(/\/$/, ""))}</a></td></tr>`).join("")}</tbody></table>
@@ -2353,6 +2354,107 @@ document.addEventListener("click", e => {
   if (k === "exp") { e.stopPropagation(); S.ov.exp = S.ov.exp || {}; S.ov.exp[a] = !S.ov.exp[a]; render(); }
 });
 
+/* =====================================================================
+   v0.10.0: thumbnails from the session-thumbnails gear (fw.thumbnails/1).
+   Per session: newest session-thumbnails analysis -> thumbs.json + thumbs.jpg (two requests), cells cropped to
+   data URLs. A thumbnail is used only if its source file is unchanged since the gear ran (same file id and
+   modified time); otherwise, or with no gear output, the app renders in the browser as before.
+   Gear thumbnails are not written to the browser cache: the sprite is re-fetched each launch.
+   ===================================================================== */
+const GTH = { p: {}, idx: {}, stats: { sessions: 0, used: 0, stale: 0, none: 0, failed: 0, ms: [] }, t0: null, firstAll: null };
+const GTH_GEAR = "session-thumbnails";
+
+function gthSessionOf(a) {
+  if (a.parents && a.parents.session) return a.parents.session;
+  for (const d of Object.values(S.detail)) if (d && d.acqs) for (const [sid, as] of Object.entries(d.acqs)) if (as.some(x => x._id === a._id)) return sid;
+  return null;
+}
+
+async function gthLoadSession(sid) {
+  const t0 = performance.now();
+  const ans = listOf(await api(`/api/sessions/${sid}/analyses`, null, { soft: true }) || []);
+  const an = ans.filter(x => ((x.gear_info || {}).name === GTH_GEAR) && (x.files || []).some(f => f.name === "thumbs.json") && (x.files || []).some(f => f.name === "thumbs.jpg"))
+    .sort((p, q) => String(q.created).localeCompare(String(p.created)))[0];
+  if (!an) { GTH.stats.none++; return null; }
+  const ref = f => ({ ...f, file_id: f.file_id || f._id, parent_ref: { type: "analysis", id: an._id }, parents: { ...(an.parents || {}), analysis: an._id } });
+  const fj = an.files.find(f => f.name === "thumbs.json"), fs = an.files.find(f => f.name === "thumbs.jpg");
+  const [jb, sb] = await Promise.all([sdk(`SDK getFileBlob thumbs.json (${sid.slice(-6)})`, () => S.ext.getFileBlob(ref(fj))), sdk(`SDK getFileBlob thumbs.jpg (${sid.slice(-6)})`, () => S.ext.getFileBlob(ref(fs)))]);
+  const idx = JSON.parse(await jb.text());
+  if (idx.schema !== "fw.thumbnails/1") throw new Error("unknown thumbnail schema " + idx.schema);
+  const bmp = await createImageBitmap(sb);
+  const cells = {};
+  for (const it of idx.items || []) {
+    const [x, y, w, h] = (it.sprite && it.sprite.content) || [];
+    if (!w || !h) continue;
+    const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+    cv.getContext("2d").drawImage(bmp, x, y, w, h, 0, 0, w, h);
+    (cells[it.acquisition_id] = cells[it.acquisition_id] || []).push({ ...it, url: cv.toDataURL("image/jpeg", 0.9) });
+  }
+  GTH.stats.sessions++;
+  const out = { an, idx, cells, ms: Math.round(performance.now() - t0), bytes: (fs.size || 0) + (fj.size || 0) };
+  GTH.idx[sid] = out;
+  return out;
+}
+
+function gthReady(a) {
+  const sid = gthSessionOf(a);
+  if (!sid || !S.ext) return Promise.resolve(null);
+  if (!GTH.p[sid]) {
+    if (!GTH.t0) GTH.t0 = performance.now();
+    GTH.p[sid] = gthLoadSession(sid).catch(e => { GTH.stats.failed++; GTH.idx[sid] = { error: String(e && e.message || e) }; return null; });
+  }
+  return GTH.p[sid];
+}
+
+/* Wrap the browser renderer: gear thumbnail first, browser rendering as the fallback. */
+const _loadThumbBrowser = loadThumb;
+loadThumb = function (a) {
+  const st = thumbState(a._id);
+  if (st.state !== "idle" || st.gthPending) return st.p;
+  st.gthPending = true;
+  st.p = (async () => {
+    const g = await gthReady(a);
+    st.gthPending = false;
+    const cands = g && g.cells[a._id];
+    if (cands && cands.length) {
+      const it = cands.find(c => c.view === "key") || cands[0];
+      const f = (a.files || []).find(x => (x.file_id || x._id) === it.file_id);
+      if (f && (!it.file_modified || !f.modified || it.file_modified === f.modified)) {
+        st.state = "ok"; st.url = it.url;
+        st.meta = { kind: "gear", picker: it.picker, plane: it.plane, slice: it.slice, slices: it.slices, view: it.view, gear: g.idx.gear && g.idx.gear.version, views: cands.length };
+        GTH.stats.used++; GTH.stats.ms.push(Math.round(performance.now() - GTH.t0));
+        thumbDone(a); if (typeof tlThumbDone === "function") tlThumbDone(a);
+        return;
+      }
+      GTH.stats.stale++;
+    }
+    st.state = "idle";
+    await _loadThumbBrowser(a);
+    if (typeof tlThumbDone === "function") tlThumbDone(a);
+  })();
+  return st.p;
+};
+
+setTimeout(() => { /* thumbCaption is declared later in the script: wrap it once the script has finished loading */
+  const _thumbCaption = thumbCaption;
+  thumbCaption = st => {
+    const m = st && st.meta;
+    if (m && m.kind === "gear") return ` · ${m.picker === "mip" ? "MIP" : m.picker.replace(/^organ_centroid:/, "at ").replace("middle", "middle slice")} ${m.plane}${m.slice != null ? ` ${m.slice + 1}/${m.slices}` : ""} · from gear`;
+    return _thumbCaption(st);
+  };
+}, 0);
+
+function gthDiag() {
+  const s = GTH.stats, sess = Object.values(GTH.idx).filter(x => x && x.idx);
+  const ms = s.ms.length ? Math.max(...s.ms) : null;
+  const kb = sess.reduce((k, x) => k + (x.bytes || 0), 0) / 1024;
+  return `<div class="card"><div class="card-h"><h3>Thumbnail source</h3><span class="src">session-thumbnails gear first, browser rendering as fallback</span></div><div class="card-b" style="font-size:13px;color:var(--ink-2);display:flex;flex-direction:column;gap:4px">
+    <span>${sess.length} session${sess.length === 1 ? "" : "s"} with gear output (${kb.toFixed(0)} KB fetched${ms != null ? `, all gear thumbnails ready ${ms} ms after the first request` : ""}) · ${s.used} thumbnails from the gear · ${s.stale} stale (file changed since the gear ran) · ${s.none} session${s.none === 1 ? "" : "s"} without gear output${s.failed ? ` · <b style="color:var(--bad-t)">${s.failed} failed</b>` : ""}</span>
+    <span>Browser-rendered this launch: ${TC.misses} downloaded and rendered · ${TC.hits} from this browser's cache.</span>
+    ${sess.length ? `<span class="src">Gear ${esc((sess[0].idx.gear || {}).version || "?")} · profile ${esc((sess[0].idx.profile || {}).source || "?")}${(sess[0].idx.profile || {}).file ? " " + esc(sess[0].idx.profile.file) : ""} · sha256 ${esc(((sess[0].idx.profile || {}).sha256 || "").slice(0, 12))}</span>` : ""}
+  </div></div>`;
+}
+
 function render() {
   renderSide();
   const v = document.getElementById("view");
@@ -2543,7 +2645,7 @@ async function loadThumb(a) {
   })();
   return st.p;
 }
-const thumbCaption = st => { const m = st && st.meta; if (!m) return ""; if (m.slice) return ` · slice ${m.slice}/${m.slices}`; if (m.kind === "slide") return ` · slide thumbnail${m.full ? ` of ${m.full}` : ""}`; if (m.kind === "nifti") return ` · slice ${m.slice1}/${m.nz}`; if (m.kind === "image") return ` · ${m.w}×${m.h}`; return ""; };
+let thumbCaption = st => { const m = st && st.meta; if (!m) return ""; if (m.slice) return ` · slice ${m.slice}/${m.slices}`; if (m.kind === "slide") return ` · slide thumbnail${m.full ? ` of ${m.full}` : ""}`; if (m.kind === "nifti") return ` · slice ${m.slice1}/${m.nz}`; if (m.kind === "image") return ` · ${m.w}×${m.h}`; return ""; };
 function drawScaled(src, w, h) {
   const sc = Math.min(1, TH * 2 / Math.max(w, h)), cv = document.createElement("canvas"); cv.width = Math.max(1, Math.round(w * sc)); cv.height = Math.max(1, Math.round(h * sc));
   const g = cv.getContext("2d"); g.fillStyle = "#000"; g.fillRect(0, 0, cv.width, cv.height); g.imageSmoothingQuality = "high"; g.drawImage(src, 0, 0, cv.width, cv.height); return cv.toDataURL("image/png");
