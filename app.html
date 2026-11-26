@@ -573,6 +573,16 @@ select:focus{border-color:var(--primary-base)}
 .an-patient canvas{display:block;width:100%;image-rendering:pixelated;background:transparent}
 .an-sides{display:flex;justify-content:space-between;padding:4px 10px 0;font-size:12px;font-weight:600;color:var(--text-secondary,#9aa4b8)}
 .an-segsrc{margin:6px 10px 0;font-family:var(--font-ui)}
+
+.an-3dwrap{padding:4px 6px 0;align-self:stretch;box-sizing:border-box}
+.an-3d{position:relative;min-height:340px;border-radius:8px;background:radial-gradient(ellipse at 50% 40%,rgba(120,140,190,.10),transparent 70%)}
+.an-3dbox{position:relative}
+.an-3dbox canvas{display:block;cursor:grab;outline:none;border-radius:8px}
+.an-3dbox canvas:focus-visible{box-shadow:0 0 0 2px var(--accent,#6f8cff)}
+.an-3dbar{position:absolute;top:6px;left:6px;display:flex;flex-wrap:wrap;gap:4px}
+.an-3dbar .ibtn{padding:2px 8px;font-size:11px;background:rgba(20,22,30,.72)}
+.an-grid:has(.an-3d){grid-template-columns:minmax(340px,440px) minmax(0,1fr)}
+@media (max-width:1100px){.an-grid:has(.an-3d){grid-template-columns:minmax(0,1fr)}}
 /* ---- 0.9.0 Overview timeline ---- */
 .ov-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;flex-wrap:wrap}
 .tl-scroll{overflow-x:auto;padding:4px 0 12px}
@@ -776,7 +786,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.13.1";
+const VERSION = "subject-view-harness/0.14.0";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, ov: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -1794,8 +1804,12 @@ function anMap(R, A, sig, vi) {
   const layer = A.layer, shapes = MAP_SHAPES[layer], drawn = new Set(shapes.map(x => x[0]));
   const v = R.visits[vi], ref = R.source !== "sim" && v.maskRef, st = ref ? S.seg[ref._key] : null;
   if (ref && !st) setTimeout(() => segLoad(ref), 0);
-  const usePatient = A.anat !== "schematic" && st && st.status === "ok";
+  const mode = A.anat || "3d", ms = ref && mode === "3d" ? S.mesh[ref._key] : null;
+  if (ref && mode === "3d" && !ms) setTimeout(() => meshLoad(ref), 0);
+  const use3d = !!(ms && ms.status === "ok");
+  const usePatient = !use3d && mode !== "schematic" && st && st.status === "ok";
   if (usePatient) setTimeout(segDraw, 0);
+  if (use3d) setTimeout(v3dMount, 0);
   const cells = {}; Object.keys(R.visits[vi].organs).forEach(o => { cells[o] = radCell(R, vi, o, sig, A.cmp); });
   const tip = (o, c) => `${orgLabel(o)}: ${radFmt(sig, c.v)}${sig.unit ? " " + sig.unit : ""}${c.base ? " (reference)" : ""}${c.ok === false ? " · not comparable: " + c.why : c.z != null ? ` · ${c.z.toFixed(1)} SD (${c.pct}th percentile of ${c.n})` : c.d != null ? " · " + radDFmt(sig, c) : ""}`;
   const svg = shapes.map(([o, dd, w]) => {
@@ -1803,24 +1817,28 @@ function anMap(R, A, sig, vi) {
     if (w) return `<g data-org="${o}" class="org${sel ? " sel" : ""}" tabindex="0" role="button" aria-label="${esc(tip(o, c))}"><title>${esc(tip(o, c))}</title><path d="${dd}" class="under" stroke-width="${w + 3}"/><path d="${dd}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round"${hatch}/></g>`;
     return `<g data-org="${o}" class="org${sel ? " sel" : ""}" tabindex="0" role="button" aria-label="${esc(tip(o, c))}"><title>${esc(tip(o, c))}</title><path d="${dd}" fill="${col}"${hatch}/>${c.ok === false ? `<path d="${dd}" fill="url(#anHatch)" pointer-events="none"/>` : ""}</g>`;
   }).join("");
-  const others = usePatient ? [] : Object.keys(R.visits[vi].organs).filter(o => !drawn.has(o) && ((ORG[o] && ORG[o].layer !== (layer === "organs" ? "msk" : "organs")) || !ORG[o]));
+  const others = usePatient || use3d ? [] : Object.keys(R.visits[vi].organs).filter(o => !drawn.has(o) && ((ORG[o] && ORG[o].layer !== (layer === "organs" ? "msk" : "organs")) || !ORG[o]));
   const sel = cells[A.organ] || {};
   const legend = A.cmp === "cohort" ? ["−3 SD", "cohort mean", "+3 SD"] : sig.d === "pct" ? [`−${sig.span}%`, "no change", `+${sig.span}%`] : [`−${sig.span}${sig.unit === "HU" ? " HU" : ""}`, "no change", `+${sig.span}${sig.unit === "HU" ? " HU" : ""}`];
   return `<div class="card an-map"><div class="card-h"><h3>${esc(sig.label)} · ${esc(R.visits[vi].short)}${A.cmp !== "cohort" && radRef(R.visits, vi, A.cmp) >= 0 && radRef(R.visits, vi, A.cmp) !== vi ? ` vs ${esc(R.visits[radRef(R.visits, vi, A.cmp)].short)}` : A.cmp === "cohort" ? " vs cohort" : ""}</h3>
-      <div class="an-maphdr">${ref ? `<div class="an-seg sm">${[["patient", "Patient"], ["schematic", "Schematic"]].map(([k, l]) => `<button class="ibtn ${(A.anat || "patient") === k ? "on" : ""}" data-an="anat:${k}">${l}</button>`).join("")}</div>` : ""}<div class="an-seg sm">${[["organs", "Organs"], ["msk", "Bones & Muscle"]].map(([k, l]) => `<button class="ibtn ${layer === k ? "on" : ""}" data-an="layer:${k}">${l}</button>`).join("")}</div></div></div>
+      <div class="an-maphdr">${ref ? `<div class="an-seg sm">${[["3d", "3D"], ["patient", "Front"], ["schematic", "Schematic"]].map(([k, l]) => `<button class="ibtn ${mode === k ? "on" : ""}" data-an="anat:${k}" title="${k === "3d" ? "Surfaces of every segmented structure; drag to rotate" : k === "patient" ? "Front projection of this subject's segmentation" : "Generic body diagram"}">${l}</button>`).join("")}</div>` : ""}<div class="an-seg sm">${[["organs", "Organs"], ["msk", "Bones & Muscle"]].map(([k, l]) => `<button class="ibtn ${layer === k ? "on" : ""}" data-an="layer:${k}">${l}</button>`).join("")}</div></div></div>
     <div class="card-b an-svgwrap">
+      ${use3d ? `<div class="an-3dwrap"><div id="an3d" class="an-3d"></div></div>
+      <div class="src an-segsrc">3D · ${ms.meshes.length} structures from ${esc(SEG_MASK_NAME)} · ${(ms.tris / 1000).toFixed(0)}k triangles on a ${ms.mm.join("×")} mm grid · orientation check ${ms.check === "ok" ? "passed (spleen on patient's left)" : "not possible (no spleen or liver)"}${ms.cached ? ` · from this browser's cache (${ms.ms} ms)` : ` · built in ${(ms.ms / 1000).toFixed(1)} s`} · drag to rotate, scroll to zoom, right-drag to pan; click a structure to select it</div>` : ""}
+      ${ms && ms.status === "loading" ? `<div class="src an-segsrc">Building 3D surfaces from this subject's segmentation…${usePatient ? " Showing the front view meanwhile." : ""}</div>` : ""}
+      ${ms && ms.status === "err" ? `<div class="src an-segsrc">3D view unavailable (${esc(ms.err)})${usePatient ? "; showing the front view" : ""}.</div>` : ""}
       ${usePatient ? `<div class="an-patient"><canvas id="anSeg" role="img" aria-label="Front view of this subject's TotalSegmentator segmentation, patient's right on the left"></canvas><div class="an-sides"><span>R</span><span>L</span></div></div>
       <div class="src an-segsrc">Patient anatomy · front view of ${esc(SEG_MASK_NAME)} · ${st.dims.join("×")} voxels · orientation check ${st.check === "ok" ? "passed (spleen on patient's left)" : "not possible (no spleen or liver)"}${st.cached ? ` · from this browser's cache (${st.ms} ms)` : st.ms ? ` · built in ${(st.ms / 1000).toFixed(1)} s` : ""}${st.oblique ? " · oblique grid snapped to nearest axes" : ""}</div>` : ""}
-      ${ref && st && st.status === "loading" && A.anat !== "schematic" ? `<div class="src an-segsrc">Loading this subject's segmentation…</div>` : ""}
-      ${ref && st && st.status === "err" ? `<div class="src an-segsrc">Patient anatomy unavailable (${esc(st.err)}); showing the schematic.</div>` : ""}
-      ${usePatient ? "" : `<svg id="anMap" viewBox="40 30 240 600" role="group" aria-label="Body map, patient's right on the left">
+      ${ref && st && st.status === "loading" && mode === "patient" ? `<div class="src an-segsrc">Loading this subject's segmentation…</div>` : ""}
+      ${ref && st && st.status === "err" && mode !== "schematic" && !use3d ? `<div class="src an-segsrc">Patient anatomy unavailable (${esc(st.err)}); showing the schematic.</div>` : ""}
+      ${usePatient || use3d ? "" : `<svg id="anMap" viewBox="40 30 240 600" role="group" aria-label="Body map, patient's right on the left">
         <defs><pattern id="anHatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="currentColor" stroke-width="1.4" opacity=".45"/></pattern></defs>
         <circle cx="160" cy="44" r="25" class="sil"/><path d="${BODY_SIL}" class="sil"/>
         ${layer === "msk" ? THORACIC_DECO : ""}${svg}
         <text x="58" y="618" class="side">R</text><text x="254" y="618" class="side">L</text>
       </svg>`}
       <div class="an-legend"><span class="ramp"></span><div class="lbls"><span>${legend[0]}</span><span>${legend[1]}</span><span>${legend[2]}</span></div><div class="lbls sub"><span><i class="nc-sw"></i>not comparable</span><span><i class="nd-sw"></i>no data</span></div></div>
-      ${(() => { const nc = (usePatient ? Object.keys(cells).filter(o => segLayerOf(o) === (layer === "msk" ? 1 : 0)) : shapes.map(x => x[0])).map(o => cells[o]).filter(c => c && c.ok === false); if (nc.length < 3) return ""; const why = [...new Set(nc.map(c => c.why))]; return `<div class="an-ncnote">${ic("warning")}<span><b>${nc.length}</b> drawn structures can't be compared: ${why.map(esc).join("; ")}. Try another visit, Compare vs Cohort, or a shape signal.</span></div>`; })()}
+      ${(() => { const nc = (usePatient || use3d ? Object.keys(cells).filter(o => segLayerOf(o) === (layer === "msk" ? 1 : 0)) : shapes.map(x => x[0])).map(o => cells[o]).filter(c => c && c.ok === false); if (nc.length < 3) return ""; const why = [...new Set(nc.map(c => c.why))]; return `<div class="an-ncnote">${ic("warning")}<span><b>${nc.length}</b> drawn structures can't be compared: ${why.map(esc).join("; ")}. Try another visit, Compare vs Cohort, or a shape signal.</span></div>`; })()}
       <div class="an-read" id="anRead">${anReadout(A.organ, sel, sig)}</div>
       ${others.length ? `<div class="an-others"><div class="src">Also segmented, not drawn (${others.length})</div>${others.map(o => { const c = cells[o]; return `<button class="an-och ${A.organ === o ? "on" : ""}" data-org="${o}" title="${esc(tip(o, c))}"><i style="background:${radColor(c.t, c.ok)}"></i>${esc(orgLabel(o))}</button>`; }).join("")}</div>` : ""}
     </div></div>`;
@@ -1914,6 +1932,7 @@ function aboutCard() {
     ["TotalSegmentator", (ts.version || RAD_ASSUMED.ts) + (src ? "" : " · assumed"), "Organ masks (Anatomy tab)", "https://github.com/wasserth/TotalSegmentator"],
     ["file-metadata-importer + file-classifier", "as installed on the site", "Acquisition technique and comparability checks (Overview timeline, Compare)", "https://gitlab.com/flywheel-io/flywheel-apps/file-metadata-importer"],
     ["session-thumbnails gear", (Object.values(GTH.idx).find(x => x && x.idx) || { idx: { gear: { version: "not run on these sessions" } } }).idx.gear.version, "Series thumbnails (fw.thumbnails/1 index + sprite), browser rendering as fallback", "https://github.com/danjamesrafter-crypto/subject-view-harness/tree/main/gears/session-thumbnails"],
+    ["three.js", "r128", "3D surfaces of the segmentation (Anatomy tab), loaded only when 3D is opened", "https://github.com/mrdoob/three.js/tree/r128"],
     ["PyRadiomics", (pr.version || RAD_ASSUMED.pr) + (src ? "" : " · assumed"), "Features per organ (Anatomy tab)", "https://pyradiomics.readthedocs.io/en/latest/features.html"]
   ];
   return `<div class="card"><div class="card-h"><h3>About</h3><span class="src">Versions and sources${src ? "" : " · Anatomy shows only measured output; simulated values appear only with demo data turned on"}</span></div><div class="card-b"><table class="an-tbl about"><thead><tr><th>Component</th><th>Version</th><th>Used for</th><th>Source</th></tr></thead><tbody>${rows.map(r => `<tr><td>${esc(r[0])}</td><td class="mono">${esc(r[1])}</td><td class="muted">${esc(r[2])}</td><td><a href="${r[3]}" target="_blank" rel="noopener">${esc(r[3].replace(/^https:\/\//, "").replace(/\/$/, ""))}</a></td></tr>`).join("")}</tbody></table>
@@ -2024,7 +2043,7 @@ async function segLoad(ref) {
   try {
     const hit = await scGet(ref);
     if (hit) { Object.assign(st, hit, { status: "ok", cached: true, ms: Math.round(performance.now() - st.t0) }); if (S.tab === "anatomy") render(); return st; }
-    const blob = await sdk(`SDK getFileBlob ${SEG_MASK_NAME}`, () => S.ext.getFileBlob(ref));
+    const blob = await segBlob(ref);
     st.mb = blob.size / 1048576;
     const nii = niftiParse(await segGunzip(blob)), ax = segAxes(nii.A);
     const maxL = 4096, layerOf = new Int8Array(maxL).fill(2); for (let l = 1; l < TS_TOTAL_NAMES.length; l++) layerOf[l] = segLayerOf(TS_TOTAL_NAMES[l]);
@@ -2130,6 +2149,270 @@ document.addEventListener("mousemove", e => {
   cv.style.cursor = segPick(e) ? "pointer" : "default";
   box.innerHTML = R.visits[S.an.visit].organs[n] ? anReadout(n, radCell(R, S.an.visit, n, sig, S.an.cmp), sig) : `<b>${esc(orgLabel(n))}</b> <span class="muted">segmented, no features</span>`;
 });
+
+/* ---- 3D patient anatomy (0.14.0) ---------------------------------------------------------------------------------------
+   Every structure in the subject's TotalSegmentator `total` mask, drawn as a smoothed surface with three.js (WebGL).
+   The mask is resampled to a ~2 mm grid, each label is meshed with surface nets and Taubin-smoothed in a worker, and the
+   vertices are placed in patient space (RAS mm) through the NIfTI sform/qform, so the camera's "front" is the patient's front
+   and the patient's right is on the viewer's left. Same orientation gate as the 2D map: spleen must lie to the patient's left
+   of the liver, or nothing is drawn. Surfaces are coloured by the same signal, reference and comparability rules as the map.
+   Meshes are kept in this browser's anatomy cache (same switch and Clear button), key = mask file + "mesh" format version. */
+const THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js";
+const ORBIT_URL = "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js";
+const MESH_V = 1, MESH_TARGET_MM = 2, MESH_MAX_CELLS = 1.2e7;
+S.mesh = S.mesh || {};
+
+/* Shared download: the 2D map and the 3D surfaces read the same mask, fetched once. */
+const SEG_BLOBS = {};
+function segBlob(ref) {
+  const k = ref._key;
+  if (!SEG_BLOBS[k]) {
+    const p = SEG_BLOBS[k] = sdk(`SDK getFileBlob ${SEG_MASK_NAME}`, () => S.ext.getFileBlob(ref));
+    p.then(() => setTimeout(() => { if (SEG_BLOBS[k] === p) delete SEG_BLOBS[k]; }, 120000), () => { if (SEG_BLOBS[k] === p) delete SEG_BLOBS[k]; });
+  }
+  return SEG_BLOBS[k];
+}
+
+const MESH_WORKER_SRC = `onmessage = e => {
+  const t0 = Date.now(), { data, dims, A, target, maxCells, valid } = e.data, [nx, ny, nz] = dims;
+  const sp = [0, 1, 2].map(j => Math.hypot(A[0][j], A[1][j], A[2][j]) || 1);
+  let tg = target, s, m;
+  for (let it = 0; it < 12; it++) { s = sp.map(v => Math.max(1, Math.round(tg / v))); m = [Math.ceil(nx / s[0]), Math.ceil(ny / s[1]), Math.ceil(nz / s[2])]; if (m[0] * m[1] * m[2] <= maxCells) break; tg *= 1.2; }
+  const [mx, my, mz] = m, ds = new Uint16Array(mx * my * mz), L = valid.length, bb = new Int32Array(L * 6), cnt = new Float64Array(L);
+  for (let l = 0; l < L; l++) { bb[l * 6] = bb[l * 6 + 1] = bb[l * 6 + 2] = 1e9; bb[l * 6 + 3] = bb[l * 6 + 4] = bb[l * 6 + 5] = -1; }
+  const hs = s.map(v => v >> 1);
+  for (let k = 0, q = 0; k < mz; k++) { const vk = Math.min(nz - 1, k * s[2] + hs[2]) * nx * ny;
+    for (let j = 0; j < my; j++) { const vj = vk + Math.min(ny - 1, j * s[1] + hs[1]) * nx;
+      for (let i = 0; i < mx; i++, q++) { const l = data[vj + Math.min(nx - 1, i * s[0] + hs[0])]; if (!l || l >= L || !valid[l]) continue;
+        ds[q] = l; cnt[l]++; const b = l * 6;
+        if (i < bb[b]) bb[b] = i; if (j < bb[b + 1]) bb[b + 1] = j; if (k < bb[b + 2]) bb[b + 2] = k;
+        if (i > bb[b + 3]) bb[b + 3] = i; if (j > bb[b + 4]) bb[b + 4] = j; if (k > bb[b + 5]) bb[b + 5] = k; } } }
+  const det = A[0][0] * (A[1][1] * A[2][2] - A[1][2] * A[2][1]) - A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0]) + A[0][2] * (A[1][0] * A[2][1] - A[1][1] * A[2][0]);
+  const CO = [[0,0,0],[1,0,0],[0,1,0],[1,1,0],[0,0,1],[1,0,1],[0,1,1],[1,1,1]], ED = [[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]];
+  const meshes = [], bufs = [];
+  for (let l = 1; l < L; l++) {
+    if (cnt[l] < 3) continue;
+    const b = l * 6, o = [bb[b] - 2, bb[b + 1] - 2, bb[b + 2] - 2], g = [bb[b + 3] - bb[b] + 5, bb[b + 4] - bb[b + 1] + 5, bb[b + 5] - bb[b + 2] + 5];
+    const [gx, gy, gz] = g, st = [1, gx, gx * gy];
+    let F = new Float32Array(gx * gy * gz), F2 = new Float32Array(gx * gy * gz);
+    /* partial-volume field: fraction of each coarse cell's full-resolution voxels that carry this label */
+    const inv = 1 / (s[0] * s[1] * s[2]), i0 = Math.max(0, (o[0] + 1) * s[0]), i1 = Math.min(nx, (o[0] + gx - 1) * s[0]), j0 = Math.max(0, (o[1] + 1) * s[1]), j1 = Math.min(ny, (o[1] + gy - 1) * s[1]), k0 = Math.max(0, (o[2] + 1) * s[2]), k1 = Math.min(nz, (o[2] + gz - 1) * s[2]);
+    const ci = new Int32Array(i1 - i0); for (let i = i0; i < i1; i++) ci[i - i0] = Math.floor(i / s[0]) - o[0];
+    for (let k = k0; k < k1; k++) { const zc = (Math.floor(k / s[2]) - o[2]) * st[2];
+      for (let j = j0; j < j1; j++) { const yc = zc + (Math.floor(j / s[1]) - o[1]) * gx, src = (k * ny + j) * nx;
+        for (let i = i0; i < i1; i++) if (data[src + i] === l) F[yc + ci[i - i0]] += inv; } }
+    /* light [1 2 1] blur along each axis, then the surface is where the field crosses TH (sub-cell placement, no terraces) */
+    for (let a = 0; a < 3; a++) { const sa = st[a]; F2.fill(0);
+      for (let z = 1; z < gz - 1; z++) for (let y = 1; y < gy - 1; y++) { const r0 = (z * gy + y) * gx; for (let x = 1; x < gx - 1; x++) { const q = r0 + x; F2[q] = 0.5 * F[q] + 0.25 * (F[q - sa] + F[q + sa]); } }
+      const t = F; F = F2; F2 = t; }
+    const V = new Int32Array(gx * gy * gz).fill(-1), P = [], Q = [], cs = new Float32Array(8), co = [0, 0, 0], TH = 0.4;
+    for (let z = 0; z < gz - 1; z++) for (let y = 0; y < gy - 1; y++) for (let x = 0; x < gx - 1; x++) {
+      const p = z * st[2] + y * st[1] + x; let sum = 0;
+      for (let c = 0; c < 8; c++) { cs[c] = F[p + CO[c][0] + CO[c][1] * st[1] + CO[c][2] * st[2]]; sum += cs[c] > TH ? 1 : 0; }
+      if (sum === 0 || sum === 8) continue;
+      let px = 0, py = 0, pz = 0, ne = 0;
+      for (let e2 = 0; e2 < 12; e2++) { const [a1, a2] = ED[e2], va = cs[a1], vb = cs[a2]; if ((va > TH) === (vb > TH)) continue; const t = (TH - va) / (vb - va);
+        px += CO[a1][0] + t * (CO[a2][0] - CO[a1][0]); py += CO[a1][1] + t * (CO[a2][1] - CO[a1][1]); pz += CO[a1][2] + t * (CO[a2][2] - CO[a1][2]); ne++; }
+      V[p] = P.length / 3; P.push(x + px / ne, y + py / ne, z + pz / ne);
+      co[0] = x; co[1] = y; co[2] = z; const v0 = F[p] > TH ? 1 : 0;
+      for (let a = 0; a < 3; a++) {
+        if (co[(a + 1) % 3] < 1 || co[(a + 2) % 3] < 1) continue;
+        if ((F[p + st[a]] > TH ? 1 : 0) === v0) continue;
+        const sb = st[(a + 1) % 3], sc = st[(a + 2) % 3], i0 = V[p], i1 = V[p - sb], i2 = V[p - sb - sc], i3 = V[p - sc];
+        if (i1 < 0 || i2 < 0 || i3 < 0) continue;
+        if ((v0 === 1) === (det > 0)) Q.push(i0, i1, i2, i3); else Q.push(i0, i3, i2, i1);
+      }
+    }
+    const nv = P.length / 3; if (!nv || !Q.length) continue;
+    /* Taubin smoothing (lambda/mu) over the quad edges: removes the voxel staircase without shrinking the organ */
+    const deg = new Int32Array(nv + 1);
+    for (let i = 0; i < Q.length; i += 4) for (let e2 = 0; e2 < 4; e2++) { deg[Q[i + e2] + 1]++; deg[Q[i + (e2 + 1) % 4] + 1]++; }
+    for (let i = 0; i < nv; i++) deg[i + 1] += deg[i];
+    const nb = new Int32Array(deg[nv]), fill = deg.slice(0, nv);
+    for (let i = 0; i < Q.length; i += 4) for (let e2 = 0; e2 < 4; e2++) { const u = Q[i + e2], w = Q[i + (e2 + 1) % 4]; nb[fill[u]++] = w; nb[fill[w]++] = u; }
+    let cur = Float64Array.from(P), nxt = new Float64Array(cur.length);
+    for (let it = 0; it < 10; it++) { const f = it % 2 ? -0.53 : 0.5;
+      for (let v = 0; v < nv; v++) { const a0 = deg[v], a1 = deg[v + 1], n = a1 - a0; if (!n) { nxt[3 * v] = cur[3 * v]; nxt[3 * v + 1] = cur[3 * v + 1]; nxt[3 * v + 2] = cur[3 * v + 2]; continue; }
+        let sx = 0, sy = 0, sz = 0; for (let t = a0; t < a1; t++) { const w = nb[t] * 3; sx += cur[w]; sy += cur[w + 1]; sz += cur[w + 2]; }
+        nxt[3 * v] = cur[3 * v] + f * (sx / n - cur[3 * v]); nxt[3 * v + 1] = cur[3 * v + 1] + f * (sy / n - cur[3 * v + 1]); nxt[3 * v + 2] = cur[3 * v + 2] + f * (sz / n - cur[3 * v + 2]); }
+      const t2 = cur; cur = nxt; nxt = t2; }
+    /* grid -> resampled cell -> voxel -> RAS mm */
+    const pos = new Float32Array(nv * 3); let cx = 0, cy = 0, cz = 0;
+    for (let v = 0; v < nv; v++) {
+      const vi = (cur[3 * v] + o[0]) * s[0] + (s[0] - 1) / 2, vj = (cur[3 * v + 1] + o[1]) * s[1] + (s[1] - 1) / 2, vk = (cur[3 * v + 2] + o[2]) * s[2] + (s[2] - 1) / 2;
+      const X = A[0][0] * vi + A[0][1] * vj + A[0][2] * vk + A[0][3], Y = A[1][0] * vi + A[1][1] * vj + A[1][2] * vk + A[1][3], Z = A[2][0] * vi + A[2][1] * vj + A[2][2] * vk + A[2][3];
+      pos[3 * v] = X; pos[3 * v + 1] = Y; pos[3 * v + 2] = Z; cx += X; cy += Y; cz += Z; }
+    const idx = new Uint32Array(Q.length / 4 * 6);
+    for (let i = 0, t = 0; i < Q.length; i += 4) { idx[t++] = Q[i]; idx[t++] = Q[i + 1]; idx[t++] = Q[i + 2]; idx[t++] = Q[i]; idx[t++] = Q[i + 2]; idx[t++] = Q[i + 3]; }
+    meshes.push({ l, pos, idx, c: [cx / nv, cy / nv, cz / nv], cells: cnt[l] }); bufs.push(pos.buffer, idx.buffer);
+  }
+  postMessage({ meshes, stride: s, grid: m, mm: s.map((v, i) => +(v * sp[i]).toFixed(2)), ms: Date.now() - t0 }, bufs);
+};`;
+let meshWorkerUrl = null;
+function meshBuild(data, dims, A) {
+  meshWorkerUrl = meshWorkerUrl || URL.createObjectURL(new Blob([MESH_WORKER_SRC], { type: "text/javascript" }));
+  const valid = new Uint8Array(Math.max(TS_TOTAL_NAMES.length, 2)); for (let l = 1; l < TS_TOTAL_NAMES.length; l++) valid[l] = 1;
+  return new Promise((res, rej) => { const w = new Worker(meshWorkerUrl); w.onmessage = e => { res(e.data); w.terminate(); }; w.onerror = e => { rej(new Error(e.message || "surface extraction failed")); w.terminate(); }; w.postMessage({ data, dims, A, target: MESH_TARGET_MM, maxCells: MESH_MAX_CELLS, valid }, [data.buffer]); });
+}
+/* Same gate as the 2D map, in patient space: RAS +x is the patient's right, so the spleen (1) needs a lower x than the liver (5). */
+function meshCheck(meshes) {
+  const c = l => (meshes.find(m => m.l === l) || {}).c;
+  const sp = c(1), lv = c(5);
+  return sp && lv ? (sp[0] < lv[0] ? "ok" : "failed") : "unchecked";
+}
+
+/* ---- mesh cache (same IndexedDB store and switch as the 2D maps) ---- */
+const mcKey = ref => scKey(ref) + "|mesh" + MESH_V;
+async function mcGet(ref) {
+  if (!tcOn()) return null; const db = await scDb(); if (!db) return null;
+  const v = await scReq(db, "readonly", os => os.get(mcKey(ref)));
+  if (!v || Date.now() - v.made > SC.TTL) { SC.misses++; return null; }
+  try {
+    const buf = await segGunzip(v.blob); let off = 0; const meshes = [];
+    for (const [l, nv, ni, c, cells] of v.meta.labels) { const pos = new Float32Array(buf, off, nv * 3); off += nv * 12; const idx = new Uint32Array(buf, off, ni); off += ni * 4; meshes.push({ l, pos, idx, c, cells }); }
+    if (off !== buf.byteLength) throw new Error("size");
+    SC.hits++; v.at = Date.now(); scReq(db, "readwrite", os => os.put(v));
+    return { ...v.meta, meshes };
+  } catch (e) { SC.misses++; return null; }
+}
+async function mcPut(ref, st) {
+  if (!tcOn()) return; const db = await scDb(); if (!db) return;
+  const bytes = st.meshes.reduce((n, m) => n + m.pos.byteLength + m.idx.byteLength, 0), u8 = new Uint8Array(bytes); let off = 0;
+  for (const m of st.meshes) { u8.set(new Uint8Array(m.pos.buffer, m.pos.byteOffset, m.pos.byteLength), off); off += m.pos.byteLength; u8.set(new Uint8Array(m.idx.buffer, m.idx.byteOffset, m.idx.byteLength), off); off += m.idx.byteLength; }
+  const meta = { labels: st.meshes.map(m => [m.l, m.pos.length / 3, m.idx.length, m.c, m.cells]), check: st.check, mm: st.mm, dims: st.dims, tris: st.tris };
+  const blob = await scZip(u8);
+  await scReq(db, "readwrite", os => os.put({ k: mcKey(ref), meta, blob, made: Date.now(), at: Date.now() })); SC.puts++;
+  scPrune();
+}
+
+async function meshLoad(ref) {
+  const key = ref._key; if (S.mesh[key]) return S.mesh[key];
+  const st = S.mesh[key] = { status: "loading", t0: performance.now() };
+  try {
+    const hit = await mcGet(ref);
+    if (hit) Object.assign(st, hit, { status: hit.check === "failed" ? "err" : "ok", cached: true });
+    else {
+      const blob = await segBlob(ref); st.mb = blob.size / 1048576;
+      const nii = niftiParse(await segGunzip(blob)); segAxes(nii.A);
+      const M = await meshBuild(nii.data, nii.dims, nii.A), check = meshCheck(M.meshes);
+      Object.assign(st, { meshes: M.meshes, mm: M.mm, dims: nii.dims, check, tris: M.meshes.reduce((n, m) => n + m.idx.length / 3, 0), status: check === "failed" ? "err" : "ok" });
+      if (st.status === "ok") mcPut(ref, st).catch(() => {});
+    }
+    if (st.status === "err") { st.err = "orientation check failed (spleen on the patient's right)"; st.meshes = null; }
+    st.ms = Math.round(performance.now() - st.t0);
+    diag(`Anatomy 3D ${key.split("@")[0].slice(-8)}: ${st.meshes ? st.meshes.length : 0} surfaces, ${st.tris || 0} triangles, grid ${(st.mm || []).join("x")} mm, orientation ${st.check}, ${st.cached ? "cache" : (st.mb || 0).toFixed(1) + " MB"}, ${st.ms} ms`);
+  } catch (e) { Object.assign(st, { status: "err", err: String(e.message || e) }); diag("Anatomy 3D failed: " + st.err); }
+  if (S.tab === "anatomy") render();
+  return st;
+}
+
+/* ---- three.js, loaded only when the 3D view is first opened ---- */
+let THREE_P = null;
+function loadThree() {
+  if (window.THREE && window.THREE.OrbitControls) return Promise.resolve(window.THREE);
+  return THREE_P = THREE_P || new Promise((res, rej) => {
+    const add = (src, next) => { const s = document.createElement("script"); s.src = src; s.crossOrigin = "anonymous"; s.onload = next; s.onerror = () => { THREE_P = null; rej(new Error("couldn't load " + src.split("/").pop())); }; document.head.appendChild(s); };
+    add(THREE_URL, () => add(ORBIT_URL, () => window.THREE && window.THREE.OrbitControls ? res(window.THREE) : rej(new Error("three.js loaded without OrbitControls"))));
+  });
+}
+
+/* ---- the viewer: one WebGL canvas kept across render() calls and re-attached to #an3d ---- */
+const V3D = { el: null, r: null, scene: null, cam: null, ctl: null, group: null, meshes: [], key: null, size: null, center: null, hover: null, raf: 0, err: "" };
+const V3D_MUSCLE = /^(gluteus_|iliopsoas_|autochthon_)/;
+function v3dDraw() { if (V3D.raf || !V3D.r) return; V3D.raf = requestAnimationFrame(() => { V3D.raf = 0; V3D.r.render(V3D.scene, V3D.cam); }); }
+function v3dInit(T) {
+  const el = document.createElement("div"); el.className = "an-3dbox";
+  let r; try { r = new T.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); } catch (e) { throw new Error("WebGL isn't available in this browser"); }
+  r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); r.setClearColor(0x000000, 0);
+  r.domElement.tabIndex = 0; r.domElement.setAttribute("role", "img"); r.domElement.setAttribute("aria-label", "3D view of this subject's TotalSegmentator segmentation. Drag to rotate, scroll to zoom, right-drag to pan.");
+  el.appendChild(r.domElement);
+  const bar = document.createElement("div"); bar.className = "an-3dbar";
+  bar.innerHTML = [["front", "Front"], ["left", "Pt left"], ["right", "Pt right"], ["back", "Back"], ["top", "Top"]].map(([k, l]) => `<button class="ibtn" data-v3="${k}" title="View from the patient's ${k === "front" ? "front" : k === "back" ? "back" : k === "top" ? "head" : k + " side"}">${l}</button>`).join("");
+  el.appendChild(bar);
+  const scene = new T.Scene(), cam = new T.PerspectiveCamera(28, 1, 1, 20000); cam.up.set(0, 0, 1); /* superior is up; OrbitControls reads this once */
+  scene.add(new T.HemisphereLight(0xdde6ff, 0x30333d, 0.75)); scene.add(cam);
+  const key = new T.DirectionalLight(0xffffff, 0.8); key.position.set(0.4, 0.6, 1); cam.add(key);
+  const fill = new T.DirectionalLight(0xffffff, 0.25); fill.position.set(-0.6, -0.2, 0.6); cam.add(fill);
+  const ctl = new T.OrbitControls(cam, r.domElement); ctl.enableDamping = false; ctl.rotateSpeed = 0.8; ctl.addEventListener("change", v3dDraw);
+  Object.assign(V3D, { el, r, scene, cam, ctl, T });
+  bar.addEventListener("click", e => { const b = e.target.closest("[data-v3]"); if (b) v3dView(b.dataset.v3); });
+  let down = null;
+  r.domElement.addEventListener("pointerdown", e => { down = [e.clientX, e.clientY]; });
+  r.domElement.addEventListener("pointerup", e => { if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return; down = null; const n = v3dPick(e); if (n) { S.an.organ = n; render(); } });
+  r.domElement.addEventListener("pointermove", e => { if (e.buttons) return; v3dHover(v3dPick(e)); });
+  r.domElement.addEventListener("pointerleave", () => v3dHover(null));
+  window.addEventListener("resize", () => { if (V3D.el && V3D.el.isConnected) v3dSize(); });
+}
+function v3dView(k) {
+  const T = V3D.T, c = V3D.center, d = V3D.dist; if (!c) return;
+  const dir = { front: [0, 1, 0], back: [0, -1, 0], left: [-1, 0, 0], right: [1, 0, 0], top: [0, -0.02, 1] }[k] || [0, 1, 0];
+  V3D.cam.position.set(c.x + dir[0] * d, c.y + dir[1] * d, c.z + dir[2] * d);
+  V3D.ctl.target.copy(c); V3D.cam.lookAt(c); V3D.ctl.update(); v3dDraw();
+}
+function v3dBuild(key, st) {
+  const T = V3D.T;
+  if (V3D.group) { V3D.scene.remove(V3D.group); V3D.meshes.forEach(m => { m.geometry.dispose(); m.material.dispose(); }); }
+  const group = new T.Group(), meshes = [], box = new T.Box3();
+  for (const m of st.meshes) {
+    const name = TS_TOTAL_NAMES[m.l]; if (!name) continue;
+    const g = new T.BufferGeometry(); g.setAttribute("position", new T.BufferAttribute(m.pos, 3)); g.setIndex(new T.BufferAttribute(m.idx, 1)); g.computeVertexNormals(); g.computeBoundingSphere(); g.computeBoundingBox();
+    const mat = new T.MeshStandardMaterial({ color: 0x3a4256, roughness: 0.55, metalness: 0.05, side: T.DoubleSide });
+    const mesh = new T.Mesh(g, mat); mesh.userData = { name, l: m.l, layer: segLayerOf(name), muscle: V3D_MUSCLE.test(name) };
+    group.add(mesh); meshes.push(mesh); box.union(g.boundingBox);
+  }
+  V3D.scene.add(group); Object.assign(V3D, { group, meshes, key });
+  const c = new T.Vector3(), sz = new T.Vector3(); box.getCenter(c); box.getSize(sz);
+  V3D.center = c; V3D.size = sz; V3D.aspect = Math.min(1.9, Math.max(1.05, sz.z / Math.max(1, sz.x)));
+  V3D.dist = 1.18 * Math.max(sz.z / 2 / Math.tan(14 * Math.PI / 180), sz.x / 2 / Math.tan(14 * Math.PI / 180) / (1 / V3D.aspect)) + sz.y / 2;
+  V3D.cam.near = V3D.dist / 50; V3D.cam.far = V3D.dist * 10;
+  v3dView("front");
+}
+function v3dSize() {
+  const host = V3D.el.parentElement; if (!host) return;
+  const w = Math.max(200, host.clientWidth || 300), h = Math.round(Math.max(340, Math.min(700, (window.innerHeight || 900) - 200, w * (V3D.aspect || 1.5))));
+  V3D.r.setSize(w, h); V3D.cam.aspect = w / h; V3D.cam.updateProjectionMatrix(); v3dDraw();
+}
+/* Colour by the current signal, visit and reference; the other layer is a faint ghost for context. */
+function v3dColor() {
+  const R = S.rad[S.subj], A = S.an, vi = A.visit, v = R && R.visits && R.visits[vi]; if (!v || !V3D.meshes.length) return;
+  const sig = sigOf(A.sig), active = A.layer === "msk" ? 1 : 0, T = V3D.T, cache = new Map();
+  const look = name => { if (cache.has(name)) return cache.get(name); const c = v.organs[name] ? radCell(R, vi, name, sig, A.cmp) : null;
+    let rgb = c && c.v != null ? segColorRGB(radColor(c.t, c.ok)) : [74, 82, 102]; if (c && c.ok === false) rgb = rgb.map(x => x * 0.55 + 60); cache.set(name, rgb); return rgb; };
+  for (const m of V3D.meshes) {
+    const u = m.userData, mat = m.material, on = u.layer === active, ghost = !on && u.layer !== 2 && !(active === 0 && u.muscle);
+    m.visible = on || ghost; u.pick = on;
+    if (on) { const [r, g, b] = look(u.name); mat.color.setRGB(r / 255, g / 255, b / 255); mat.transparent = false; mat.opacity = 1; mat.depthWrite = true; }
+    else { mat.color.setRGB(0.62, 0.66, 0.75); mat.transparent = true; mat.opacity = active === 0 ? 0.1 : 0.07; mat.depthWrite = false; }
+    const sel = on && u.name === A.organ, hov = on && V3D.hover === u.name;
+    const k = sel ? 0.45 : hov ? 0.22 : 0; mat.emissive.copy(mat.color).multiplyScalar(k); if (sel) mat.emissive.addScalar(0.06);
+    mat.needsUpdate = true;
+  }
+  v3dDraw();
+}
+function v3dPick(e) {
+  if (!V3D.r) return null; const T = V3D.T, rc = V3D.rc || (V3D.rc = new T.Raycaster()), r = V3D.r.domElement.getBoundingClientRect();
+  rc.setFromCamera(new T.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), V3D.cam);
+  const hit = rc.intersectObjects(V3D.meshes.filter(m => m.visible && m.userData.pick), false)[0];
+  return hit ? hit.object.userData.name : null;
+}
+function v3dHover(n) {
+  if (V3D.hover === n) return; V3D.hover = n; v3dColor();
+  const box = document.getElementById("anRead"), R = S.rad[S.subj]; if (!box || !R || !R.visits) return;
+  const o = n || S.an.organ, sig = sigOf(S.an.sig), v = R.visits[S.an.visit];
+  V3D.r.domElement.style.cursor = n ? "pointer" : "grab";
+  box.innerHTML = v.organs[o] ? anReadout(o, radCell(R, S.an.visit, o, sig, S.an.cmp), sig) : `<b>${esc(orgLabel(o))}</b> <span class="muted">segmented, no features</span>`;
+}
+/* Called after render() puts #an3d in the page. */
+async function v3dMount() {
+  const host = document.getElementById("an3d"); if (!host) return;
+  const R = S.rad[S.subj], v = R && R.visits && R.visits[S.an.visit], ref = v && v.maskRef, st = ref && S.mesh[ref._key];
+  if (!st || st.status !== "ok") return;
+  let T; try { T = await loadThree(); if (!V3D.r) v3dInit(T); } catch (e) { st.status = "err"; st.err = String(e.message || e); diag("Anatomy 3D failed: " + st.err); render(); return; }
+  const host2 = document.getElementById("an3d"); if (!host2) return;
+  if (V3D.key !== ref._key) v3dBuild(ref._key, st);
+  if (V3D.el.parentElement !== host2) host2.appendChild(V3D.el);
+  V3D.hover = null; v3dSize(); v3dColor();
+}
 
 /* =====================================================================
    v0.9.0: Overview "Timeline", a PACS-style longitudinal view of one patient.
