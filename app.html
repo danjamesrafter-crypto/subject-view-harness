@@ -181,6 +181,8 @@ body:has(.pane) .fsbtn,body:has(.fermi) .fsbtn{display:none}
 .vision-dark .fl,.vision-dark .st,.vision-dark .pill,.vision-dark .qst{color:var(--slate-base)}
 .fl{min-width:16px}
 .st.superseded{background:var(--slate-hover,rgba(255,255,255,.06));color:var(--typography-secondary,#9aa4b8)}
+.vsvg{flex:none;display:inline-block;vertical-align:middle}
+.ibtn.vbtn{width:32px;padding:0;color:var(--primary-base)}
 .fl.bad,.st.failed,.status-off{background:var(--red-hover);color:var(--red-base)}
 .fl.warn,.st.todo,.st.pending,.st.open{background:var(--orange-hover);color:var(--orange-base)}
 .fl.info,.qst.open{background:var(--secondary-hover);color:var(--secondary-base)}
@@ -794,7 +796,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.16.1";
+const VERSION = "subject-view-harness/0.16.2";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, ov: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -1295,7 +1297,7 @@ function paneRaw() {
   const shown = r && r.startsWith("mod:") ? as.filter(a => acqMod(a) === r.slice(4)) : as;
   const t = (tasksForSubject(S.subj) || []).filter(x => { const sz = sessionOfTask(x, S.subj); return sz && sz._id === z._id; });
   const jj = d && d.jobsOk ? d.jobs.filter(j => (j.parents && j.parents.session === z._id) || (j.destination && j.destination.id === z._id)) : [];
-  const files = a => (a.files || []).map(f => { const id = a._id + "/" + f.name, open = S.fileOpen[id]; return `<div class="frow"><span class="nm">${esc(f.name)} <span class="muted" style="font-family:var(--font-ui)">· ${esc(f.type || "")} · ${fmtSize(f.size)}</span> ${tagRow("file|" + a._id + "|" + encodeURIComponent(f.name), f.tags, { sm: true })}</span><span class="acts"><a class="ibtn" href="${coreLink("sessions", z._id)}" target="_blank" rel="noopener">${ic("open")}Open in Flywheel</a><button class="ibtn" data-fmeta="${esc(id)}">${open ? "Hide" : "Details"}</button></span>${open ? `<div class="fmeta"><dl class="kv"><dt>Modality</dt><dd>${esc(f.modality || "—")}</dd><dt>Classification</dt><dd>${esc(Object.entries(f.classification || {}).map(([k, v]) => k + ": " + [].concat(v).join(", ")).join(" · ") || "—")}</dd><dt>Created</dt><dd class="mono">${dt(f.created)}</dd><dt>Info keys</dt><dd>${esc(Object.keys(f.info || {}).slice(0, 8).join(", ") || "—")}</dd></dl></div>` : ""}</div>`; }).join("");
+  const files = a => (a.files || []).map(f => { const id = a._id + "/" + f.name, open = S.fileOpen[id]; return `<div class="frow"><span class="nm">${esc(f.name)} <span class="muted" style="font-family:var(--font-ui)">· ${esc(f.type || "")} · ${fmtSize(f.size)}</span> ${tagRow("file|" + a._id + "|" + encodeURIComponent(f.name), f.tags, { sm: true, noAdd: true })}</span><span class="acts"><a class="ibtn vbtn" href="${v3Link(z._id)}" target="_blank" rel="noopener" title="Launch in Viewer (OHIF V3, new tab)" aria-label="Launch in Viewer">${VIEWER_IC}</a><button class="ibtn" data-fmeta="${esc(id)}">${open ? "Hide" : "Details"}</button></span>${open ? `<div class="fmeta"><dl class="kv"><dt>Modality</dt><dd>${esc(f.modality || "—")}</dd><dt>Classification</dt><dd>${esc(Object.entries(f.classification || {}).map(([k, v]) => k + ": " + [].concat(v).join(", ")).join(" · ") || "—")}</dd><dt>Created</dt><dd class="mono">${dt(f.created)}</dd><dt>Info keys</dt><dd>${esc(Object.keys(f.info || {}).slice(0, 8).join(", ") || "—")}</dd></dl></div>` : ""}</div>`; }).join("");
   const sec = (h, b) => `<section class="psec"><h4>${h}</h4>${b}</section>`;
   let body = "";
   if (col.v && (!r || r === "req")) { const st = sessStatus(z, S.subj, col.v); body += sec(`Visit requirements <span class="src">${esc(col.v.label)} template · Flywheel says ${z.satisfies_template === true ? "satisfied" : z.satisfies_template === false ? "not satisfied" : "not evaluated"}</span>`, reqList(col.v, d && d.acqs && !(d.acqErr || {})[z._id] ? (d.acqs[z._id] || []) : null, z.satisfies_template === true, (d && d.acqErr || {})[z._id] ? "couldn't load acquisitions" : "loading…") + (z.satisfies_template === false && !(st.missing || []).length && d && d.acqs && !(d.acqErr || {})[z._id] ? `<span class="muted" style="font-size:12px">Flywheel marks this session not satisfied, but every acquisition rule checks out here. The failing rule is probably a file rule (type, classification) this app can't read exactly.</span>` : "")); }
@@ -2605,6 +2607,9 @@ function tlPrior(list, id) {
 }
 
 /* 0.11.3: study "Open" launches the OHIF V3 viewer for that session in a new tab */
+/* 0.16.2: Flywheel-Vision-Icons "image-picture-square" (U+E98B), the "Launch in Viewer" glyph on Core's file rows; inline because the
+   app's icon-font subset doesn't carry it. Font units, y flipped (ascent 960). */
+const VIEWER_IC = `<svg class="vsvg" viewBox="0 0 1024 1024" width="16" height="16" aria-hidden="true"><path transform="matrix(1 0 0 -1 0 960)" fill="currentColor" d="M682.667 864h-341.333c-135.68 0-245.333-109.653-245.333-245.333v-341.333c0-32 6.4-62.72 17.493-90.88 0-0.427 0-1.28 0.427-1.707 36.693-89.6 124.587-153.173 227.413-153.173h341.333c27.733 0 54.613 4.693 79.787 13.653 0.853 0 1.28 0.427 2.133 0.853 95.147 33.707 163.413 124.16 163.413 231.253v341.333c0 135.68-109.653 245.333-245.333 245.333zM160 618.667c0 100.267 81.067 181.333 181.333 181.333h341.333c100.267 0 181.333-81.067 181.333-181.333v-208.64l-78.507 78.507c-22.187 22.187-52.053 34.56-82.773 34.56s-61.013-12.373-82.773-34.56l-117.76-117.76-32.427 32.427c-22.187 22.187-52.053 34.56-82.773 34.56s-61.013-12.373-82.773-34.56l-141.653-141.653c-0.427 5.547-1.707 10.667-1.707 16.213v340.907h-0.853zM341.333 96c-69.12 0-128 38.827-158.72 95.573l165.973 165.973c9.813 9.813 23.467 15.787 37.547 15.787s27.733-5.547 37.547-15.787l261.547-261.547c0 0-1.707 0-2.987 0h-340.907zM759.040 113.493l-212.053 212.053 117.76 117.76c9.813 9.813 23.467 15.787 37.547 15.787s27.733-5.547 37.547-15.787l123.733-123.733v-41.813c0-72.96-43.093-135.253-104.96-163.84l0.427-0.427zM341.333 576c23.564 0 42.667 19.103 42.667 42.667s-19.103 42.667-42.667 42.667c-23.564 0-42.667-19.103-42.667-42.667s19.103-42.667 42.667-42.667z"/></svg>`;
 const v3Link = sid => S.origin && S.projectId ? `${S.origin}/ohif-viewer-v3/project/${encodeURIComponent(S.projectId)}/viewer?sessionId=${encodeURIComponent(sid)}` : "#";
 function ovMode() { if (S.ovMode) return S.ovMode; try { return localStorage.getItem("svh-ovmode") || "timeline"; } catch (e) { return "timeline"; } }
 function overviewTab(s, d) {
@@ -2727,7 +2732,7 @@ function tlJacket(s, list, sel, cmp, tasksOf, jobsOf) {
         ${(T1 => T1.state === "ok" ? `<div class="jk-tech">${techLine(T1.T, T1.diffs.concat(T1.notes))}${T1.isRef ? `<span class="tk-ref">reference</span>` : T1.ref && T1.rt ? (w => w.length ? `<span class="tk-ref warn" title="${esc(w.map(d => d.msg).join("\n"))}">≠ ${esc(T1.ref.z.label)}: ${esc(w.map(d => d.msg).join("; "))}</span>` : `<span class="tk-ref ok">comparable with ${esc(T1.ref.z.label)}</span>`)(T1.diffs.filter(d => d.sev === "warn").concat(T1.notes)) : ""}</div>` : T1.state === "noheader" ? `<div class="jk-tech"><span class="tk none">No header metadata on the key series</span></div>` : "")(techStudy(list, x))}
         <div class="jk-chk"><em class="vst ${x.st.k}" title="${esc(x.st.all)}"><i class="vd ${x.st.k}"></i>${esc(x.st.t)}</em>${tt.length ? `<button class="jk-chip ${o ? "warn" : "ok"}" data-pane="${x.id}|tasks">${o ? o + " read" + (o > 1 ? "s" : "") + " open" : plural(tt.length, "read") + " done"}</button>` : ""}${jj.length ? `<button class="jk-chip ${f ? "bad" : "ok"}" data-pane="${x.id}|jobs">${f ? f + " failed" : plural(jj.length, "job")}</button>` : ""}</div></div>
       <div class="jk-film">${film}</div>
-      <div class="jk-act">${prior ? `<button class="ibtn ${on && cmp && cmp.id === prior.id ? "on" : ""}" data-tl="cmp:${x.id}:${prior.id}" title="Side by side with ${esc(prior.z.label)} (${prior.date})">Compare with prior</button>` : `<span class="src">First study</span>`}<button class="ibtn" data-pane="${x.id}|">Details</button><a class="ibtn" href="${v3Link(x.id)}" target="_blank" rel="noopener" title="Open ${esc(x.z.label)} in the OHIF V3 viewer (new tab)">${ic("open")}Open</a></div>
+      <div class="jk-act">${prior ? `<button class="ibtn ${on && cmp && cmp.id === prior.id ? "on" : ""}" data-tl="cmp:${x.id}:${prior.id}" title="Side by side with ${esc(prior.z.label)} (${prior.date})">Compare with prior</button>` : `<span class="src">First study</span>`}<button class="ibtn" data-pane="${x.id}|">Details</button><a class="ibtn" href="${v3Link(x.id)}" target="_blank" rel="noopener" title="Launch ${esc(x.z.label)} in the viewer (OHIF V3, new tab)">${VIEWER_IC}Open</a></div>
     </div>`;
   }).join("");
   return `<div class="card"><div class="card-h"><h3>Studies</h3><span class="src">Newest first · click a study to select it on the timeline</span></div><div class="jk">${rows}</div></div>`;
@@ -3170,7 +3175,7 @@ function tagRow(key, tags, opts) {
   opts = opts || {};
   const chips = (tags || []).map(t => `<span class="tag">${esc(t)}${opts.ro ? "" : `<button class="tx" data-untag="${esc(key)}" data-tag="${esc(t)}" aria-label="Remove tag ${esc(t)}" title="Remove tag">${ic("close-circled")}</button>`}</span>`).join("");
   const editing = S.tagEdit === key;
-  const add = opts.ro ? "" : editing
+  const add = opts.ro || opts.noAdd ? "" : editing
     ? `<span class="tagin"><input data-tagin="${esc(key)}" list="tagList" placeholder="Tag name" autocomplete="off" aria-label="New tag"><button class="ibtn" data-tagadd="${esc(key)}">Add</button></span>`
     : `<button class="tagplus" data-tagedit="${esc(key)}" title="Add a tag">${ic("add-new-create")}Tag</button>`;
   return `<span class="tags ${opts.sm ? "sm" : ""}">${chips}${add}${!chips && opts.ro ? `<span class="muted" style="font-size:12px">—</span>` : ""}</span>`;
