@@ -786,7 +786,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.14.0";
+const VERSION = "subject-view-harness/0.14.1";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, ov: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -2382,7 +2382,8 @@ function v3dColor() {
     const u = m.userData, mat = m.material, on = u.layer === active, ghost = !on && u.layer !== 2 && !(active === 0 && u.muscle);
     m.visible = on || ghost; u.pick = on;
     if (on) { const [r, g, b] = look(u.name); mat.color.setRGB(r / 255, g / 255, b / 255); mat.transparent = false; mat.opacity = 1; mat.depthWrite = true; }
-    else { mat.color.setRGB(0.62, 0.66, 0.75); mat.transparent = true; mat.opacity = active === 0 ? 0.1 : 0.07; mat.depthWrite = false; }
+    else { mat.color.setRGB(0.62, 0.66, 0.75); mat.transparent = true; mat.opacity = 0.06; mat.depthWrite = false; }
+    mat.side = on ? T.DoubleSide : T.FrontSide; /* ghosts: front faces only, so overlapping bone doesn't build up into a white skeleton */
     const sel = on && u.name === A.organ, hov = on && V3D.hover === u.name;
     const k = sel ? 0.45 : hov ? 0.22 : 0; mat.emissive.copy(mat.color).multiplyScalar(k); if (sel) mat.emissive.addScalar(0.06);
     mat.needsUpdate = true;
