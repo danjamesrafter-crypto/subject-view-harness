@@ -798,7 +798,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.16.3";
+const VERSION = "subject-view-harness/0.16.4";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, ov: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -995,7 +995,7 @@ function subjRollup(sid) {
   return { cols, st, n: sched.length, got: sched.filter(c => c.z).length, done: st.filter((x, i) => cols[i].v && x.k === "ok").length, bad: st.filter(x => x.k === "bad").length, miss: st.filter(x => x.k === "miss").length, warn: st.filter(x => x.k === "warn").length };
 }
 function sessionOfTask(t, id) { const ss = subjSessions(id); if (t.parents && t.parents.session) return ss.find(z => z._id === t.parents.session); if (t.parent_ref && t.parent_ref.type === "session") return ss.find(z => z._id === t.parent_ref.id); const d = S.detail[id]; if (d && d.acqs) for (const [sid, as] of Object.entries(d.acqs)) if (as.some(a => a._id === (t.parent_ref || {}).id)) return ss.find(z => z._id === sid); return null; }
-const fmtSize = b => b == null ? "" : b > 1e9 ? (b / 1e9).toFixed(1) + " GB" : b > 1e6 ? (b / 1e6).toFixed(0) + " MB" : (b / 1e3).toFixed(0) + " KB";
+const fmtSize = b => b == null ? "" : b >= 1e12 ? (b / 1e12).toFixed(2) + " TB" : b >= 1e9 ? (b / 1e9).toFixed(b >= 1e11 ? 0 : 1) + " GB" : b >= 1e6 ? (b / 1e6).toFixed(b < 1e7 ? 1 : 0) + " MB" : b >= 1e3 ? (b / 1e3).toFixed(0) + " KB" : b + " B";
 const dt = s => s ? String(s).replace("T", " ").slice(0, 16) : "—";
 const coreLink = (type, id) => S.origin ? `${S.origin}/#/projects/${S.projectId}/${type}/${id}` : "#";
 
@@ -1173,7 +1173,7 @@ function header(s, d) {
   const tiles = [
     ...(R.n ? [["Visits", `${R.got} / ${R.n}`, [R.miss ? R.miss + " not received" : "all received", R.bad ? R.bad + " incomplete" : null, R.done + " complete"].filter(Boolean).join(" · "), R.bad ? "bad" : R.miss ? "" : "ok"]] :
       [["Sessions", sess.length, sess.length ? `${dt(sess[0].timestamp).slice(0, 10)} – ${dt(sess[sess.length - 1].timestamp).slice(0, 10)}` : "none yet", ""]]),
-    ["Acquisitions", d && d.acqs ? acqs.length : "…", d && d.acqs ? `${files} files` : "loading", ""],
+    (z => ["Acquisitions", d && d.acqs ? acqs.length : "…", d && d.acqs ? `${files} files · ${z ? z.line : ""}` : "loading", "", z ? z.tip : ""])((sizeNeed(s._id), sizeTile(s, d))),
     ["Open Reads", openT ? openT.length : "…", openT ? (openT.map(x => x.task_id).slice(0, 3).join(", ") || "none open") : "loading", openT && openT.length ? "warn" : ""],
     ["Gear Jobs", d && d.jobsOk ? (failed.length ? failed.length + " failed" : d.jobs.length) : d && d.ok ? "n/a" : "…", d && d.jobsOk ? (failed.length ? failed[0].gear_info.name : `${d.jobs.length} jobs, none failed`) : d && d.ok ? "not available via extension" : "loading", failed && failed.length ? "bad" : ""],
     ["Custom Info", Object.keys(info).filter(k => k !== QKEY).length, Object.keys(info).filter(k => k !== QKEY).slice(0, 3).join(", ") || "no keys", ""]
@@ -1191,7 +1191,7 @@ function header(s, d) {
       <button class="btn" data-act="refresh">${ic("rotate-refresh")}Refresh</button>
       <a class="btn pri" href="${coreLink("subjects", s._id)}" target="_blank" rel="noopener">${ic("open")}Open in Flywheel</a>
     </div></div></section>
-    <section class="kpis">${tiles.map(([l, v, sub, tone]) => `<div class="kpi ${tone}"><span class="kl">${esc(l)}</span><span class="kv2">${esc(String(v))}</span><span class="ks">${esc(sub)}</span></div>`).join("")}</section>`;
+    <section class="kpis">${tiles.map(([l, v, sub, tone, tip]) => `<div class="kpi ${tone}"${tip ? ` title="${esc(tip)}"` : ""}><span class="kl">${esc(l)}</span><span class="kv2">${esc(String(v))}</span><span class="ks">${esc(sub)}</span></div>`).join("")}</section>`;
 }
 const TABS = [["overview", "Overview"], ["anatomy", "Anatomy"], ["tasks", "Tasks & Jobs"], ["queries", "Queries"], ["clinical", "Custom Info"], ["diagnostics", "Diagnostics"]];
 function tabs() { return `<div class="tabsbar"><nav class="tabs">${TABS.map(([k, l]) => `<button class="tab ${S.tab === k ? "on" : ""}" data-tab="${k}">${l}${k === "queries" ? (n => n ? ` <span class="fl info">${n}</span>` : "")(qOf(S.subj).filter(x => x.status === "open").length) : ""}</button>`).join("")}</nav></div>`; }
@@ -1556,12 +1556,12 @@ async function radReal(sid, acqsBySession) {
     for (const a of acqs) {
       for (const f of (a.files || [])) if (kindOf(f.name) === "full") cands.push({ kind: "full", a, f, ref: fileRef(f, a), created: f.created });
       if (!/^ct$/i.test(acqMod(a)) && !(a.files || []).some(f => /dicom/.test(f.type || ""))) continue;
-      for (const an of listOf(await api(`/api/acquisitions/${a._id}/analyses`, null, { soft: true })))
+      for (const an of listOf(await anList("acquisitions", a._id)))
         for (const f of (an.files || [])) { const k = kindOf(f.name); if (k) cands.push({ kind: k, a, f, an, created: an.created, ref: anRef(f, an) }); }
     }
     /* Analyses launched from the session (Run Analysis Gear) sit on the session, not the acquisition (seen on r6nvg8 11-24);
        tie them to the CT acquisition that holds the analysis input file. */
-    for (const an of listOf(await api(`/api/sessions/${c.z._id}/analyses`, null, { soft: true }))) {
+    for (const an of listOf(await anList("sessions", c.z._id))) {
       const inNames = (an.inputs || []).map(x => x.name);
       const a = acqs.find(x => (x.files || []).some(g => inNames.includes(g.name))) || acqs.find(x => /^ct$/i.test(acqMod(x))) || acqs[0];
       if (!a) continue;
@@ -2730,7 +2730,7 @@ function tlJacket(s, list, sel, cmp, tasksOf, jobsOf) {
       <div class="jk-when"><span class="jk-bar" style="background:${x.st.k && x.st.k !== "miss" ? `var(--${x.st.k})` : "var(--slate-focus)"}"></span><b>${x.date}</b><span class="jk-rel">${esc(x.rel)}${prior && x.day != null && prior.day != null ? ` · ${tlGap(x.day - prior.day)} after ${esc(prior.z.label)}` : ""}</span>${x.study ? `<span class="jk-vis">${esc(x.z.label)}</span>` : ""}${pr ? `<span class="tl-tag pr in">Prior</span>` : on && cmp ? `<span class="tl-tag cur in">Current</span>` : ""}</div>
       <div class="jk-what"><div class="jk-mods">${x.mods.map(m => `<span class="jk-mod" style="--c:${modCol(m)}">${esc(m === "Pathology" || m === "Video" || m === "Derived" ? m : m)}</span>`).join("")}</div>
         <div class="jk-desc">${esc(x.study || x.z.label)}</div>
-        <div class="jk-meta">${[x.body, plural(x.series.length, "series").replace("seriess", "series") + (x.fams.length < x.series.length ? " in " + plural(prim.length || x.fams.length, "protocol") : ""), nimg ? plural(nimg, "image") : null].filter(Boolean).map(esc).join(" · ")}</div>
+        <div class="jk-meta">${[x.body, plural(x.series.length, "series").replace("seriess", "series") + (x.fams.length < x.series.length ? " in " + plural(prim.length || x.fams.length, "protocol") : ""), nimg ? plural(nimg, "image") : null, (z => z.raw ? fmtSize(z.raw) + (z.derived ? " + " + fmtSize(z.derived) + " outputs" : "") : null)(sizeOfSession(s._id, x.id))].filter(Boolean).map(esc).join(" · ")}</div>
         ${(T1 => T1.state === "ok" ? `<div class="jk-tech">${techLine(T1.T, T1.diffs.concat(T1.notes))}${T1.isRef ? `<span class="tk-ref">reference</span>` : T1.ref && T1.rt ? (w => w.length ? `<span class="tk-ref warn" title="${esc(w.map(d => d.msg).join("\n"))}">≠ ${esc(T1.ref.z.label)}: ${esc(w.map(d => d.msg).join("; "))}</span>` : `<span class="tk-ref ok">comparable with ${esc(T1.ref.z.label)}</span>`)(T1.diffs.filter(d => d.sev === "warn").concat(T1.notes)) : ""}</div>` : T1.state === "noheader" ? `<div class="jk-tech"><span class="tk none">No header metadata on the key series</span></div>` : "")(techStudy(list, x))}
         <div class="jk-chk"><em class="vst ${x.st.k}" title="${esc(x.st.all)}"><i class="vd ${x.st.k}"></i>${esc(x.st.t)}</em>${tt.length ? `<button class="jk-chip ${o ? "warn" : "ok"}" data-pane="${x.id}|tasks">${o ? o + " read" + (o > 1 ? "s" : "") + " open" : plural(tt.length, "read") + " done"}</button>` : ""}${jj.length ? `<button class="jk-chip ${f ? "bad" : "ok"}" data-pane="${x.id}|jobs">${f ? f + " failed" : plural(jj.length, "job")}</button>` : ""}</div></div>
       <div class="jk-film">${film}</div>
@@ -2819,8 +2819,8 @@ async function gthLoadSession(sid) {
   const newest = xs => xs.filter(isThumbs).sort((p, q) => String(q.created).localeCompare(String(p.created)))[0];
   const acqs = gthAcqsOf(sid);
   const [sesAns, ...acqAns] = await Promise.all([
-    api(`/api/sessions/${sid}/analyses`, null, { soft: true }),
-    ...acqs.map(a => api(`/api/acquisitions/${a._id}/analyses`, null, { soft: true }))]);
+    anList("sessions", sid),
+    ...acqs.map(a => anList("acquisitions", a._id))]);
   const picks = [newest(listOf(sesAns || [])), ...acqAns.map(x => newest(listOf(x || [])))].filter(Boolean);
   if (!picks.length) { GTH.stats.none++; return null; }
   const loaded = await Promise.all(picks.map(an => gthLoadAnalysis(an, sid)));
@@ -3120,6 +3120,54 @@ function annDiag() {
     <span>${s.subjects} subject${s.subjects === 1 ? "" : "s"} loaded · ${s.records} annotation record${s.records === 1 ? "" : "s"}${s.route ? ` · by ${s.route} (GET /api/v3/annotations?filter=parents.${s.route}=…)` : ""}${s.failed ? ` · <b style="color:var(--bad-t)">${s.failed} failed</b>` : ""}</span>
     <span class="src">Shown on timeline cards (per study), series thumbnails (per acquisition) and Compare. Deleted and replaced versions are hidden. Segmentations are counted separately once their element type or stored format identifies them.</span>
   </div></div>`;
+}
+
+/* =====================================================================
+   v0.16.4: data size per subject and per study.
+   Raw = sum of `size` over the files in the subject's acquisitions (already loaded, no extra calls).
+   Gear outputs = files in analyses on each session and on each acquisition (one listing per container,
+   shared with the thumbnail loader). Attachments = files on the subject and session containers.
+   These are the sizes of the current file versions, not billed storage (Flywheel keeps earlier versions;
+   the Usage Report is the source for storage).
+   ===================================================================== */
+const SZ = { m: {} };
+const AN_LISTS = {};
+/* one request per container for the whole app session, shared by thumbnails and sizes */
+function anList(kind, id) { const k = kind + "/" + id; return AN_LISTS[k] || (AN_LISTS[k] = api(`/api/${kind}/${id}/analyses`, null, { soft: true })); }
+const fsum = fs => (fs || []).reduce((m, f) => m + (typeof f.size === "number" ? f.size : 0), 0);
+const fnosz = fs => (fs || []).filter(f => typeof f.size !== "number").length;
+/* sizes that can be read straight from what's loaded */
+function sizeRaw(acqs) { return (acqs || []).reduce((m, a) => m + fsum(a.files), 0); }
+function sizeNeed(subjId) {
+  const d = S.detail[subjId]; if (!d || !d.acqs || SZ.m[subjId]) return;
+  const st = SZ.m[subjId] = { state: "loading", derived: 0, derivedBy: {}, nAn: 0, noSize: 0 };
+  (async () => {
+    const sess = subjSessions(subjId);
+    for (const z of sess) {
+      const acqs = d.acqs[z._id] || [];
+      const lists = await Promise.all([anList("sessions", z._id), ...acqs.map(a => anList("acquisitions", a._id))]);
+      let sum = 0;
+      for (const l of lists) for (const an of listOf(l || [])) { st.nAn++; sum += fsum(an.files); st.noSize += fnosz(an.files); }
+      st.derivedBy[z._id] = sum; st.derived += sum;
+    }
+    st.state = "ok"; techRedraw();
+  })().catch(() => { st.state = "err"; techRedraw(); });
+}
+function sizeOfSession(subjId, zid) {
+  const d = S.detail[subjId], st = SZ.m[subjId];
+  return { raw: d && d.acqs ? sizeRaw(d.acqs[zid]) : null, derived: st && st.state === "ok" ? st.derivedBy[zid] || 0 : null };
+}
+function sizeTile(s, d) {
+  if (!d || !d.acqs) return null;
+  const acqs = Object.values(d.acqs).flat(), raw = sizeRaw(acqs), noRaw = acqs.reduce((m, a) => m + fnosz(a.files), 0);
+  const att = fsum((d.subject || {}).files) + subjSessions(s._id).reduce((m, z) => m + fsum(z.files), 0);
+  const st = SZ.m[s._id];
+  const tip = [`Imaging files: ${fmtSize(raw)}${noRaw ? ` (${noRaw} without a size)` : ""}`,
+    !st || st.state === "loading" ? "Gear outputs: counting…" : st.state === "err" ? "Gear outputs: couldn't list analyses" : `Gear outputs: ${fmtSize(st.derived)} in ${plural(st.nAn, "analysis").replace("analysiss", "analyses")}${st.noSize ? ` (${st.noSize} files without a size)` : ""}`,
+    att ? `Attachments: ${fmtSize(att)}` : null,
+    "Current file versions only; billed storage is in the Usage Report."].filter(Boolean).join("\n");
+  const extra = st && st.state === "ok" && (st.derived + att) ? ` · +${fmtSize(st.derived + att)} outputs` : "";
+  return { raw, line: `${fmtSize(raw)}${extra}`, tip };
 }
 
 function render() {
@@ -3774,7 +3822,7 @@ document.addEventListener("click", async e => {
   if (t.dataset.diag != null) { S.diagOpen = S.diagOpen === +t.dataset.diag ? -1 : +t.dataset.diag; render(); return; }
   const a = t.dataset.act;
   if (a === "phi") { S.phi = !S.phi; render(); }
-  if (a === "refresh") { S.rad = {}; S.radReal = {}; S.radCohortRun = null; S.radCohort = null; if (!S.project) { S.detail = {}; S.error = null; loadAll(); return; } Object.keys(S.detail).forEach(k => { if (k !== S.subj) delete S.detail[k]; }); S.error = null; lastRefresh = Date.now(); loadAll(true).then(() => toast(S.stale ? "Refresh failed. Showing the last good data." : "Up to date", S.stale ? "error" : "info")); }
+  if (a === "refresh") { S.rad = {}; S.radReal = {}; S.radCohortRun = null; S.radCohort = null; SZ.m = {}; Object.keys(AN_LISTS).forEach(k => delete AN_LISTS[k]); if (!S.project) { S.detail = {}; S.error = null; loadAll(); return; } Object.keys(S.detail).forEach(k => { if (k !== S.subj) delete S.detail[k]; }); S.error = null; lastRefresh = Date.now(); loadAll(true).then(() => toast(S.stale ? "Refresh failed. Showing the last good data." : "Up to date", S.stale ? "error" : "info")); }
   if (a === "closePane") { S.pane = null; render(); }
   if (a === "closeJob") { S.job = null; render(); }
   if (a === "fulllog") { S.fullLog = !S.fullLog; render(); }
