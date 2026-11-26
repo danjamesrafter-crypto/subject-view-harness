@@ -583,6 +583,10 @@ select:focus{border-color:var(--primary-base)}
 .an-3dbar .ibtn{padding:2px 8px;font-size:11px;background:rgba(20,22,30,.72)}
 .an-grid:has(.an-3d){grid-template-columns:minmax(340px,440px) minmax(0,1fr)}
 @media (max-width:1100px){.an-grid:has(.an-3d){grid-template-columns:minmax(0,1fr)}}
+.an-3dtools{position:absolute;left:6px;bottom:6px;display:flex;flex-wrap:wrap;gap:4px}
+.an-3dtools .ibtn{padding:2px 8px;font-size:11px;background:rgba(20,22,30,.72)}
+.an-3dtools .ibtn.on{background:var(--slate-base);border-color:transparent;color:var(--typography-contrast)}
+.an-3dtools .ibtn[disabled]{opacity:.45;cursor:default}
 /* ---- 0.9.0 Overview timeline ---- */
 .ov-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;flex-wrap:wrap}
 .tl-scroll{overflow-x:auto;padding:4px 0 12px}
@@ -786,7 +790,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.14.1";
+const VERSION = "subject-view-harness/0.15.0";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, ov: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -1824,7 +1828,7 @@ function anMap(R, A, sig, vi) {
       <div class="an-maphdr">${ref ? `<div class="an-seg sm">${[["3d", "3D"], ["patient", "Front"], ["schematic", "Schematic"]].map(([k, l]) => `<button class="ibtn ${mode === k ? "on" : ""}" data-an="anat:${k}" title="${k === "3d" ? "Surfaces of every segmented structure; drag to rotate" : k === "patient" ? "Front projection of this subject's segmentation" : "Generic body diagram"}">${l}</button>`).join("")}</div>` : ""}<div class="an-seg sm">${[["organs", "Organs"], ["msk", "Bones & Muscle"]].map(([k, l]) => `<button class="ibtn ${layer === k ? "on" : ""}" data-an="layer:${k}">${l}</button>`).join("")}</div></div></div>
     <div class="card-b an-svgwrap">
       ${use3d ? `<div class="an-3dwrap"><div id="an3d" class="an-3d"></div></div>
-      <div class="src an-segsrc">3D · ${ms.meshes.length} structures from ${esc(SEG_MASK_NAME)} · ${(ms.tris / 1000).toFixed(0)}k triangles on a ${ms.mm.join("×")} mm grid · orientation check ${ms.check === "ok" ? "passed (spleen on patient's left)" : "not possible (no spleen or liver)"}${ms.cached ? ` · from this browser's cache (${ms.ms} ms)` : ` · built in ${(ms.ms / 1000).toFixed(1)} s`} · drag to rotate, scroll to zoom, right-drag to pan; click a structure to select it</div>` : ""}
+      <div class="src an-segsrc">3D · ${ms.meshes.length} structures from ${esc(SEG_MASK_NAME)} · ${(ms.tris / 1000).toFixed(0)}k triangles on a ${ms.mm.join("×")} mm grid · orientation check ${ms.check === "ok" ? "passed (spleen on patient's left)" : "not possible (no spleen or liver)"}${ms.cached ? ` · from this browser's cache (${ms.ms} ms)` : ` · built in ${(ms.ms / 1000).toFixed(1)} s`} · drag to rotate, scroll to zoom, right-drag to pan · click a structure to select it, double-click to hide it · Isolate (I), Hide (H), Esc to undo</div>` : ""}
       ${ms && ms.status === "loading" ? `<div class="src an-segsrc">Building 3D surfaces from this subject's segmentation…${usePatient ? " Showing the front view meanwhile." : ""}</div>` : ""}
       ${ms && ms.status === "err" ? `<div class="src an-segsrc">3D view unavailable (${esc(ms.err)})${usePatient ? "; showing the front view" : ""}.</div>` : ""}
       ${usePatient ? `<div class="an-patient"><canvas id="anSeg" role="img" aria-label="Front view of this subject's TotalSegmentator segmentation, patient's right on the left"></canvas><div class="an-sides"><span>R</span><span>L</span></div></div>
@@ -2317,7 +2321,7 @@ function loadThree() {
 }
 
 /* ---- the viewer: one WebGL canvas kept across render() calls and re-attached to #an3d ---- */
-const V3D = { el: null, r: null, scene: null, cam: null, ctl: null, group: null, meshes: [], key: null, size: null, center: null, hover: null, raf: 0, err: "" };
+const V3D = { hidden: new Set(), iso: false, isoName: null, saved: null, hl: null, tools: null, el: null, r: null, scene: null, cam: null, ctl: null, group: null, meshes: [], key: null, size: null, center: null, hover: null, raf: 0, err: "" };
 const V3D_MUSCLE = /^(gluteus_|iliopsoas_|autochthon_)/;
 function v3dDraw() { if (V3D.raf || !V3D.r) return; V3D.raf = requestAnimationFrame(() => { V3D.raf = 0; V3D.r.render(V3D.scene, V3D.cam); }); }
 function v3dInit(T) {
@@ -2329,18 +2333,24 @@ function v3dInit(T) {
   const bar = document.createElement("div"); bar.className = "an-3dbar";
   bar.innerHTML = [["front", "Front"], ["left", "Pt left"], ["right", "Pt right"], ["back", "Back"], ["top", "Top"]].map(([k, l]) => `<button class="ibtn" data-v3="${k}" title="View from the patient's ${k === "front" ? "front" : k === "back" ? "back" : k === "top" ? "head" : k + " side"}">${l}</button>`).join("");
   el.appendChild(bar);
+  const tools = document.createElement("div"); tools.className = "an-3dtools";
+  tools.innerHTML = `<button class="ibtn" data-v3t="isolate">Isolate</button><button class="ibtn" data-v3t="hide">Hide</button><button class="ibtn" data-v3t="showall" hidden>Show all</button>`;
+  el.appendChild(tools);
+  tools.addEventListener("click", e => { const b = e.target.closest("[data-v3t]"); if (b && !b.disabled) v3dAct(b.dataset.v3t); });
   const scene = new T.Scene(), cam = new T.PerspectiveCamera(28, 1, 1, 20000); cam.up.set(0, 0, 1); /* superior is up; OrbitControls reads this once */
   scene.add(new T.HemisphereLight(0xdde6ff, 0x30333d, 0.75)); scene.add(cam);
   const key = new T.DirectionalLight(0xffffff, 0.8); key.position.set(0.4, 0.6, 1); cam.add(key);
   const fill = new T.DirectionalLight(0xffffff, 0.25); fill.position.set(-0.6, -0.2, 0.6); cam.add(fill);
   const ctl = new T.OrbitControls(cam, r.domElement); ctl.enableDamping = false; ctl.rotateSpeed = 0.8; ctl.addEventListener("change", v3dDraw);
-  Object.assign(V3D, { el, r, scene, cam, ctl, T });
+  Object.assign(V3D, { el, r, scene, cam, ctl, T, tools });
   bar.addEventListener("click", e => { const b = e.target.closest("[data-v3]"); if (b) v3dView(b.dataset.v3); });
   let down = null;
   r.domElement.addEventListener("pointerdown", e => { down = [e.clientX, e.clientY]; });
   r.domElement.addEventListener("pointerup", e => { if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return; down = null; const n = v3dPick(e); if (n) { S.an.organ = n; render(); } });
   r.domElement.addEventListener("pointermove", e => { if (e.buttons) return; v3dHover(v3dPick(e)); });
   r.domElement.addEventListener("pointerleave", () => v3dHover(null));
+  r.domElement.addEventListener("dblclick", e => { const n = v3dPick(e); if (n) v3dAct("hide", n); });
+  r.domElement.addEventListener("keydown", e => { const k = e.key.toLowerCase(); if (k === "h") v3dAct("hide"); else if (k === "i") v3dAct("isolate"); else if (k === "escape") { if (V3D.iso) v3dAct("isolate"); else v3dAct("showall"); } else return; e.preventDefault(); });
   window.addEventListener("resize", () => { if (V3D.el && V3D.el.isConnected) v3dSize(); });
 }
 function v3dView(k) {
@@ -2360,7 +2370,7 @@ function v3dBuild(key, st) {
     const mesh = new T.Mesh(g, mat); mesh.userData = { name, l: m.l, layer: segLayerOf(name), muscle: V3D_MUSCLE.test(name) };
     group.add(mesh); meshes.push(mesh); box.union(g.boundingBox);
   }
-  V3D.scene.add(group); Object.assign(V3D, { group, meshes, key });
+  V3D.scene.add(group); Object.assign(V3D, { group, meshes, key, iso: false, isoName: null, saved: null }); V3D.hidden.clear();
   const c = new T.Vector3(), sz = new T.Vector3(); box.getCenter(c); box.getSize(sz);
   V3D.center = c; V3D.size = sz; V3D.aspect = Math.min(1.9, Math.max(1.05, sz.z / Math.max(1, sz.x)));
   V3D.dist = 1.18 * Math.max(sz.z / 2 / Math.tan(14 * Math.PI / 180), sz.x / 2 / Math.tan(14 * Math.PI / 180) / (1 / V3D.aspect)) + sz.y / 2;
@@ -2373,22 +2383,76 @@ function v3dSize() {
   V3D.r.setSize(w, h); V3D.cam.aspect = w / h; V3D.cam.updateProjectionMatrix(); v3dDraw();
 }
 /* Colour by the current signal, visit and reference; the other layer is a faint ghost for context. */
+/* Colour by the current signal, visit and reference. Each structure is solid, a faint ghost (context) or off:
+   - not isolated: the active layer is solid, the other layer ghosted (muscles off in Organs mode);
+   - isolated: only the selected structure is solid, everything else in view is ghosted;
+   - hidden structures are off in both. Only solid structures can be hovered or clicked. */
 function v3dColor() {
   const R = S.rad[S.subj], A = S.an, vi = A.visit, v = R && R.visits && R.visits[vi]; if (!v || !V3D.meshes.length) return;
   const sig = sigOf(A.sig), active = A.layer === "msk" ? 1 : 0, T = V3D.T, cache = new Map();
   const look = name => { if (cache.has(name)) return cache.get(name); const c = v.organs[name] ? radCell(R, vi, name, sig, A.cmp) : null;
     let rgb = c && c.v != null ? segColorRGB(radColor(c.t, c.ok)) : [74, 82, 102]; if (c && c.ok === false) rgb = rgb.map(x => x * 0.55 + 60); cache.set(name, rgb); return rgb; };
+  const selMesh = V3D.meshes.find(m => m.userData.name === A.organ && !V3D.hidden.has(A.organ)) || null;
+  const iso = V3D.iso && !!selMesh;
+  let selSolid = null;
   for (const m of V3D.meshes) {
-    const u = m.userData, mat = m.material, on = u.layer === active, ghost = !on && u.layer !== 2 && !(active === 0 && u.muscle);
-    m.visible = on || ghost; u.pick = on;
-    if (on) { const [r, g, b] = look(u.name); mat.color.setRGB(r / 255, g / 255, b / 255); mat.transparent = false; mat.opacity = 1; mat.depthWrite = true; }
-    else { mat.color.setRGB(0.62, 0.66, 0.75); mat.transparent = true; mat.opacity = 0.06; mat.depthWrite = false; }
-    mat.side = on ? T.DoubleSide : T.FrontSide; /* ghosts: front faces only, so overlapping bone doesn't build up into a white skeleton */
-    const sel = on && u.name === A.organ, hov = on && V3D.hover === u.name;
-    const k = sel ? 0.45 : hov ? 0.22 : 0; mat.emissive.copy(mat.color).multiplyScalar(k); if (sel) mat.emissive.addScalar(0.06);
+    const u = m.userData, mat = m.material;
+    let mode;
+    if (u.layer === 2 || V3D.hidden.has(u.name)) mode = "off";
+    else if (iso) mode = m === selMesh ? "solid" : (u.layer === active || !(active === 0 && u.muscle)) ? "ghost" : "off";
+    else mode = u.layer === active ? "solid" : !(active === 0 && u.muscle) ? "ghost" : "off";
+    m.visible = mode !== "off"; u.pick = mode === "solid";
+    if (mode === "solid") { const [r, g, b] = look(u.name); mat.color.setRGB(r / 255, g / 255, b / 255); mat.transparent = false; mat.opacity = 1; mat.depthWrite = true; mat.side = T.DoubleSide; }
+    else { mat.color.setRGB(0.62, 0.66, 0.75); mat.transparent = true; mat.opacity = iso && u.layer === active ? 0.07 : 0.05; mat.depthWrite = false; mat.side = T.FrontSide; } /* ghosts: front faces only, so overlap doesn't build up */
+    const sel = mode === "solid" && m === selMesh, hov = mode === "solid" && V3D.hover === u.name;
+    if (sel) selSolid = m;
+    const k = sel ? 0.3 : hov ? 0.22 : 0; mat.emissive.copy(mat.color).multiplyScalar(k);
     mat.needsUpdate = true;
   }
+  v3dHighlight(selSolid);
+  if (iso && V3D.isoName !== A.organ) v3dFrame(selMesh);
+  V3D.isoName = iso ? A.organ : null;
+  v3dTools(selMesh);
   v3dDraw();
+}
+/* Selected structure: a white rim (back faces of a copy pushed out ~2.5 mm) and an x-ray fill drawn only where something
+   else is in front of it (depth test "greater"), so it stays findable behind the lungs or ribs without washing out its colour. */
+function v3dHighlight(m) {
+  const T = V3D.T;
+  if (!V3D.hl) {
+    const rim = new T.Mesh(new T.BufferGeometry(), new T.MeshBasicMaterial({ color: 0xffffff, side: T.BackSide, transparent: true, opacity: 0.95 }));
+    const xray = new T.Mesh(new T.BufferGeometry(), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.32, depthFunc: T.GreaterDepth, depthWrite: false, side: T.FrontSide }));
+    xray.renderOrder = 10; V3D.scene.add(rim); V3D.scene.add(xray); V3D.hl = { rim, xray };
+  }
+  const { rim, xray } = V3D.hl;
+  rim.visible = xray.visible = !!m; if (!m) return;
+  const g = m.geometry, c = g.boundingSphere.center, r = Math.max(1, g.boundingSphere.radius), s = 1 + 2.5 / r;
+  rim.geometry = g; rim.scale.setScalar(s); rim.position.copy(c).multiplyScalar(1 - s);
+  xray.geometry = g; xray.material.color.copy(m.material.color).lerp(new T.Color(1, 1, 1), 0.35);
+}
+/* Point the camera at a structure, keeping the current viewing direction. */
+function v3dFrame(m) {
+  if (!m) return; const T = V3D.T, g = m.geometry, c = g.boundingSphere.center, r = Math.max(15, g.boundingSphere.radius);
+  if (!V3D.saved) V3D.saved = { pos: V3D.cam.position.clone(), tgt: V3D.ctl.target.clone() };
+  const dir = V3D.cam.position.clone().sub(V3D.ctl.target).normalize(), d = r / Math.sin(14 * Math.PI / 180) * 1.25;
+  V3D.ctl.target.copy(c); V3D.cam.position.copy(c).add(dir.multiplyScalar(d)); V3D.cam.lookAt(c); V3D.ctl.update();
+}
+function v3dUnframe() { if (V3D.saved) { V3D.cam.position.copy(V3D.saved.pos); V3D.ctl.target.copy(V3D.saved.tgt); V3D.cam.lookAt(V3D.saved.tgt); V3D.ctl.update(); V3D.saved = null; } }
+function v3dTools(selMesh) {
+  const t = V3D.tools; if (!t) return; const n = V3D.hidden.size, name = S.an.organ;
+  t.querySelector('[data-v3t="isolate"]').classList.toggle("on", !!V3D.iso);
+  t.querySelector('[data-v3t="isolate"]').disabled = !selMesh && !V3D.iso;
+  t.querySelector('[data-v3t="hide"]').disabled = !selMesh;
+  t.querySelector('[data-v3t="hide"]').title = selMesh ? `Hide ${orgLabel(name)} (H, or double-click a structure)` : "Select a structure to hide it";
+  t.querySelector('[data-v3t="isolate"]').title = selMesh ? `Show only ${orgLabel(name)}, everything else as a faint outline, and zoom to it (I)` : "Select a structure to isolate it";
+  const all = t.querySelector('[data-v3t="showall"]'); all.hidden = !n; all.textContent = `Show all (${n} hidden)`;
+  all.title = n ? "Hidden: " + [...V3D.hidden].map(orgLabel).join(", ") + " (Esc)" : "";
+}
+function v3dAct(k, name) {
+  if (k === "isolate") { V3D.iso = !V3D.iso; if (!V3D.iso) { V3D.isoName = null; v3dUnframe(); } }
+  else if (k === "hide") { const n = name || S.an.organ; if (!V3D.meshes.some(m => m.userData.name === n)) return; V3D.hidden.add(n); if (n === S.an.organ && V3D.iso) { V3D.iso = false; V3D.isoName = null; v3dUnframe(); } }
+  else if (k === "showall") { V3D.hidden.clear(); }
+  V3D.hover = null; v3dColor();
 }
 function v3dPick(e) {
   if (!V3D.r) return null; const T = V3D.T, rc = V3D.rc || (V3D.rc = new T.Raycaster()), r = V3D.r.domElement.getBoundingClientRect();
