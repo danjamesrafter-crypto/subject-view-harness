@@ -180,6 +180,7 @@ body:has(.pane) .fsbtn,body:has(.fermi) .fsbtn{display:none}
 .fl,.st,.pill,.qst,.tab .n{display:inline-flex;align-items:center;justify-content:center;gap:4px;height:16px;padding:0 4px;border-radius:4px;font-size:10px;font-weight:500;line-height:1;white-space:nowrap;background:var(--slate-hover);color:var(--slate-medium);user-select:none;text-transform:none;letter-spacing:0;border:0}
 .vision-dark .fl,.vision-dark .st,.vision-dark .pill,.vision-dark .qst{color:var(--slate-base)}
 .fl{min-width:16px}
+.st.superseded{background:var(--slate-hover,rgba(255,255,255,.06));color:var(--typography-secondary,#9aa4b8)}
 .fl.bad,.st.failed,.status-off{background:var(--red-hover);color:var(--red-base)}
 .fl.warn,.st.todo,.st.pending,.st.open{background:var(--orange-hover);color:var(--orange-base)}
 .fl.info,.qst.open{background:var(--secondary-hover);color:var(--secondary-base)}
@@ -793,7 +794,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.16.0";
+const VERSION = "subject-view-harness/0.16.1";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, ov: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -910,7 +911,14 @@ function tasksForSubject(id) {
   return S.tasks.filter(t => (t.parents && t.parents.subject === id) || (t.parent_ref && (sids.has(t.parent_ref.id) || aids.has(t.parent_ref.id))));
 }
 const OPEN = x => x.status === "todo" || x.status === "in_progress";
-const openFail = (jobs) => jobs.filter(j => j.state === "failed" && !jobs.some(x => x.previous_job_id === (j._id || j.id)));
+/* A failed job needs attention only if nothing fixed it: no retry of it, and no later successful run of the same gear (any
+   version) on the same container. Analysis jobs land on a new analysis each time, so their container is the parent
+   acquisition/session. (0.16.1, Dan 11-26: a failure that a later run fixed is not a top-level indicator.) */
+const jobGear = j => (j.gear_info && j.gear_info.name) || j.gear_id || "";
+const jobLoc = j => { const dd = j.destination || {}, p = j.parents || {}; return dd.type && dd.type !== "analysis" ? dd.id : (p.acquisition || p.session || p.subject || dd.id || ""); };
+const jobT = j => Date.parse(j.created || "") || 0;
+const supersededBy = (j, jobs) => j.state !== "failed" ? null : jobs.filter(x => x !== j && x.state === "complete" && jobGear(x) === jobGear(j) && jobLoc(x) === jobLoc(j) && jobT(x) > jobT(j)).sort((a, b) => jobT(a) - jobT(b))[0] || null;
+const openFail = (jobs) => jobs.filter(j => j.state === "failed" && !jobs.some(x => x.previous_job_id === (j._id || j.id)) && !supersededBy(j, jobs));
 /* ---------- visit schedule from project session templates (v0.4) ---------- */
 /* Flywheel stores session templates on project.templates (list; legacy project.template). Each one names a session label
    (exact or regex) and the acquisitions it needs: label, minimum count, optional file rules. Core evaluates them into
@@ -1058,6 +1066,9 @@ function jobAnalysis(J) {
       : retryJob.state === "complete" ? { tone: "ok", t: `Already retried on ${when}, and the retry completed. Nothing to do.` }
       : retryJob.state === "failed" ? { tone: "bad", t: `Retried on ${when} and failed again. Troubleshoot the retry rather than this run.` }
       : { tone: "warn", t: `Retried on ${when}; the retry is ${retryJob.state}.` };
+  } else if (j.state === "failed" && d && d.jobs && supersededBy(j, d.jobs)) {
+    const ok = supersededBy(j, d.jobs);
+    rec = { tone: "ok", t: `A later run of ${name}${ok.gear_info && ok.gear_info.version && ok.gear_info.version !== ver ? " " + ok.gear_info.version : ""} on the same container completed on ${dt(ok.created)}. Nothing to do.` };
   } else if (j.state === "failed") {
     if (cls.k === "dep") { const missing = deps.filter(x => x.nowOk === false), fixed = deps.filter(x => x.nowOk === true), unk = deps.filter(x => x.nowOk === null);
       rec = missing.length ? { tone: "bad", t: `Install ${missing.map(x => x.name + " " + x.version).join(", ")} first. A retry will fail the same way.` }
@@ -1291,7 +1302,7 @@ function paneRaw() {
   if (!col.v && schedule().length && !r) body += sec("Visit requirements", `<span class="muted">No session template matches the label <span class="mono">${esc(z.label)}</span>, so this is treated as an unscheduled visit.</span>`);
   if (!r || r.startsWith("mod:")) body += sec(r ? r.slice(4) : "Acquisitions", (d && d.acqErr || {})[z._id] ? `<span class="muted">Flywheel returned an error for this session's acquisitions (retried once). Use Refresh to try again.</span>` : shown.length ? shown.map(a => { loadThumb(a); return `<div class="acq"><div class="acq-x">${thumbHTML(a, true)}<div class="acq-m"><div class="acq-h" style="padding:0;border:0"><span class="pill" style="background:var(--card-2);color:var(--ink-2)">${esc(acqMod(a))}</span><b>${esc(a.label)}</b><span class="mono muted" style="font-size:12px">${dt(a.timestamp || a.created)}</span></div>${clsSummary(dicomFile(a) || (a.files || [])[0]) ? `<span class="muted" style="font-size:12px">${esc(clsSummary(dicomFile(a) || (a.files || [])[0]))}</span>` : ""}${tagRow("acquisition|" + a._id, a.tags, { sm: true })}</div></div>${files(a)}</div>`; }).join("") : `<span class="muted">${d && d.acqs ? "No acquisitions." : "Loading…"}</span>`);
   if (!r || r === "tasks") body += sec("Reader tasks", t.length ? t.map(x => `<div class="frow" style="border:1px solid var(--line-soft);border-radius:8px"><span><span class="mono">${esc(x.task_id)}</span> <span class="muted">· ${esc(x.protocol_label || "")} · ${esc(x.assignee ? x.assignee.id : "unassigned")}</span></span><span class="acts"><span class="st ${esc(x.status)}">${esc(stLabel(x.status))}</span></span></div>`).join("") : `<span class="muted">No reader tasks.</span>`);
-  if (!r || r === "jobs") body += sec("Gear jobs", d && d.jobsOk ? (jj.length ? jj.map(j => `<div class="frow" style="border:1px solid var(--line-soft);border-radius:8px"><span>${esc(j.gear_info ? j.gear_info.name : "")} <span class="muted mono">${esc(j.gear_info ? j.gear_info.version : "")}</span></span><span class="acts"><span class="st ${esc(j.state)}">${esc(stLabel(j.state))}</span><button class="ibtn" data-job="${j._id || j.id}">${j.state === "failed" ? "Troubleshoot" : "Details"}</button></span></div>`).join("") : `<span class="muted">No jobs.</span>`) : `<span class="muted">Jobs not available through the extension proxy.</span>`);
+  if (!r || r === "jobs") body += sec("Gear jobs", d && d.jobsOk ? (jj.length ? jj.map(j => `<div class="frow" style="border:1px solid var(--line-soft);border-radius:8px"><span>${esc(j.gear_info ? j.gear_info.name : "")} <span class="muted mono">${esc(j.gear_info ? j.gear_info.version : "")}</span></span><span class="acts">${(() => { const ok = j.state === "failed" && (supersededBy(j, d.jobs) || jj.some(x => x.previous_job_id === (j._id || j.id) && x.state === "complete")); return ok ? `<span class="src" title="A later run of this gear on the same container completed, so no action is needed.">fixed by a later run</span><span class="st superseded">Failed</span>` : `<span class="st ${esc(j.state)}">${esc(stLabel(j.state))}</span>`; })()}<button class="ibtn" data-job="${j._id || j.id}">${j.state === "failed" ? "Troubleshoot" : "Details"}</button></span></div>`).join("") : `<span class="muted">No jobs.</span>`) : `<span class="muted">Jobs not available through the extension proxy.</span>`);
   if (!r || r === "queries") { const qs = qOf(S.subj).filter(q => q.target && q.target.id === z._id); body += sec(`Queries <button class="ibtn" style="margin-left:auto" data-raise="session|${z._id}|${esc(z.label)}|Other|">${ic("add-new-create")}Raise Query</button>`, qs.length ? qs.map(q => qCard(S.subj, q)).join("") : `<span class="muted">No queries on this visit.</span>`); }
   if (!r || r === "info") { const kv = flatKV(z.info || {}, "", []); body += sec("Session custom info", kv.length ? `<div class="kvgrid">${kv.filter(([, v]) => !isRows(v)).slice(0, 40).map(([k, v]) => `<div><div class="k">${esc(k)}</div><div class="v">${esc(cellVal(v))}</div></div>`).join("")}</div>${kv.filter(([, v]) => isRows(v)).map(([k, v]) => `<div class="k" style="font-size:12px;color:var(--ink-3);margin-top:8px">${esc(k)} · ${v.length}</div>${rowsTable(v)}`).join("")}` : `<span class="muted">No custom info.</span>`); }
   host.innerHTML = `<aside class="pane" role="dialog" aria-label="${esc(z.label)}"><header><div style="display:flex;align-items:center;gap:8px"><nav class="bc"><button data-act="closePane">${esc(s.label)}</button>${ic("chevron-forward","sep")}${r ? `<button data-pane="${col.key}|">${esc(z.label)}</button>${ic("chevron-forward","sep")}<b>${esc(r === "req" ? "Visit requirements" : r.replace("mod:", ""))}</b>` : `<b>${esc(z.label)}</b>`}</nav><span style="flex:1"></span>${nav}</div>
