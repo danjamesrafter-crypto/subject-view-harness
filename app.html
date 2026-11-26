@@ -587,6 +587,9 @@ select:focus{border-color:var(--primary-base)}
 .an-3dtools .ibtn{padding:2px 8px;font-size:11px;background:rgba(20,22,30,.72)}
 .an-3dtools .ibtn.on{background:var(--slate-base);border-color:transparent;color:var(--typography-contrast)}
 .an-3dtools .ibtn[disabled]{opacity:.45;cursor:default}
+.an-3dempty{align-self:stretch;min-height:220px;margin:4px 6px 0;border:1px dashed var(--border-subtle,rgba(255,255,255,.14));border-radius:8px;display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;text-align:center;font-size:13px;color:var(--ink-2,#9aa4b8);font-family:var(--font-ui)}
+.an-spin{width:14px;height:14px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:anspin .8s linear infinite;flex:none}
+@keyframes anspin{to{transform:rotate(360deg)}}
 /* ---- 0.9.0 Overview timeline ---- */
 .ov-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;flex-wrap:wrap}
 .tl-scroll{overflow-x:auto;padding:4px 0 12px}
@@ -790,7 +793,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.15.0";
+const VERSION = "subject-view-harness/0.16.0";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, ov: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -1805,46 +1808,33 @@ function anFoot(R, ts, pr) {
   return `<div class="an-foot">TotalSegmentator ${esc(ts.version || RAD_ASSUMED.ts)}${ts.task ? " · task " + esc(ts.task) : ""} · ${R.source === "stats" ? "PyRadiomics not run" : "PyRadiomics " + esc(pr.version || RAD_ASSUMED.pr)}${pr.settings && pr.settings.binWidth ? " · binWidth " + pr.settings.binWidth : ""} · ${R.source === "sim" ? "simulated" : R.source === "stats" ? "TotalSegmentator statistics (volume, mean HU only)" : "from gear output"} · Red = higher, blue = lower than the reference; grey = no data or not comparable. <button class="linkbtn" data-tab="diagnostics">About and versions</button>${R.source === "sim" && R.effects.length ? `<span class="an-seed"> · Simulation seeded with: ${R.effects.map(e => esc(RAD_EFFECTS[e].label)).join("; ")}</span>` : ""}</div>`;
 }
 function anMap(R, A, sig, vi) {
-  const layer = A.layer, shapes = MAP_SHAPES[layer], drawn = new Set(shapes.map(x => x[0]));
-  const v = R.visits[vi], ref = R.source !== "sim" && v.maskRef, st = ref ? S.seg[ref._key] : null;
-  if (ref && !st) setTimeout(() => segLoad(ref), 0);
-  const mode = A.anat || "3d", ms = ref && mode === "3d" ? S.mesh[ref._key] : null;
-  if (ref && mode === "3d" && !ms) setTimeout(() => meshLoad(ref), 0);
+  /* 0.16.0: 3D only. The 2D front projection and the generic schematic were removed (Dan, 11-26). Without a mask, or while
+     the surfaces build, the card says so and lists the organs as chips so selection still works. */
+  const layer = A.layer, li = layer === "msk" ? 1 : 0;
+  const v = R.visits[vi], ref = R.source !== "sim" && v.maskRef, ms = ref ? S.mesh[ref._key] : null;
+  if (ref && !ms) setTimeout(() => meshLoad(ref), 0);
   const use3d = !!(ms && ms.status === "ok");
-  const usePatient = !use3d && mode !== "schematic" && st && st.status === "ok";
-  if (usePatient) setTimeout(segDraw, 0);
   if (use3d) setTimeout(v3dMount, 0);
-  const cells = {}; Object.keys(R.visits[vi].organs).forEach(o => { cells[o] = radCell(R, vi, o, sig, A.cmp); });
+  const cells = {}; Object.keys(v.organs).forEach(o => { cells[o] = radCell(R, vi, o, sig, A.cmp); });
   const tip = (o, c) => `${orgLabel(o)}: ${radFmt(sig, c.v)}${sig.unit ? " " + sig.unit : ""}${c.base ? " (reference)" : ""}${c.ok === false ? " · not comparable: " + c.why : c.z != null ? ` · ${c.z.toFixed(1)} SD (${c.pct}th percentile of ${c.n})` : c.d != null ? " · " + radDFmt(sig, c) : ""}`;
-  const svg = shapes.map(([o, dd, w]) => {
-    const c = cells[o] || { v: null }, col = radColor(c.t, c.ok), sel = A.organ === o, hatch = c.ok === false ? ` class="nc"` : "";
-    if (w) return `<g data-org="${o}" class="org${sel ? " sel" : ""}" tabindex="0" role="button" aria-label="${esc(tip(o, c))}"><title>${esc(tip(o, c))}</title><path d="${dd}" class="under" stroke-width="${w + 3}"/><path d="${dd}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round"${hatch}/></g>`;
-    return `<g data-org="${o}" class="org${sel ? " sel" : ""}" tabindex="0" role="button" aria-label="${esc(tip(o, c))}"><title>${esc(tip(o, c))}</title><path d="${dd}" fill="${col}"${hatch}/>${c.ok === false ? `<path d="${dd}" fill="url(#anHatch)" pointer-events="none"/>` : ""}</g>`;
-  }).join("");
-  const others = usePatient || use3d ? [] : Object.keys(R.visits[vi].organs).filter(o => !drawn.has(o) && ((ORG[o] && ORG[o].layer !== (layer === "organs" ? "msk" : "organs")) || !ORG[o]));
+  const inLayer = Object.keys(v.organs).filter(o => segLayerOf(o) === li);
+  const others = use3d ? [] : inLayer;
+  const othersLabel = `${layer === "msk" ? "Bones and muscles" : "Organs"} with measurements`;
   const sel = cells[A.organ] || {};
   const legend = A.cmp === "cohort" ? ["−3 SD", "cohort mean", "+3 SD"] : sig.d === "pct" ? [`−${sig.span}%`, "no change", `+${sig.span}%`] : [`−${sig.span}${sig.unit === "HU" ? " HU" : ""}`, "no change", `+${sig.span}${sig.unit === "HU" ? " HU" : ""}`];
-  return `<div class="card an-map"><div class="card-h"><h3>${esc(sig.label)} · ${esc(R.visits[vi].short)}${A.cmp !== "cohort" && radRef(R.visits, vi, A.cmp) >= 0 && radRef(R.visits, vi, A.cmp) !== vi ? ` vs ${esc(R.visits[radRef(R.visits, vi, A.cmp)].short)}` : A.cmp === "cohort" ? " vs cohort" : ""}</h3>
-      <div class="an-maphdr">${ref ? `<div class="an-seg sm">${[["3d", "3D"], ["patient", "Front"], ["schematic", "Schematic"]].map(([k, l]) => `<button class="ibtn ${mode === k ? "on" : ""}" data-an="anat:${k}" title="${k === "3d" ? "Surfaces of every segmented structure; drag to rotate" : k === "patient" ? "Front projection of this subject's segmentation" : "Generic body diagram"}">${l}</button>`).join("")}</div>` : ""}<div class="an-seg sm">${[["organs", "Organs"], ["msk", "Bones & Muscle"]].map(([k, l]) => `<button class="ibtn ${layer === k ? "on" : ""}" data-an="layer:${k}">${l}</button>`).join("")}</div></div></div>
+  const empty = msg => `<div class="an-3dempty">${msg}</div>`;
+  return `<div class="card an-map"><div class="card-h"><h3>${esc(sig.label)} · ${esc(v.short)}${A.cmp !== "cohort" && radRef(R.visits, vi, A.cmp) >= 0 && radRef(R.visits, vi, A.cmp) !== vi ? ` vs ${esc(R.visits[radRef(R.visits, vi, A.cmp)].short)}` : A.cmp === "cohort" ? " vs cohort" : ""}</h3>
+      <div class="an-maphdr"><div class="an-seg sm">${[["organs", "Organs"], ["msk", "Bones & Muscle"]].map(([k, l]) => `<button class="ibtn ${layer === k ? "on" : ""}" data-an="layer:${k}">${l}</button>`).join("")}</div></div></div>
     <div class="card-b an-svgwrap">
       ${use3d ? `<div class="an-3dwrap"><div id="an3d" class="an-3d"></div></div>
-      <div class="src an-segsrc">3D · ${ms.meshes.length} structures from ${esc(SEG_MASK_NAME)} · ${(ms.tris / 1000).toFixed(0)}k triangles on a ${ms.mm.join("×")} mm grid · orientation check ${ms.check === "ok" ? "passed (spleen on patient's left)" : "not possible (no spleen or liver)"}${ms.cached ? ` · from this browser's cache (${ms.ms} ms)` : ` · built in ${(ms.ms / 1000).toFixed(1)} s`} · drag to rotate, scroll to zoom, right-drag to pan · click a structure to select it, double-click to hide it · Isolate (I), Hide (H), Esc to undo</div>` : ""}
-      ${ms && ms.status === "loading" ? `<div class="src an-segsrc">Building 3D surfaces from this subject's segmentation…${usePatient ? " Showing the front view meanwhile." : ""}</div>` : ""}
-      ${ms && ms.status === "err" ? `<div class="src an-segsrc">3D view unavailable (${esc(ms.err)})${usePatient ? "; showing the front view" : ""}.</div>` : ""}
-      ${usePatient ? `<div class="an-patient"><canvas id="anSeg" role="img" aria-label="Front view of this subject's TotalSegmentator segmentation, patient's right on the left"></canvas><div class="an-sides"><span>R</span><span>L</span></div></div>
-      <div class="src an-segsrc">Patient anatomy · front view of ${esc(SEG_MASK_NAME)} · ${st.dims.join("×")} voxels · orientation check ${st.check === "ok" ? "passed (spleen on patient's left)" : "not possible (no spleen or liver)"}${st.cached ? ` · from this browser's cache (${st.ms} ms)` : st.ms ? ` · built in ${(st.ms / 1000).toFixed(1)} s` : ""}${st.oblique ? " · oblique grid snapped to nearest axes" : ""}</div>` : ""}
-      ${ref && st && st.status === "loading" && mode === "patient" ? `<div class="src an-segsrc">Loading this subject's segmentation…</div>` : ""}
-      ${ref && st && st.status === "err" && mode !== "schematic" && !use3d ? `<div class="src an-segsrc">Patient anatomy unavailable (${esc(st.err)}); showing the schematic.</div>` : ""}
-      ${usePatient || use3d ? "" : `<svg id="anMap" viewBox="40 30 240 600" role="group" aria-label="Body map, patient's right on the left">
-        <defs><pattern id="anHatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="currentColor" stroke-width="1.4" opacity=".45"/></pattern></defs>
-        <circle cx="160" cy="44" r="25" class="sil"/><path d="${BODY_SIL}" class="sil"/>
-        ${layer === "msk" ? THORACIC_DECO : ""}${svg}
-        <text x="58" y="618" class="side">R</text><text x="254" y="618" class="side">L</text>
-      </svg>`}
+      <div class="src an-segsrc">3D · ${ms.meshes.length} structures from ${esc(SEG_MASK_NAME)} · ${(ms.tris / 1000).toFixed(0)}k triangles on a ${ms.mm.join("×")} mm grid · orientation check ${ms.check === "ok" ? "passed (spleen on patient's left)" : "not possible (no spleen or liver)"}${ms.cached ? ` · from this browser's cache (${ms.ms} ms)` : ` · built in ${(ms.ms / 1000).toFixed(1)} s`} · drag to rotate, scroll to zoom, right-drag to pan · click a structure to select it, double-click to hide it · Isolate (I), Hide (H), Esc to undo</div>`
+      : !ref ? empty(R.source === "sim" ? "Demo data has no segmentation, so there is no 3D view." : `No TotalSegmentator mask (${esc(SEG_MASK_NAME)}) for ${esc(v.short)}, so there is no 3D view. Run TotalSegmentator (task total) on this CT to get one.`)
+      : !ms || ms.status === "loading" ? empty(`<span class="an-spin"></span>Building 3D surfaces from this subject's segmentation…`)
+      : empty(`3D view unavailable: ${esc(ms.err || "unknown error")}.`)}
       <div class="an-legend"><span class="ramp"></span><div class="lbls"><span>${legend[0]}</span><span>${legend[1]}</span><span>${legend[2]}</span></div><div class="lbls sub"><span><i class="nc-sw"></i>not comparable</span><span><i class="nd-sw"></i>no data</span></div></div>
-      ${(() => { const nc = (usePatient || use3d ? Object.keys(cells).filter(o => segLayerOf(o) === (layer === "msk" ? 1 : 0)) : shapes.map(x => x[0])).map(o => cells[o]).filter(c => c && c.ok === false); if (nc.length < 3) return ""; const why = [...new Set(nc.map(c => c.why))]; return `<div class="an-ncnote">${ic("warning")}<span><b>${nc.length}</b> drawn structures can't be compared: ${why.map(esc).join("; ")}. Try another visit, Compare vs Cohort, or a shape signal.</span></div>`; })()}
+      ${(() => { const nc = inLayer.map(o => cells[o]).filter(c => c && c.ok === false); if (nc.length < 3) return ""; const why = [...new Set(nc.map(c => c.why))]; return `<div class="an-ncnote">${ic("warning")}<span><b>${nc.length}</b> structures can't be compared: ${why.map(esc).join("; ")}. Try another visit, Compare vs Cohort, or a shape signal.</span></div>`; })()}
       <div class="an-read" id="anRead">${anReadout(A.organ, sel, sig)}</div>
-      ${others.length ? `<div class="an-others"><div class="src">Also segmented, not drawn (${others.length})</div>${others.map(o => { const c = cells[o]; return `<button class="an-och ${A.organ === o ? "on" : ""}" data-org="${o}" title="${esc(tip(o, c))}"><i style="background:${radColor(c.t, c.ok)}"></i>${esc(orgLabel(o))}</button>`; }).join("")}</div>` : ""}
+      ${others.length ? `<div class="an-others"><div class="src">${othersLabel} (${others.length})</div>${others.map(o => { const c = cells[o]; return `<button class="an-och ${A.organ === o ? "on" : ""}" data-org="${o}" title="${esc(tip(o, c))}"><i style="background:${radColor(c.t, c.ok)}"></i>${esc(orgLabel(o))}</button>`; }).join("")}</div>` : ""}
     </div></div>`;
 }
 function anReadout(o, c, sig) {
