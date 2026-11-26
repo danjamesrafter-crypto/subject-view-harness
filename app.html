@@ -389,6 +389,8 @@ pre.jerr span.e{color:var(--red-base)}
 .jsince li.ok{color:var(--green-base)}.jsince li.bad{color:var(--red-base)}
 .jsame{display:flex;flex-wrap:wrap;gap:6px}
 .jacts{display:flex;flex-wrap:wrap;gap:8px}
+.jign{display:flex;align-items:center;gap:10px;margin-top:12px;padding:8px 12px;border:1px solid var(--separations-base);border-radius:8px;font-size:13px;color:var(--typography-muted)}
+.jign span{flex:1}.jign.on{background:var(--slate-hover,rgba(255,255,255,.04));color:var(--typography-base)}.jign .vi{font-size:16px}
 
 /* ---------- diagnostics ---------- */
 .diag .call{display:grid;grid-template-columns:56px 1fr auto auto;gap:12px;align-items:baseline;padding:6px 8px 6px 16px;border-bottom:1px solid var(--separations-base);font-size:12px;cursor:pointer;color:var(--typography-muted)}
@@ -798,7 +800,7 @@ select:focus{border-color:var(--primary-base)}
 <script>
 "use strict";
 /* Subject View — live-data harness (Flywheel extension app). Read-only: makes GET calls only. Contains no data. */
-const VERSION = "subject-view-harness/0.16.4";
+const VERSION = "subject-view-harness/0.16.5";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const S = { jobData: {}, job: null, rules: undefined, projFailed: undefined, fullLog: false, ext: null, user: null, origin: "", projectId: null, project: null, subjects: [], sessions: [], subj: null, detail: {}, tasks: null, jobs: {}, tab: "overview", q: "", filt: "all", thumbs: {}, hover: null, tagEdit: null, queries: {}, qOpen: {}, qReply: null, qDraft: null, qFilt: "open", fermi: { open: false, thread: [], busy: false }, phi: false, pane: null, calls: [], loading: true, error: null, updated: null, stale: false, fileOpen: {}, logs: {}, ov: {}, rad: {}, radReal: {}, radCohortRun: null, radCohort: null, an: { view: "organ", organ: "liver", sig: "mean", visit: null, cmp: "bl", layer: "organs", fclass: "all", showAll: false } };
 const DIAG_MAX = 60;
@@ -922,7 +924,20 @@ const jobGear = j => (j.gear_info && j.gear_info.name) || j.gear_id || "";
 const jobLoc = j => { const dd = j.destination || {}, p = j.parents || {}; return dd.type && dd.type !== "analysis" ? dd.id : (p.acquisition || p.session || p.subject || dd.id || ""); };
 const jobT = j => Date.parse(j.created || "") || 0;
 const supersededBy = (j, jobs) => j.state !== "failed" ? null : jobs.filter(x => x !== j && x.state === "complete" && jobGear(x) === jobGear(j) && jobLoc(x) === jobLoc(j) && jobT(x) > jobT(j)).sort((a, b) => jobT(a) - jobT(b))[0] || null;
-const openFail = (jobs) => jobs.filter(j => j.state === "failed" && !jobs.some(x => x.previous_job_id === (j._id || j.id)) && !supersededBy(j, jobs));
+/* 0.16.5: a failure someone marked "Ignore" (stored on the subject, info.fw_job_ignored) is also not counted. The job itself is untouched. */
+const JKEY = "fw_job_ignored";
+const jobIgnored = j => { const sid = (j.parents || {}).subject || S.subj, d = S.detail[sid], m = d && d.subject && d.subject.info && d.subject.info[JKEY]; return (m && m[j._id || j.id]) || null; };
+const openFail = (jobs) => jobs.filter(j => j.state === "failed" && !jobs.some(x => x.previous_job_id === (j._id || j.id)) && !supersededBy(j, jobs) && !jobIgnored(j));
+async function setJobIgnored(j, on) {
+  const sid = (j.parents || {}).subject || S.subj, id = j._id || j.id, me = S.user || {};
+  const fresh = await api(`/api/subjects/${sid}`, null, { soft: true });
+  const cur = Object.assign({}, ((fresh && fresh.info) || {})[JKEY] || {});
+  if (on) cur[id] = { by: me.email || me._id || "unknown", at: new Date().toISOString(), gear: (j.gear_info || {}).name || "", version: (j.gear_info || {}).version || "", session: (j.parents || {}).session || "" };
+  else delete cur[id];
+  await sdk(`SDK updateContainerInfo subject ${(S.subjects.find(x => x._id === sid) || {}).label || sid} · ${on ? "ignore" : "un-ignore"} failed job ${id}`, () => S.ext.updateContainerInfo({ _id: sid, container_type: "subject", info: (fresh && fresh.info) || {}, label: "" }, { set: { [JKEY]: cur } }));
+  const d = S.detail[sid]; if (d && d.subject) { d.subject.info = d.subject.info || {}; d.subject.info[JKEY] = cur; }
+  toast(on ? "Failure ignored. The job and its log are unchanged." : "Failure counted again."); render();
+}
 /* ---------- visit schedule from project session templates (v0.4) ---------- */
 /* Flywheel stores session templates on project.templates (list; legacy project.template). Each one names a session label
    (exact or regex) and the acquisitions it needs: label, minimum count, optional file rules. Core evaluates them into
@@ -1110,7 +1125,9 @@ function jobPaneInner() {
     <div class="jwhere">${jobWhere(j).map(esc).join(' ' + ic('chevron-forward','sep') + ' ')}</div>
     <dl class="jfacts"><dt>Started by</dt><dd>${startedBy}</dd><dt>Attempt</dt><dd>${j.attempt || 1}${j.previous_job_id ? ` · <button class="lnkbtn" data-job="${esc(j.previous_job_id)}">previous run</button>` : ""}${j.retried ? ` · retried ${dt(j.retried)}` : ""}${A && A.retryJob ? ` · <button class="lnkbtn" data-job="${esc(jid(A.retryJob))}">open the retry (${esc(A.retryJob.state)})</button>` : ""}</dd>
     <dt>Queued</dt><dd>${dt(tr.pending || j.created)} · waited ${A ? fmtDur(A.queued) : "…"}</dd><dt>Ran</dt><dd>${tr.running ? dt(tr.running) : "never started"} · ${A ? fmtDur(A.ran) : "…"}</dd>
-    <dt>Job ID</dt><dd class="mono">${esc(id)}</dd></dl></div>`;
+    <dt>Job ID</dt><dd class="mono">${esc(id)}</dd></dl>${j.state === "failed" ? (ig => ig
+      ? `<div class="jign on">${ic("visible-eye-hidden")}<span>Ignored by <b>${esc(ig.by)}</b> on ${dt(ig.at)}. Not counted in failure totals; the job and its log are unchanged.</span><button class="ibtn" data-act="jobunignore">Undo</button></div>`
+      : `<div class="jign"><span>No action needed on this failure?</span><button class="ibtn" data-act="jobignore" title="Stop counting this failure in the subject, visit and timeline totals. Saved on the subject (info.${JKEY}) so everyone sees it; the job, its state and its log are not changed.">${ic("visible-eye-hidden")}Ignore failure</button></div>`)(jobIgnored(j)) : ""}</div>`;
   if (!A) { host.innerHTML = shell("Gear job", `<div class="loading"><span class="spin"></span>Reading the log, rules and installed gears…</div>`, sub); return; }
   const sec = (h, b, note) => `<section class="psec"><h4>${h}${note ? `<span class="src" style="text-transform:none;letter-spacing:0">${note}</span>` : ""}</h4>${b}</section>`;
   let body = "";
@@ -1176,7 +1193,7 @@ function header(s, d) {
     (z => ["Acquisitions", d && d.acqs ? acqs.length : "…", d && d.acqs ? `${files} files · ${z ? z.line : ""}` : "loading", "", z ? z.tip : ""])((sizeNeed(s._id), sizeTile(s, d))),
     ["Open Reads", openT ? openT.length : "…", openT ? (openT.map(x => x.task_id).slice(0, 3).join(", ") || "none open") : "loading", openT && openT.length ? "warn" : ""],
     ["Gear Jobs", d && d.jobsOk ? (failed.length ? failed.length + " failed" : d.jobs.length) : d && d.ok ? "n/a" : "…", d && d.jobsOk ? (failed.length ? failed[0].gear_info.name : `${d.jobs.length} jobs, none failed`) : d && d.ok ? "not available via extension" : "loading", failed && failed.length ? "bad" : ""],
-    ["Custom Info", Object.keys(info).filter(k => k !== QKEY).length, Object.keys(info).filter(k => k !== QKEY).slice(0, 3).join(", ") || "no keys", ""]
+    ["Custom Info", Object.keys(info).filter(k => k !== QKEY && k !== JKEY).length, Object.keys(info).filter(k => k !== QKEY && k !== JKEY).slice(0, 3).join(", ") || "no keys", ""]
   ];
   return `<section class="shead"><div class="idblock">
       <div class="eyebrow">${esc(S.project ? S.project.label : "")} · subject</div>
@@ -1257,7 +1274,7 @@ function rowsTable(arr, mask) {
 }
 function infoTab(s, d) {
   if (!d || !d.ok) return `<div class="loading"><span class="spin"></span>Loading…</div>`;
-  const info = (d.subject && d.subject.info) || {}, keys = Object.keys(info).filter(k => k !== QKEY);
+  const info = (d.subject && d.subject.info) || {}, keys = Object.keys(info).filter(k => k !== QKEY && k !== JKEY);
   const forms = (S.project && S.project.info && S.project.info.forms) || null;
   if (!keys.length) return `<div class="card"><div class="empty-big">No custom info on this subject.<span class="src" style="font-family:var(--font-ui)">EDC forms imported from CSV would appear here as one card per form.</span></div></div>`;
   const phiKey = k => /first.?name|last.?name|date.?of.?birth|dob|email|phone/i.test(k);
@@ -1306,7 +1323,7 @@ function paneRaw() {
   if (!col.v && schedule().length && !r) body += sec("Visit requirements", `<span class="muted">No session template matches the label <span class="mono">${esc(z.label)}</span>, so this is treated as an unscheduled visit.</span>`);
   if (!r || r.startsWith("mod:")) body += sec(r ? r.slice(4) : "Acquisitions", (d && d.acqErr || {})[z._id] ? `<span class="muted">Flywheel returned an error for this session's acquisitions (retried once). Use Refresh to try again.</span>` : shown.length ? shown.map(a => { loadThumb(a); return `<div class="acq"><div class="acq-x">${thumbHTML(a, true)}<div class="acq-m"><div class="acq-h" style="padding:0;border:0"><span class="pill" style="background:var(--card-2);color:var(--ink-2)">${esc(acqMod(a))}</span><b>${esc(a.label)}</b><span class="mono muted" style="font-size:12px">${dt(a.timestamp || a.created)}</span></div>${clsSummary(dicomFile(a) || (a.files || [])[0]) ? `<span class="muted" style="font-size:12px">${esc(clsSummary(dicomFile(a) || (a.files || [])[0]))}</span>` : ""}<span class="acq-tags">${(a.files || []).filter(f => (f.tags || []).length).map(f => tagRow("file|" + a._id + "|" + encodeURIComponent(f.name), f.tags, { sm: true, noAdd: true })).join("")}${tagRow("acquisition|" + a._id, a.tags, { sm: true })}</span></div></div>${files(a)}</div>`; }).join("") : `<span class="muted">${d && d.acqs ? "No acquisitions." : "Loading…"}</span>`);
   if (!r || r === "tasks") body += sec("Reader tasks", t.length ? t.map(x => `<div class="frow" style="border:1px solid var(--line-soft);border-radius:8px"><span><span class="mono">${esc(x.task_id)}</span> <span class="muted">· ${esc(x.protocol_label || "")} · ${esc(x.assignee ? x.assignee.id : "unassigned")}</span></span><span class="acts"><span class="st ${esc(x.status)}">${esc(stLabel(x.status))}</span></span></div>`).join("") : `<span class="muted">No reader tasks.</span>`);
-  if (!r || r === "jobs") body += sec("Gear jobs", d && d.jobsOk ? (jj.length ? jj.map(j => `<div class="frow" style="border:1px solid var(--line-soft);border-radius:8px"><span>${esc(j.gear_info ? j.gear_info.name : "")} <span class="muted mono">${esc(j.gear_info ? j.gear_info.version : "")}</span></span><span class="acts">${(() => { const ok = j.state === "failed" && (supersededBy(j, d.jobs) || jj.some(x => x.previous_job_id === (j._id || j.id) && x.state === "complete")); return ok ? `<span class="src" title="A later run of this gear on the same container completed, so no action is needed.">fixed by a later run</span><span class="st superseded">Failed</span>` : `<span class="st ${esc(j.state)}">${esc(stLabel(j.state))}</span>`; })()}<button class="ibtn" data-job="${j._id || j.id}">${j.state === "failed" ? "Troubleshoot" : "Details"}</button></span></div>`).join("") : `<span class="muted">No jobs.</span>`) : `<span class="muted">Jobs not available through the extension proxy.</span>`);
+  if (!r || r === "jobs") body += sec("Gear jobs", d && d.jobsOk ? (jj.length ? jj.map(j => `<div class="frow" style="border:1px solid var(--line-soft);border-radius:8px"><span>${esc(j.gear_info ? j.gear_info.name : "")} <span class="muted mono">${esc(j.gear_info ? j.gear_info.version : "")}</span></span><span class="acts">${(() => { const ok = j.state === "failed" && (supersededBy(j, d.jobs) || jj.some(x => x.previous_job_id === (j._id || j.id) && x.state === "complete")), ig = j.state === "failed" && jobIgnored(j); return ig ? `<span class="src" title="Ignored by ${esc(ig.by)} on ${esc(dt(ig.at))}">ignored</span><span class="st superseded">Failed</span>` : ok ? `<span class="src" title="A later run of this gear on the same container completed, so no action is needed.">fixed by a later run</span><span class="st superseded">Failed</span>` : `<span class="st ${esc(j.state)}">${esc(stLabel(j.state))}</span>`; })()}<button class="ibtn" data-job="${j._id || j.id}">${j.state === "failed" ? "Troubleshoot" : "Details"}</button></span></div>`).join("") : `<span class="muted">No jobs.</span>`) : `<span class="muted">Jobs not available through the extension proxy.</span>`);
   if (!r || r === "queries") { const qs = qOf(S.subj).filter(q => q.target && q.target.id === z._id); body += sec(`Queries <button class="ibtn" style="margin-left:auto" data-raise="session|${z._id}|${esc(z.label)}|Other|">${ic("add-new-create")}Raise Query</button>`, qs.length ? qs.map(q => qCard(S.subj, q)).join("") : `<span class="muted">No queries on this visit.</span>`); }
   if (!r || r === "info") { const kv = flatKV(z.info || {}, "", []); body += sec("Session custom info", kv.length ? `<div class="kvgrid">${kv.filter(([, v]) => !isRows(v)).slice(0, 40).map(([k, v]) => `<div><div class="k">${esc(k)}</div><div class="v">${esc(cellVal(v))}</div></div>`).join("")}</div>${kv.filter(([, v]) => isRows(v)).map(([k, v]) => `<div class="k" style="font-size:12px;color:var(--ink-3);margin-top:8px">${esc(k)} · ${v.length}</div>${rowsTable(v)}`).join("")}` : `<span class="muted">No custom info.</span>`); }
   host.innerHTML = `<aside class="pane" role="dialog" aria-label="${esc(z.label)}"><header><div style="display:flex;align-items:center;gap:8px"><nav class="bc"><button data-act="closePane">${esc(s.label)}</button>${ic("chevron-forward","sep")}${r ? `<button data-pane="${col.key}|">${esc(z.label)}</button>${ic("chevron-forward","sep")}<b>${esc(r === "req" ? "Visit requirements" : r.replace("mod:", ""))}</b>` : `<b>${esc(z.label)}</b>`}</nav><span style="flex:1"></span>${nav}</div>
@@ -3825,6 +3842,7 @@ document.addEventListener("click", async e => {
   if (a === "refresh") { S.rad = {}; S.radReal = {}; S.radCohortRun = null; S.radCohort = null; SZ.m = {}; Object.keys(AN_LISTS).forEach(k => delete AN_LISTS[k]); if (!S.project) { S.detail = {}; S.error = null; loadAll(); return; } Object.keys(S.detail).forEach(k => { if (k !== S.subj) delete S.detail[k]; }); S.error = null; lastRefresh = Date.now(); loadAll(true).then(() => toast(S.stale ? "Refresh failed. Showing the last good data." : "Up to date", S.stale ? "error" : "info")); }
   if (a === "closePane") { S.pane = null; render(); }
   if (a === "closeJob") { S.job = null; render(); }
+  if (a === "jobignore" || a === "jobunignore") { const J = S.jobData[S.job]; if (J && J.job) { t.disabled = true; try { await setJobIgnored(J.job, a === "jobignore"); } catch (er) { toast("Couldn't save: " + (er && er.message || er)); t.disabled = false; } } }
   if (a === "fulllog") { S.fullLog = !S.fullLog; render(); }
   if (a === "copyjob") { try { await navigator.clipboard.writeText(S.job); toast("Job ID copied"); } catch (er) { toast("Copy blocked by the frame: " + S.job); } }
   if (a === "dllog") { const J = S.jobData[S.job]; try { const u = URL.createObjectURL(new Blob([(J.lines || []).join("\n")], { type: "text/plain" })); const l = document.createElement("a"); l.href = u; l.download = `job-${S.job}.log`; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); } catch (er) { toast("Download blocked by the frame. Use Open in Jobs Log."); } }
